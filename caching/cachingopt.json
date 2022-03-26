@@ -1,0 +1,46 @@
+{
+    "symbolicvals" : {
+    "sizes": {
+        "logentries": 8,
+        "tables": 2,
+        "logcols": 7,
+        "rows": 4
+    },
+    "symbolics": {
+        "entries": 256,
+        "cols": 128,
+        "eviction": false
+    },
+    "logs" : {
+        "logentries": "entries",
+        "logcols" : "cols"
+    },
+    "bounds" : {
+        "tables" : [1,10],
+        "entries" : [2, 65536],
+        "rows" : [1,10],
+        "cols" : [2, 65536]
+    }
+    },
+    "structchoice": {
+        "var": "eviction",
+        "False": ["rows", "cols", "logcols"]
+    },
+    "optparams": {
+        "optalgo" : "simannealing",
+        "stop_iter" : 500,
+        "temp" : 10,
+        "stepsize": {
+            "tables": 2,
+            "entries": 200,
+            "cols" : 200,
+            "rows" : 2
+        }
+    },
+    "symfile" : "caching.symb",
+    "lucidfile" : "caching.dpt",
+    "outputfiles" : ["misses.txt"],
+    "optmodule" : "cacheopt",
+    "trafficpcap" : ""
+
+}
