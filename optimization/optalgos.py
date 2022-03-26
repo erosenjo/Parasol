@@ -1,6 +1,7 @@
 import math, json, sys, copy, time
 from random import randint
 from random import random
+from random import getrandbits
 from interp_sim import gen_cost
 import numpy as np
 from scipy.optimize import basinhopping
@@ -57,9 +58,19 @@ def closest_power(x):
 
 # RANDOM OPTIMIZATION
 # randomly choose, given some var
-def get_next_random(symbolics_opt, logs, bounds):
+def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
     new_vars = {}
+    exclude = False
+    if structchoice:
+        new_vars[structinfo["var"]] = bool(getrandbits(1))
+        if str(new_vars[structinfo["var"]]) in structinfo:
+            exclude = True
     for var in symbolics_opt:
+        if structchoice and var==structinfo["var"]: # we've handled this above, don't do it again
+            continue
+        if exclude and var in structinfo[str(new_vars[structinfo["var"]])]: # exlucding this var for struct
+            new_vars[var] = symbolics_opt[var]
+            continue
         if var in logs.values(): # this var has to be multiple of 2
             new_vars[var] = 2**randint(int(math.log2(bounds[var][0])),int(math.log2(bounds[var][1])))
             continue
@@ -90,6 +101,12 @@ def random_opt(symbolics_opt, opt_info, o):
     if iters and simtime:
         iter_time = True
 
+    structchoice = False
+    structinfo = {}
+    if "structchoice" in opt_info:
+        structchoice = True
+        structinfo = opt_info["structchoice"]
+
     # start loop
     start_time = time.time()
     while True:
@@ -117,7 +134,7 @@ def random_opt(symbolics_opt, opt_info, o):
             best_sols.append(copy.deepcopy(symbolics_opt))
 
         # get next values
-        symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"])
+        symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
 
         # incr iterations
         iterations += 1
@@ -142,6 +159,13 @@ def simulated_annealing(symbolics_opt, opt_info, o):
     bounds = opt_info["symbolicvals"]["bounds"]
     step_size = opt_info["optparams"]["stepsize"]
     logvars = opt_info["symbolicvals"]["logs"].values()
+
+    structchoice = False
+    structinfo = {}
+    if "structchoice" in opt_info:
+        structchoice = True
+        structinfo = opt_info["structchoice"]
+
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
     best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False)
@@ -151,8 +175,21 @@ def simulated_annealing(symbolics_opt, opt_info, o):
 
     # run the algorithm
     for i in range(opt_info["optparams"]["stop_iter"]-1):   # minus 1 bc counting init cost as iteration
+        # if we're choosing between structs, random step for choice is coin toss
+        if structchoice:
+            symbolics_opt[structinfo["var"]] = bool(getrandbits(1))
+            if str(new_vars[structinfo["var"]]) in structinfo:
+                exclude = True
+            else:
+                exclude = False
+
         # take a step
         for s in step_size:
+            if structchoice and s==structinfo["var"]: # we've handled this above, don't do it again
+                continue
+            # don't take a step if we don't need this var for the struct
+            if structchoice and exclude and s in structinfo[str(symbolics_opt[structinfo["var"]])]:
+                continue
             # random step with gaussian distr, with mean = curr[s] and stddev = step_size[s]
             # could do single call to randn and gen array of values, or get single value at a time
             symbolics_opt[s] = curr[s] + np.random.randn() * step_size[s]

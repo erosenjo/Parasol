@@ -26,11 +26,16 @@ def init_opt():
 
     return opt_info,symbolics_opt, o
 
+
+
 # usage: python3 optimize.py <json opt info file>
 def main():
     if len(sys.argv) < 2:
         print("usage: python3 optimize.py <json opt info file>")
         quit()
+    opt_info = json.load(open(sys.argv[1]))
+    #print(opt_info)
+
     # initialize everything we need to run opt algo
     opt_info,symbolics_opt, o = init_opt()
 
@@ -54,6 +59,7 @@ def main():
     # write symb with final sol
     update_sym_sizes(best_sol, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
     write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], opt_info["symbolicvals"]["logs"], opt_info["symfile"])
+
 
     '''
     # try compiling to tofino?
@@ -80,7 +86,6 @@ def main():
     '''
 
 
-
     print("BEST:")
     print(best_sol)
     print("BEST COST:")
@@ -102,6 +107,10 @@ json fields:
         symbolics: symbolic vals (ints, bools) and starting vals
         logs: which (if any) symbolics are log2(another symbolic)
         bounds: [lower,upper] bounds for symbolics, inclusive (don't need to include logs, bc they're calculated from other syms)
+    structchoice: (tells us if we're choosing between structs)
+        var: which of the symbolic vars corresponds to struct choice (boolean)
+        True: if var==True, list any symbolic vars the corresponding struct doesn't use
+        False: if var==False, ^
     optparams: (any info related to optimization algo)
         optalgo: if using one of our provided functions, tell us the name (random, simannealing)
         optalgofile: if using your own, tell us where to find it (python file)
