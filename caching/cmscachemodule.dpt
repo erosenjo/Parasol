@@ -90,14 +90,14 @@ module Cmscache : {
         for (i < 'tab) {
             // compute hash
             // TODO: seeds random 0s? diff lengths?
-            int<<'logent>> idx = hash<<'logent>>(size_to_int(i)+3,key);
+            int<<'logent>> idx = hash<<'logent>>(size_to_int(i+3),key);
 
             // init match vars, for each fid entry
             int<<1>> match_1 = 0;
 
             // KEY
             // if not resubmit and matched = 0, check if key matched
-            if (is_resubmitted==0 && !matched) {
+            if (is_resubmitted==0 && matched==false) {
                 match_1 = (int<<1>>) Array.getm(ca#arrs[i]#keys,idx,key_match,key);
             }
             // else if resubmit and we're in the right stage, update key
@@ -143,12 +143,12 @@ module Cmscache : {
         }
 
         /* cms */
-        if (is_resubmitted==0 && !matched) {
+        if (is_resubmitted==0 && matched==false) {
             // cache miss, log it
             log_miss_cms(key);
             int min = 0x7fffff;
             for (i < 'rows) {
-                int<<'logcols>> idx = hash<<'logcols>>(size_to_int(i)+2,key);
+                int<<'logcols>> idx = hash<<'logcols>>(size_to_int(i+2),key);
                 // incr counter
                 min = Array.update(ca#cms[i], idx, compute_min, min, incr, 1);
             }
