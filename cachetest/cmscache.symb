@@ -1,0 +1,12 @@
+{
+    "sizes": {
+        "logentries": 14,
+        "tables": 2,
+        "rows" : 3,
+        "logcols" : 12
+    },
+    "symbolics": {
+        "entries": 16384,
+        "cols" : 4096
+    }
+}
