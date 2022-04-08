@@ -32,7 +32,7 @@ global PairArray.t<<32>>[tables] pkt_tables = [PairArray.create(table_size) for 
 
 /* Events */
 entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp);
-exit event tcp_out(bool pkt_type, int rtt);
+exit event tcp_out(int<<1>> pkt_type, int rtt);
 exit event dropped();
 
 /* Externs */
@@ -80,66 +80,94 @@ fun void drop() {
 
 handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
     // decide if syn or ack
-    bool pkt_type = false;	// true is syn, false is ack
+    int<<1>> pkt_type = 0;	// true is syn, false is ack
     match (tcp_flags, len) with
-    | TCP_FLAGS_S,_ -> {pkt_type=true;}
-    | tcp_s_a,_ -> {pkt_type=false;}
-    | TCP_FLAGS_A,0b0000000000****** -> {pkt_type=false;}
-    | TCP_FLAGS_A,0b000000000100**** -> {pkt_type=false;}
-    | TCP_FLAGS_A,0b0000000001010000 -> {pkt_type=false;}
-    | tcp_a_p,0b0000000000****** -> {pkt_type=false;}
-    | tcp_a_p,0b000000000100**** -> {pkt_type=false;}
-    | tcp_a_p,0b0000000001010000 -> {pkt_type=false;}
-    | _,0b000000********** -> {pkt_type=true;}
-    | _,0b0000010********* -> {pkt_type=true;}
-    | _,0b0000011000****** -> {pkt_type=true;}
-    | _,0b0000011001000000 -> {pkt_type=true;}
+    | TCP_FLAGS_S,_ -> {pkt_type=1; printf("SYNFLAG");}
+    | tcp_s_a,_ -> {pkt_type=0;}
+    | TCP_FLAGS_A,0b0000000000****** -> {pkt_type=0;}
+    | TCP_FLAGS_A,0b000000000100**** -> {pkt_type=0;}
+    | TCP_FLAGS_A,0b0000000001010000 -> {pkt_type=0;}
+    | tcp_a_p,0b0000000000****** -> {pkt_type=0;}
+    | tcp_a_p,0b000000000100**** -> {pkt_type=0;}
+    | tcp_a_p,0b0000000001010000 -> {pkt_type=0;}
+    // len < 80
+    | _,0b0000000000****** -> {pkt_type=0;}
+    | _,0b000000000100**** -> {pkt_type=0;}
+    // len < 1600
+    | _,0b000000********** -> {pkt_type=1; printf("LEN1");}
+    | _,0b0000010********* -> {pkt_type=1; printf("LEN2");}
+    | _,0b0000011000****** -> {pkt_type=1; printf("LEN3");}
+    | _,0b0000011001000000 -> {pkt_type=1; printf("LEN4");}
     | TCP_FLAGS_R, _ -> {drop();}
     | TCP_FLAGS_F, _ -> {drop();}
-    | _,_ -> {pkt_type=true;}
+    | _,_ -> {pkt_type=0;}
 
 
     int expected_ack = 0;
+    printf("PKT TYPE: %d", pkt_type);
 
     // if syn, compute e_ack
     // ++ is concatenation in p4, ^ in lucid
-    if (pkt_type==true) {
+    if (pkt_type==1) {
         int<<32>> tmp_1=hash<<32>>(1,(int<<26>>)0 ^ ihl ^ (int<<2>>)0);
         int<<32>> tmp_2=hash<<32>>(1,(int<<26>>)0 ^ data_offset ^ (int<<2>>)0);
         int<<32>> tmp_3=(int<<16>>)0 ^ len;
         int<<32>> tmp_4=tmp_1+tmp_2;
         int<<32>> tmp_5=tmp_3-tmp_4;
-        eack = seq_no+tmp_5;
+
+        expected_ack = seq_no+tmp_5;
+
+
         if (tcp_flags==TCP_FLAGS_S) {
-            eack = eack + 1;
+            expected_ack = expected_ack + 1;
         }
+        printf("EACK: %d", expected_ack);
     }
 
     // compute signature
     int pkt_signature = 0;
     int rtt = 0;
+
+
     // if syn, try to insert into table
     // if ack, read from table
-    if (pkt_type==true) {
-        pkt_signature = hash<<32>>(11, srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+    if (pkt_type==1) {
+        pkt_signature = hash<<32>>(10398247, srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+//        pkt_signature = hash<<32>>(10398247, 1, 2, 3, 4, 4294967295);
+//        int pkt_signature2 = hash<<32>>(10398247, 1, 2, 3, 4, 10);
+        printf("SYN SIG %d", pkt_signature);
+//        printf("SECOND SIG %d", pkt_signature2);
+
+        int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, expected_ack) for i < tables];
         for (i < tables) {
             if (rtt==0) {
-                int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], srcAddr, dstAddr, srcPort, dstPort, expected_ack);
-                rtt = PairArray.update(pkt_tables[i], hashed_location_1, insert, pkt_signature, timestamp, 0);
+                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+
+
+                rtt = PairArray.update(pkt_tables[i], idxes[i], insert, pkt_signature, timestamp, 0);
             }
         }
         if (rtt==0) { log_collision(); }
+
     } else {
-        pkt_signature = hash<<32>>(11, dstAddr, srcAddr, dstPort, srcPort, ack_no);
+        pkt_signature = hash<<32>>(10398247, dstAddr, srcAddr, dstPort, srcPort, ack_no);
+        printf("SIG %d", pkt_signature);
+
+        int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no) for i < tables];
+
         // for loop
         for (i < tables) {
             if (rtt==0) {
-                int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
-                rtt = PairArray.update(pkt_tables[i], hashed_location_1, read, pkt_signature, timestamp, 0);
+                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
+                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no);
+
+                rtt = PairArray.update(pkt_tables[i], idxes[i], read, pkt_signature, timestamp, 0);
             }
         }
-        if (rtt != 0) { log_rttsample(rtt); }
+        if (rtt != 0) { printf("MATCH!!"); log_rttsample(rtt); }
     }
+
 
     // return computed RTT, to send to controller or do whatever
     generate tcp_out(pkt_type, rtt);
