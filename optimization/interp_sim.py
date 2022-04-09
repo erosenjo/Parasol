@@ -154,7 +154,21 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
 
-    # compile to p4 (once new memops implemented) and check if stgs <= tofino --> what to return if it takes too many stgs/doesn't compile? inf cost? boolean?
+    # compile to p4 and check if stgs <= tofino --> what to return if it takes too many stgs/doesn't compile? inf cost? boolean?
+    cmd = ["../../dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+
+    #with open('output.txt','w') as outfile:
+    #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
+    ret = subprocess.run(cmd)
+    if ret.returncode != 0: # stop if there's an error running interp
+        print("err")
+        quit()
+    num_stg = 0
+    with open('build/num_stages.txt') as f:
+        num_stg = int(f.readline())
+
+    if num_stg > 12:
+        return float('inf')
 
     # call init_iteration for opt class
     o.init_iteration(symbolics_opt)
