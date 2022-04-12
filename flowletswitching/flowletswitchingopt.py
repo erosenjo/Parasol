@@ -61,12 +61,19 @@ class Opt:
     # called after every interp run
     # measurement is list of measurements (one measurement for each output file)
     # order in list is same ordered specified in opt json
-    def calc_cost(self,measure):  # compute avg error for our cms (mean abs error)
-        m = measure[0]  # cms only has 1 output file, so 1 set of measurements
-        s = 0
-        for k in self.ground_truth:
-            s += abs(m[k]-self.ground_truth[k])
-        return float(s)/float(len(m))
+    # measure is dict with list of hops and num flowlets sent across each hop
+    def calc_cost(self,measure):
+        # for cost, we're measuring how far off we are from even distribution
+        # compute average of distance from actual num flowlets vs ideal
+        hops = measure[0]
+        total_flowlets = sum(list(hops.values()))
+        even_distr = total_flowlets/len(hops)
+        diffs = 0
+        for i in hops:
+            diffs += abs(hops[i]-even_distr)
+
+        return diffs/total_flowlets
+
 
     # called before every interp run
     def init_iteration(self, symbs):
