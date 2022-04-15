@@ -1,0 +1,26 @@
+{
+    "entry" : 
+    [
+        {
+            "event" : "ip_in",
+            "conditions" : {"hdr.tcp.isValid()" : [true]},
+            "inputs" : {
+                "src_port":"hdr.tcp.src_port",
+                "dst_port":"hdr.tcp.dst_port",
+                "src":"hdr.ip.src_addr",
+                "dst":"hdr.ip.dst_addr",
+		"qdelay": "hdr.ip.src_addr",
+                "global_time" : "ig_prsr_md.global_tstamp",
+                "total_len" : "hdr.ip.src_addr"
+	    }
+        }
+    ],
+    "exit" : 
+    [
+        {
+            "event" : "ip_out",
+            "outputs" : {
+            }
+        }
+    ]
+}

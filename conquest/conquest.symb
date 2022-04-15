@@ -1,0 +1,14 @@
+{
+  "sizes": {
+    "LOG_CQ_H" : 2,
+    "H" : 4,
+    "LOG_CQ_C" : 8,
+    "R" : 2,
+    "LOG_CQ_T" : 23,
+    "T" : 1
+  },
+
+  "symbolics": {
+    "C" : 256
+  }
+}
