@@ -5,6 +5,7 @@ from random import getrandbits
 from interp_sim import gen_cost
 import numpy as np
 from scipy.optimize import basinhopping
+import pickle
 
 # helper funcs
 '''
@@ -107,6 +108,8 @@ def random_opt(symbolics_opt, opt_info, o):
         structchoice = True
         structinfo = opt_info["structchoice"]
 
+    testing_sols = []
+    testing_eval = []
     # start loop
     start_time = time.time()
     while True:
@@ -125,6 +128,9 @@ def random_opt(symbolics_opt, opt_info, o):
         # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
         tested_sols.append(copy.deepcopy(symbolics_opt))
 
+        testing_sols.append(copy.deepcopy(symbolics_opt))
+        testing_eval.append(cost)
+
         # if new cost < best, replace best (if stgs <= tofino)
         if cost < best_cost:
             best_cost = cost
@@ -141,6 +147,11 @@ def random_opt(symbolics_opt, opt_info, o):
 
     # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
     #best_sol = prioritize(best_sols,opt_info)
+
+    with open('testing_sols.txt','wb') as f:
+        pickle.dump(testing_sols,f)
+    with open('testing_eval.txt','wb') as f:
+        pickle.dump(testing_eval,f)
 
     # return the first solution in list of acceptable sols
     return best_sols[0], best_cost
@@ -173,12 +184,18 @@ def simulated_annealing(symbolics_opt, opt_info, o):
     # current working solution
     curr, curr_cost = copy.deepcopy(symbolics_opt), best_cost
 
+
+    # list of output for each iteration
+    testing_sols = [copy.deepcopy(symbolics_opt)]
+    testing_eval = [best_cost]
+
     # run the algorithm
     for i in range(opt_info["optparams"]["stop_iter"]-1):   # minus 1 bc counting init cost as iteration
         # if we're choosing between structs, random step for choice is coin toss
         if structchoice:
             symbolics_opt[structinfo["var"]] = bool(getrandbits(1))
-            if str(new_vars[structinfo["var"]]) in structinfo:
+            #print("NEWBOOL " + str(symbolics_opt[structinfo["var"]]))
+            if str(symbolics_opt[structinfo["var"]]) in structinfo:
                 exclude = True
             else:
                 exclude = False
@@ -186,6 +203,7 @@ def simulated_annealing(symbolics_opt, opt_info, o):
         # take a step
         for s in step_size:
             if structchoice and s==structinfo["var"]: # we've handled this above, don't do it again
+                print("BOOLEAN"+str(symbolics_opt[s]))
                 continue
             # don't take a step if we don't need this var for the struct
             if structchoice and exclude and s in structinfo[str(symbolics_opt[structinfo["var"]])]:
@@ -193,6 +211,11 @@ def simulated_annealing(symbolics_opt, opt_info, o):
             # random step with gaussian distr, with mean = curr[s] and stddev = step_size[s]
             # could do single call to randn and gen array of values, or get single value at a time
             symbolics_opt[s] = curr[s] + np.random.randn() * step_size[s]
+            if structchoice and s==structinfo["var"]:
+                if symbolics_opt[s] >= 1:
+                    symbolics_opt[s] = True
+                else:
+                    symbolics_opt[s] = False
             # if we happen to hit bottom or top of bounds, set to min/max
             if symbolics_opt[s] < bounds[s][0]:
                 symbolics_opt[s] = bounds[s][0]
@@ -203,6 +226,7 @@ def simulated_annealing(symbolics_opt, opt_info, o):
                 symbolics_opt[s] = closest_power(symbolics_opt[s])
             else:   # doesn't have to be power of 2, just round to nearest int
                 symbolics_opt[s] = round(symbolics_opt[s])
+
 
         # evaluate candidate point
         candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
@@ -228,7 +252,14 @@ def simulated_annealing(symbolics_opt, opt_info, o):
             # store the new current point
             curr, curr_cost = copy.deepcopy(symbolics_opt), candidate_cost
 
+        testing_sols.append(copy.deepcopy(symbolics_opt))
+        testing_eval.append(candidate_cost)
+        
     #best_sol = prioritize(best_sols,opt_info)
+    with open('testing_sols.txt','wb') as f:
+        pickle.dump(testing_sols,f)
+    with open('testing_eval.txt','wb') as f:
+        pickle.dump(testing_eval,f)
 
     # return first sol in list of sols
     return best_sols[0], best_cost

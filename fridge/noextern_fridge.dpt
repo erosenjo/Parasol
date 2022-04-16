@@ -151,7 +151,7 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
                 rtt = Array.getm(timestamps, hashed_location_1, getdiff, timestamp);
                 insrtdiff = Array.getm(inserts, hashed_location_1, getdiff, insrtct);
                 successful = 1;
-                log_rttsample(rtt, insrtdiff, size_to_int(ENTRY_PROB_LOG2), fridge_size);
+                //log_rttsample(rtt, insrtdiff, size_to_int(ENTRY_PROB_LOG2), fridge_size);
             }
     } else {
         if (pkt_type==1) {

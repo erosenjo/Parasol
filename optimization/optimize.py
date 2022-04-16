@@ -122,6 +122,7 @@ json fields:
     lucidfile: dpt file
     outputfiles: list of files that output is stored in (written to by externs)
     optmodule: name of module that has class w/ necessary funcs
+    compilefile: name of dpt file without externs to compile
     trafficpcap: name of pcap file to use
 
 sys reqs:

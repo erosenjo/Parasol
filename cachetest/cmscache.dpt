@@ -55,6 +55,7 @@ exit event ip_out ();
 /* externs */
 extern log_miss(int key);
 extern log_hit(int key);
+
 /* Memops */
 memop key_match(int memval, int newval) {
     if (memval == newval) { return 1; }
@@ -85,6 +86,23 @@ memop compincr(int memval, int minval) {
     } else { return minval; }
 }
 
+memop get_min(int memval, int diffval) {
+    if (diffval > 0x7fffff) { // negative TODO: UNSIGNED
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+
+
+memop compute_min(int memval, int minval) {
+    if (memval + 1 < minval) {
+        return memval+1;
+    } else {
+        return minval;
+    }
+}
 
 /* Handlers */
 handle add_val(int key, int<<1>> insert, int<<8>> min_stg, int cacheval) {
@@ -102,91 +120,56 @@ handle add_val(int key, int<<1>> insert, int<<8>> min_stg, int cacheval) {
 handle ip_in (int key, int<<1>> insert, int<<8>> min_stg, int cacheval) {
     /* key value */
     int<<1>> matched = 0;
+
     int min_val = 0x7fffff; // signed ints? set this to max value
     int<<8>> min_stg_to_set = 0;
-    int old_min_val = 0;
 
     for (i < tables) {
-        //old_min_val = min_val;
         // compute hash
         int<<logentries>> idx = hash<<logentries>>(size_to_int(i+3),key);
         // should do if matched==0, but too many stages
         int<<1>> match_1 = (int<<1>>) Array.getm(arrs[i]#keys,idx,key_match,key);
-        //printf("KEYCHECKMATCH, %d", (int<<32>>)match_1);
 
-        //int diff = 0;
+
         int c = 0;
-        if (match_1==1) {   // else if match, incr counter
-            matched=1;
-            //min_val = Array.update(arrs[i]#counter,idx,incr,1,compincr,min_val);
-            c = Array.update(arrs[i]#counter,idx,incr,1,incr,1);
-            //printf("COUNT %d", c);
-            // cache hit, log it
-            //log_hit(key);
-        }
-        else { // not a match, so grab counter and see if min
-            //min_val = Array.getm(arrs[i]#counter,idx,compcache,min_val);
-            c = Array.get(arrs[i]#counter,idx);
-        }
+
+            if (match_1==1) {
+                c = Array.update(arrs[i]#counter,idx,incr,1,incr,1);
+                log_hit(key);
+                matched=1;
+            }
+            else {
+                c = Array.get(arrs[i]#counter,idx);
+            }
+
 
         // compute the min as we go, even if we don't need it
         int diff = c - min_val; // negative --> new min value; pos --> keep min
-        min_stg_to_set = (int<<8>>) Array.update_complex(arrs[i]#dummy_reg, 0, get_minval, diff, size_to_int(i), (int<<32>>) min_stg_to_set);
-        min_val = Array.update_complex(arrs[i]#dummy_reg2, 0, get_minval, diff, c, min_val);
 
-/*
-        if (old_min_val!=min_val) {
-            min_stg_to_set = (int<<8>>)size_to_int(i);
+        if (c < min_val) {
+            min_stg_to_set = (int<<8>>) size_to_int(i)+1;
+            //printf("MIN STG SET: %d",min_stg_to_set);
+            //min_stg = (int<<8>>) size_to_int(i)+1;
+            //printf("MIN STG: %d", min_stg);
+            //if (min_stg_to_set !=  min_stg) { printf("STG ERROR!"); }
+            min_val = c;
         }
-*/
 
 
-        //int<<1>> to_update = (int<<1>>) Array.getm(arrs[i]#dummy_reg,0,get_min,diff);
-        //min_val = c;
-        /*
-        if (to_update==1) {
-            //min_val = c;
-            min_stg_to_set = (int<<8>>)size_to_int(i) + 1;
-        }
-        */
+
     }
-
-/*
 	/* actual cms */
     // if it's a cache miss, then let's log it in our cms
-    // else reset cms count to 0
     bool notinserted = insert==0 && matched==0;
     // init values
     int min = 0x7fffffff;
-    for (i < rows) {
-        int<<logcols>> idx = hash<<logcols>>(size_to_int(i+2),key);
-        int cmsval = 0x7fffffff;
-        if (notinserted) {
-            // incr counter
-            min = Array.update(cms[i], idx, incr, 1, compincr, min);
-        } /*else {    // is this bad?????
-            Array.set(cms[i],idx,0); 
-        } */
-    }
+
     if (notinserted) {
-        // cache miss, log it
-        //log_miss(key);
- 
-        /* 
-        // if cms count > min cache count, let's insert
-        int mdiff = min_val - min;  // if negative, don't do anything; if pos, insert
-        if (mdiff > 0x7fffffff) {
-            generate ip_in(key,1,min_stg_to_set,key);
+        log_miss(key);
+        for (i < rows) {
+            int<<logcols>> idx = hash<<logcols>>(size_to_int(i+2),key);
+            min = Array.update(cms[i], idx, compute_min, min, incr, 1);
         }
-        else { generate ip_out(); }
-        */       
-
-
-        /*
-        if (min > 80) {
-            printf("MIN COUNT > 80 %d", min);
-        }
-        */
 
         // if cms count > thresh, let's insert
         // use MAT to decide if we're inserting
@@ -199,32 +182,13 @@ handle ip_in (int key, int<<1>> insert, int<<8>> min_stg, int cacheval) {
         | 0b00000000000000000000000000******,_ -> { generate ip_out(); } // below the threshold, so don't insert
         | 0b0000000000000000000000000100****,_ -> { generate ip_out(); } // below the threshold, so don't insert
         | 0b00000000000000000000000001010000,_ -> { generate ip_out(); } // below the threshold, so don't insert
-        | _,_ -> { generate add_val(key,1,min_stg_to_set,key); printf("INSERTING CACHE"); }
+        | _,_ -> { generate add_val(key,1,min_stg_to_set,key); }
 
-        // sanity check
-        //generate ip_out();
-        
+
+
     }
+
     else {  generate ip_out(); }
-  
-*/
 
-  /*
-    // sanity check cms
-    /* cms only */
-    int min = 0x7fffffff;
-    for (i < rows) {
-        int<<logcols>> idx = hash<<logcols>>(size_to_int(i)+2,key);
-        //int<<logcols>> idx = hash<<logcols>>(polys[i], key);
-        //int ct = Array.update(cms[i], idx, incr, 1, incr, 1);
-        min = Array.update(cms[i], idx, compute_min, min, incr, 1);
-    }
-
-    if (min > 60) {
-        printf("MIN>60 %d", min);
-    }
-
-    generate ip_out();
-    */
 
 }

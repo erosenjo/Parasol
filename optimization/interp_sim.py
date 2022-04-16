@@ -155,7 +155,13 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
 
     # compile to p4 and check if stgs <= tofino --> what to return if it takes too many stgs/doesn't compile? inf cost? boolean?
-    cmd = ["../../dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    '''
+    if symbolics_opt["eviction"]==True:
+        cmd = ["../../dptc", "noextern_caching_cms.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    else:
+        cmd = ["../../dptc", "noextern_caching_precision.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    '''
+    cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
 
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
@@ -168,7 +174,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
         num_stg = int(f.readline())
 
     if num_stg > 12:
-        return float('inf')
+        return 1 # miss rate of 100%
+        #return float('inf')
 
     # call init_iteration for opt class
     o.init_iteration(symbolics_opt)
