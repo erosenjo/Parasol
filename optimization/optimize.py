@@ -118,6 +118,7 @@ json fields:
         stop_time: time to stop at (in seconds)
         temp: initial temp for simannealing (init temps are almost arbitrary??)
         stepsize: stddev for simannealing (per symbolic? or single?
+        maxcost: cost to return if solution uses too many stages
     symfile: file to write symbolics to
     lucidfile: dpt file
     outputfiles: list of files that output is stored in (written to by externs)
