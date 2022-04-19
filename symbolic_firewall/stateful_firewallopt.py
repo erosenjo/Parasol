@@ -1,5 +1,7 @@
 # how many ns of packet trace to use as a sample
-max_packet_sample_time = 4000000000
+trace_time_seconds = 4 
+max_packet_sample_time = trace_time_seconds * 1000000000
+using_caida = False # caida is ip pcap instead of eth
 
 from scipy import interpolate
 import json
@@ -71,7 +73,7 @@ def events_of_pkts(inPcapFn, maxts = 1000000000):
                     authorized = 1
                 if (authorized == 1):
                     auth_pktct += 1
-                event = {"name":"ip_in", "args":[0, src_uint, dst_uint, 64, authorized], "timestamp":ts}
+                event = {"name":"ip_in", "args":[0, src_uint, dst_uint, (eth.ip.len+16), authorized], "timestamp":ts}
                 events.append(event)
                 pktct += 1
         except dpkt.dpkt.UnpackError:
@@ -94,8 +96,9 @@ class Opt:
         info["random seed"] = 0
         info["python file"] = "stateful_firewall.py" # externs
         pktevents = events_of_pkts(self.pcapfn, max_packet_sample_time)
+        # first event to trigger start of background thread
+        initevent = {"name":"first_event", "args":[], "timestamp":0}
         # final event to trigger dump of stats
-        initevent = {"name":"check_timeout", "args":[0], "timestamp":0}
         finalevent = {"name":"final_packet", "args":[], "timestamp":(pktevents[-1]["timestamp"]+1)}
         info["events"] = [initevent] + pktevents + [finalevent] 
         # info["events"] = pktevents + [finalevent] 
@@ -104,33 +107,24 @@ class Opt:
             json.dump(info, f, indent=4)
 
 
-    # measurement is dictionary of rtts and correction factors
     def calc_cost(self, measure):     
+        # cost is the sum of two overheads: 
+        # 1) the extra bytes processed by the switch due to recirculations.
+        # 2) the extra bytes that endhosts will have to resend when authorized 
+        #    packets are dropped. 
         measure = measure[-1]
-        # cost: 
-        # factor 1: number of recirc / number total (minimize)
-        overhead = float(measure["counters"]["recirc_pkts"] / (measure["counters"]["data_pkts"] + measure["counters"]["recirc_pkts"]))
-        # factor 2: 1 - accuracy (incorrect / total)
-        incorrects =  float(measure["counters"]["incorrect_pkts"] / (measure["counters"]["correct_pkts"] + measure["counters"]["incorrect_pkts"]))
-
-        goodput = float(measure["counters"]["data_pkts"] / (measure["counters"]["data_pkts"] + measure["counters"]["recirc_pkts"]))
         accuracy = float(measure["counters"]["correct_pkts"] / (measure["counters"]["correct_pkts"] + measure["counters"]["incorrect_pkts"]))
-        cost = overhead + incorrects        
-        print ("parameters: %s"%(str(self.cur_params)))
-        cost = incorrects
-        # low goodput -- bad bad bad
-        pps_overhead = measure["counters"]["recirc_pkts"] 
-        bps_overhead = 64 * pps_overhead * 8
-        self.result_trace.append((self.cur_params, {"accuracy":accuracy, "bps_overhead":bps_overhead}))
-        # max of 1 mbps for overhead
-        cost = 10
-        if (bps_overhead < 1000000):
-            cost = incorrects
-        else:
-            cost = math.pow((bps_overhead / 1000000.0), 2) + (incorrects)
-        print ("accuracy: %f bps_overhead: %f cost: %f"%(accuracy, bps_overhead, cost))
-        return cost            
+        pps_recirc = measure["counters"]["recirc_pkts"] / float(trace_time_seconds)
+        bps_recirc = 64 * pps_recirc * 8
+        kbps_recirc = bps_recirc / 1000.0
+        bps_missed_packet = measure["counters"]["incorrect_bits"] / float(trace_time_seconds)
+        kbps_missed_packet = bps_missed_packet / 1000.0
 
+        cost = kbps_recirc + kbps_missed_packet
+        self.result_trace.append((self.cur_params, {"kbps_missed_packet":kbps_missed_packet, "kbps_recirc":kbps_recirc, "cost":cost}))
+        print ("parameters: %s"%(str(self.cur_params)))
+        print ("kbps_missed_packet: %f kbps_recirc: %f cost: %f"%(kbps_missed_packet, kbps_recirc, cost))
+        return cost            
 
     def init_iteration(self, symbs):
         self.cur_params = symbs

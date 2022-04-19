@@ -1,0 +1,518 @@
+This is a trace of a run of the optimizer. 
+Note: I disabled the compiler -- 
+there is no need to recompile because hash table 
+stages was fixed at 2 (nothing higher can fit) and 
+entries was between 128 - 1024, which always fit. 
+The timing parameters don't impact compilation.
+
+
+trace length: 4 seconds pkts: 11851 authorized packets: 6724 return packets: 5127 keys: 350
+
+VARS
+{'stages': 2, 'entries': 128, 'timeout': 100000000, 'interscan_delay': 10000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 128, 'timeout': 100000000, 'interscan_delay': 10000000}
+kbps_missed_packet: 120.724000 kbps_recirc: 351.872000 cost: 472.596000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 70195702, 'interscan_delay': 162974793}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 70195702, 'interscan_delay': 162974793}
+kbps_missed_packet: 1345.448000 kbps_recirc: 5491.328000 cost: 6836.776000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 109268375, 'interscan_delay': 1000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 109268375, 'interscan_delay': 1000000}
+kbps_missed_packet: 408.726000 kbps_recirc: 1020.416000 cost: 1429.142000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 139726207, 'interscan_delay': 1000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 139726207, 'interscan_delay': 1000000}
+kbps_missed_packet: 101.454000 kbps_recirc: 618.496000 cost: 719.950000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 200768545, 'interscan_delay': 50399606}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 200768545, 'interscan_delay': 50399606}
+kbps_missed_packet: 1361.646000 kbps_recirc: 4264.704000 cost: 5626.350000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 124533473, 'interscan_delay': 1000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 124533473, 'interscan_delay': 1000000}
+kbps_missed_packet: 71.592000 kbps_recirc: 595.456000 cost: 667.048000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 154661687, 'interscan_delay': 115380412}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 154661687, 'interscan_delay': 115380412}
+kbps_missed_packet: 1254.472000 kbps_recirc: 3962.624000 cost: 5217.096000
+VARS
+{'stages': 2, 'entries': 128, 'timeout': 82708209, 'interscan_delay': 1000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 128, 'timeout': 82708209, 'interscan_delay': 1000000}
+kbps_missed_packet: 236.418000 kbps_recirc: 648.320000 cost: 884.738000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 96995770, 'interscan_delay': 99861777}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 96995770, 'interscan_delay': 99861777}
+kbps_missed_packet: 130.144000 kbps_recirc: 298.880000 cost: 429.024000
+VARS
+{'stages': 2, 'entries': 128, 'timeout': 210772737, 'interscan_delay': 149578417}
+init_iteration called
+parameters: {'stages': 2, 'entries': 128, 'timeout': 210772737, 'interscan_delay': 149578417}
+kbps_missed_packet: 606.658000 kbps_recirc: 1520.000000 cost: 2126.658000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 95631555, 'interscan_delay': 112223448}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 95631555, 'interscan_delay': 112223448}
+kbps_missed_packet: 0.826000 kbps_recirc: 11.520000 cost: 12.346000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 149351898, 'interscan_delay': 149097526}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 149351898, 'interscan_delay': 149097526}
+kbps_missed_packet: 0.128000 kbps_recirc: 6.784000 cost: 6.912000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 18528478, 'interscan_delay': 117678174}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 18528478, 'interscan_delay': 117678174}
+kbps_missed_packet: 0.128000 kbps_recirc: 7.808000 cost: 7.936000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 29872855, 'interscan_delay': 156003038}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 29872855, 'interscan_delay': 156003038}
+kbps_missed_packet: 0.128000 kbps_recirc: 6.656000 cost: 6.784000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 91044732, 'interscan_delay': 4691163}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 91044732, 'interscan_delay': 4691163}
+kbps_missed_packet: 60.896000 kbps_recirc: 183.168000 cost: 244.064000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 231291011}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 231291011}
+kbps_missed_packet: 0.128000 kbps_recirc: 5.504000 cost: 5.632000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 19060628, 'interscan_delay': 249982545}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 19060628, 'interscan_delay': 249982545}
+kbps_missed_packet: 0.826000 kbps_recirc: 8.576000 cost: 9.402000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 13698980, 'interscan_delay': 310565105}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 13698980, 'interscan_delay': 310565105}
+kbps_missed_packet: 0.826000 kbps_recirc: 7.808000 cost: 8.634000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 40043013, 'interscan_delay': 243831492}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 40043013, 'interscan_delay': 243831492}
+kbps_missed_packet: 0.826000 kbps_recirc: 8.704000 cost: 9.530000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 295047322}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 295047322}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.736000 cost: 4.864000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 3896245, 'interscan_delay': 454580204}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 3896245, 'interscan_delay': 454580204}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 143480761, 'interscan_delay': 545300643}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 143480761, 'interscan_delay': 545300643}
+kbps_missed_packet: 1574.862000 kbps_recirc: 4447.360000 cost: 6022.222000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 73124165, 'interscan_delay': 408992102}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 73124165, 'interscan_delay': 408992102}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.096000 cost: 4.224000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 84506615, 'interscan_delay': 335139740}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 84506615, 'interscan_delay': 335139740}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.480000 cost: 4.608000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 273325896}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 273325896}
+kbps_missed_packet: 0.128000 kbps_recirc: 5.120000 cost: 5.248000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 105096332, 'interscan_delay': 191797404}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 105096332, 'interscan_delay': 191797404}
+kbps_missed_packet: 0.128000 kbps_recirc: 5.888000 cost: 6.016000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 128813527, 'interscan_delay': 170143537}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 128813527, 'interscan_delay': 170143537}
+kbps_missed_packet: 0.826000 kbps_recirc: 9.600000 cost: 10.426000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 241270089}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 241270089}
+kbps_missed_packet: 0.128000 kbps_recirc: 5.248000 cost: 5.376000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 128873441, 'interscan_delay': 316639599}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 128873441, 'interscan_delay': 316639599}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.480000 cost: 4.608000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 117471577, 'interscan_delay': 328853098}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 117471577, 'interscan_delay': 328853098}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.608000 cost: 4.736000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 110721486, 'interscan_delay': 305217764}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 110721486, 'interscan_delay': 305217764}
+kbps_missed_packet: 0.826000 kbps_recirc: 7.936000 cost: 8.762000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 293733946, 'interscan_delay': 266290858}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 293733946, 'interscan_delay': 266290858}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.992000 cost: 5.120000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 199100107, 'interscan_delay': 353065967}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 199100107, 'interscan_delay': 353065967}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.352000 cost: 4.480000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 180571152, 'interscan_delay': 122262506}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 180571152, 'interscan_delay': 122262506}
+kbps_missed_packet: 0.128000 kbps_recirc: 7.168000 cost: 7.296000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 117103335, 'interscan_delay': 458212736}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 117103335, 'interscan_delay': 458212736}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 490751597}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 490751597}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 1000000, 'interscan_delay': 503059055}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 1000000, 'interscan_delay': 503059055}
+kbps_missed_packet: 126.902000 kbps_recirc: 264.448000 cost: 391.350000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 351957715}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 351957715}
+kbps_missed_packet: 0.826000 kbps_recirc: 7.936000 cost: 8.762000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 399052588}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 399052588}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.352000 cost: 4.480000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 32023929, 'interscan_delay': 348683088}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 32023929, 'interscan_delay': 348683088}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.480000 cost: 4.608000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 96484996, 'interscan_delay': 401460223}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 96484996, 'interscan_delay': 401460223}
+kbps_missed_packet: 0.826000 kbps_recirc: 7.168000 cost: 7.994000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 24297822, 'interscan_delay': 354357953}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 24297822, 'interscan_delay': 354357953}
+kbps_missed_packet: 0.826000 kbps_recirc: 7.552000 cost: 8.378000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 102877019, 'interscan_delay': 312513065}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 102877019, 'interscan_delay': 312513065}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.480000 cost: 4.608000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 152133629, 'interscan_delay': 339977783}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 152133629, 'interscan_delay': 339977783}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.480000 cost: 4.608000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 174206056, 'interscan_delay': 443552061}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 174206056, 'interscan_delay': 443552061}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 23774573, 'interscan_delay': 447578365}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 23774573, 'interscan_delay': 447578365}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 399848894}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 399848894}
+kbps_missed_packet: 0.128000 kbps_recirc: 4.352000 cost: 4.480000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 495190412}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 495190412}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.968000 cost: 4.096000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 90688698, 'interscan_delay': 576580227}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 90688698, 'interscan_delay': 576580227}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.584000 cost: 3.712000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 218118869, 'interscan_delay': 563022282}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 218118869, 'interscan_delay': 563022282}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.784000 cost: 7.610000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 560880523}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 560880523}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.712000 cost: 3.840000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 712061476}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 712061476}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 775135080}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 775135080}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 23082486, 'interscan_delay': 817580234}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 23082486, 'interscan_delay': 817580234}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 7926195, 'interscan_delay': 690881222}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 7926195, 'interscan_delay': 690881222}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 95632785, 'interscan_delay': 722352230}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 95632785, 'interscan_delay': 722352230}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 15608786, 'interscan_delay': 724577077}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 15608786, 'interscan_delay': 724577077}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 159610106, 'interscan_delay': 671017626}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 159610106, 'interscan_delay': 671017626}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.528000 cost: 7.354000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 92283256, 'interscan_delay': 608066416}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 92283256, 'interscan_delay': 608066416}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.456000 cost: 3.584000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 95419209, 'interscan_delay': 602512360}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 95419209, 'interscan_delay': 602512360}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.656000 cost: 7.482000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 94021382, 'interscan_delay': 735875323}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 94021382, 'interscan_delay': 735875323}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.528000 cost: 7.354000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 617167064}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 617167064}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.584000 cost: 3.712000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 697361937}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 1000000, 'interscan_delay': 697361937}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 151715684, 'interscan_delay': 643738049}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 151715684, 'interscan_delay': 643738049}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.584000 cost: 3.712000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 84843156, 'interscan_delay': 720099212}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 84843156, 'interscan_delay': 720099212}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 714501646}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 714501646}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.528000 cost: 7.354000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 8953474, 'interscan_delay': 811817475}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 8953474, 'interscan_delay': 811817475}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 685384163}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 1000000, 'interscan_delay': 685384163}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.528000 cost: 7.354000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 1000000, 'interscan_delay': 846658658}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 1000000, 'interscan_delay': 846658658}
+kbps_missed_packet: 49.346000 kbps_recirc: 203.520000 cost: 252.866000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 213354370, 'interscan_delay': 768421818}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 213354370, 'interscan_delay': 768421818}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 273443372, 'interscan_delay': 687624351}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 273443372, 'interscan_delay': 687624351}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.528000 cost: 7.354000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 372983680, 'interscan_delay': 944907499}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 372983680, 'interscan_delay': 944907499}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 485226415, 'interscan_delay': 834956428}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 485226415, 'interscan_delay': 834956428}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 455810887, 'interscan_delay': 823209753}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 455810887, 'interscan_delay': 823209753}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 395816475, 'interscan_delay': 846735500}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 395816475, 'interscan_delay': 846735500}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 487696916, 'interscan_delay': 809801070}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 487696916, 'interscan_delay': 809801070}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 507837194, 'interscan_delay': 907360533}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 507837194, 'interscan_delay': 907360533}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 571312970, 'interscan_delay': 924889364}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 571312970, 'interscan_delay': 924889364}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 619499842, 'interscan_delay': 1000000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 619499842, 'interscan_delay': 1000000000}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.272000 cost: 7.098000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 730966182, 'interscan_delay': 979738460}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 730966182, 'interscan_delay': 979738460}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 785793607, 'interscan_delay': 847042628}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 785793607, 'interscan_delay': 847042628}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 681961650, 'interscan_delay': 694584715}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 681961650, 'interscan_delay': 694584715}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 789889884, 'interscan_delay': 787278757}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 789889884, 'interscan_delay': 787278757}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 827933192, 'interscan_delay': 830527142}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 827933192, 'interscan_delay': 830527142}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 523926163, 'interscan_delay': 855282196}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 523926163, 'interscan_delay': 855282196}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 439787489, 'interscan_delay': 689587329}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 439787489, 'interscan_delay': 689587329}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.272000 cost: 7.098000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 545575765, 'interscan_delay': 909717647}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 545575765, 'interscan_delay': 909717647}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.400000 cost: 7.226000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 616861694, 'interscan_delay': 817858183}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 616861694, 'interscan_delay': 817858183}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.144000 cost: 6.970000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 375350930, 'interscan_delay': 1000000000}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 375350930, 'interscan_delay': 1000000000}
+kbps_missed_packet: 1800.312000 kbps_recirc: 5001.216000 cost: 6801.528000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 559134387, 'interscan_delay': 914257257}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 559134387, 'interscan_delay': 914257257}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 442372368, 'interscan_delay': 758844479}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 442372368, 'interscan_delay': 758844479}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 713993118, 'interscan_delay': 728500714}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 713993118, 'interscan_delay': 728500714}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.272000 cost: 7.098000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 710484459, 'interscan_delay': 946768585}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 710484459, 'interscan_delay': 946768585}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 32, 'timeout': 525798235, 'interscan_delay': 981998218}
+init_iteration called
+parameters: {'stages': 2, 'entries': 32, 'timeout': 525798235, 'interscan_delay': 981998218}
+kbps_missed_packet: 1800.448000 kbps_recirc: 4906.496000 cost: 6706.944000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 620579576, 'interscan_delay': 819200880}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 620579576, 'interscan_delay': 819200880}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.200000 cost: 3.328000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 536572341, 'interscan_delay': 766374832}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 536572341, 'interscan_delay': 766374832}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+VARS
+{'stages': 2, 'entries': 256, 'timeout': 419397506, 'interscan_delay': 904350058}
+init_iteration called
+parameters: {'stages': 2, 'entries': 256, 'timeout': 419397506, 'interscan_delay': 904350058}
+kbps_missed_packet: 130.358000 kbps_recirc: 271.232000 cost: 401.590000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 521540032, 'interscan_delay': 649214638}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 521540032, 'interscan_delay': 649214638}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.456000 cost: 3.584000
+VARS
+{'stages': 2, 'entries': 512, 'timeout': 705171985, 'interscan_delay': 794904430}
+init_iteration called
+parameters: {'stages': 2, 'entries': 512, 'timeout': 705171985, 'interscan_delay': 794904430}
+kbps_missed_packet: 0.826000 kbps_recirc: 6.272000 cost: 7.098000
+VARS
+{'stages': 2, 'entries': 1024, 'timeout': 676572329, 'interscan_delay': 773762512}
+init_iteration called
+parameters: {'stages': 2, 'entries': 1024, 'timeout': 676572329, 'interscan_delay': 773762512}
+kbps_missed_packet: 0.128000 kbps_recirc: 3.328000 cost: 3.456000
+
+final output:
+BEST:
+{'stages': 2, 'entries': 1024, 'timeout': 23082486, 'interscan_delay': 817580234}
+BEST COST:
+3.3280000000000003
+TIME(s):
+934.1300020217896

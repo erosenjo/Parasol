@@ -13,6 +13,7 @@ measurements = {
         "recirc_pkts":0,
         "correct_pkts":0,
         "incorrect_pkts":0,
+        "incorrect_bits":0,
         "early_delete_pkts":0
     }
 }
@@ -29,20 +30,26 @@ def insert_attempt(src, dst, success):
     measurements["authorized_flows"].add((src, dst))
 
 def log_insert(src, dst, time):
+    pass
     measurements["insert"].append((src, dst, time))
 def log_cycle(src, dst, time):
+    pass
     measurements["cycle"].append((src, dst, time))
 def log_delete(src, dst, time):
+    pass
     measurements["delete"].append((src, dst, time))
 def log_access(src, dst, time):
+    pass
     measurements["access"].append((src, dst, time))
 def log_busy(src, dst, time):
+    pass
     measurements["busy"].append((src, dst, time))
 def log_arrival(src, dst, time):
+    pass
     measurements["arrivals"].append((src, dst, time))
 
 
-def decide(src, dst, time, permitted):
+def decide(src, dst, time, permitted, pktlen):
     reverse_key = (dst, src)
     should_permit = False
     # 1. figure out correct decision
@@ -52,12 +59,13 @@ def decide(src, dst, time, permitted):
     if (should_permit and permitted):
         measurements["counters"]["correct_pkts"] += 1
     else:
+        measurements["counters"]["incorrect_pkts"] += 1
+        measurements["counters"]["incorrect_bits"] += (pktlen * 8)
         # if incorrect, why? 
         for (s, d, t) in measurements["delete"]:
             if (d == src and s == dst and t < time):
                 measurements["counters"]["early_delete_pkts"] += 1
                 break
-        measurements["counters"]["incorrect_pkts"] += 1
 
 def write_logs():
     print("------final event stats------")

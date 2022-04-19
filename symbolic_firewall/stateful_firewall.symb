@@ -5,7 +5,7 @@
     },
     "symbolics": {
         "entries": 1024,
-        "timeout": 346498273,
-        "interscan_delay": 1000000000
+        "timeout": 23082486,
+        "interscan_delay": 817580234
     }
 }

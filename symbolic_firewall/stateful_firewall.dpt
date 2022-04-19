@@ -7,7 +7,7 @@
 extern count_data_packet();
 extern count_recirc_packet();
 extern insert_attempt(int src, int dst, bool success);
-extern decide(int src, int dst, int time, bool permitted);
+extern decide(int src, int dst, int time, bool permitted, int<<16>> len);
 extern write_logs();
 extern log_insert(int src, int dst, int time);
 extern log_access(int src, int dst, int time);
@@ -136,7 +136,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
     // int<<8>> idx = hash<<8>>(size_to_int(7), src); // first index..
     if (tos == TOS_TRUSTED) {
         //printf ("[LUCID] insert attempt (%d, %d)", src, dst);    
-        int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src) for i<stages];
+        int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
         int src_output = 1;
         int dst_output = 1;
         int src_cpy = hash_copy(src);
@@ -181,7 +181,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
         int dst_match = FALSE;
         int src_cpy2 = hash_copy(src);
         int dst_cpy2 = hash_copy(dst);
-        int<<logentries>> idx = hash<<logentries>>(7, dst);
+        int<<logentries>> idx = hash<<logentries>>(7, dst, src);
         // having a separate copy for this branch relieves PHV pressure.
         for (stage < stages) {
             // int<<8>> idx = hash<<8>>(size_to_int(stage + 7), src);
@@ -191,17 +191,17 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
                 // because this is the return direction of the flow.
                 src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst_cpy2);
                 dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src_cpy2);
-                idx = hash<<logentries>>(size_to_int(8+stage), dst); // next index..
+                idx = hash<<logentries>>(size_to_int(7+1+stage), dst, src); // next index..
             }
         }
         // If its found, allow the packet.
         if ((src_match == TRUE) && (dst_match == TRUE)) {
             //printf ("[LUCID] DECISION: permit");
-            decide(src, dst, Sys.time(), true);
+            decide(src, dst, Sys.time(), true, len);
             generate port_out(igr_port);
         } else {
             //printf ("[LUCID] DECISION: drop");
-            decide(src, dst, Sys.time(), false);
+            decide(src, dst, Sys.time(), false, len);
         }
     }
 }  
@@ -267,7 +267,7 @@ handle cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int f
     // int evicted_src = hash_copy(src); 
     // int evicted_dst = hash_copy(dst);
     for (stage < stages) {
-        int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src);
+        int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src, dst);
         //printf ("[cuckoo_insert]@fw_stages[%d][%d]", size_to_int(stage), idx);
         //printf ("[cuckoo_insert] input: (%d, %d)", src, dst);
         // do nothing if input is null.
@@ -353,6 +353,11 @@ event check_timeout(int<<logentries>> idx) {
             generate delete(size_to_int(stage), idx, elapsed_time);            
         }
     }
+}
+
+event first_event() {
+    generate(Event.delay(check_timeout(0), interscan_delay));
+
 }
 
 // placeholder event that signals the python externs to write their output
