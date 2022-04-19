@@ -1,12 +1,33 @@
-This is a trace of a run of the optimizer. 
-Note: I disabled the compiler -- 
+This is a trace of a run of the optimizer on the stateful firewall. 
+
+The stateful firewall remembers authorized flows to permit packets 
+belonging to return flows. It uses a cuckoo hash table that uses 
+recirculated packets to: 1) resolve collisions by moving entries 
+around; 2) find and delete stale entries. 
+
+The main goal of the optimizer is to find parameters that 
+control the timeout threshold and the delay between timeout scanning. 
+Too low and still-active flows will be dropped. 
+Too high and the table will fill up, so new flows will be dropped. 
+
+The objective function is the cost is the sum of two overheads: 
+    1) the extra bytes processed by the switch due to recirculations.
+    2) the extra bytes that endhosts will have to resend when authorized 
+       packets are dropped. 
+
+
+Note: I disabled the call to the lucid compiler in interp_sim.py
 there is no need to recompile because hash table 
 stages was fixed at 2 (nothing higher can fit) and 
 entries was between 128 - 1024, which always fit. 
-The timing parameters don't impact compilation.
+The timing parameters don't change whether or not the program compiles. 
 
-
+Input data: 
+    - 4 seconds of  univ1_pt1.pcap
 trace length: 4 seconds pkts: 11851 authorized packets: 6724 return packets: 5127 keys: 350
+
+
+Optimizer trace (100 iterations -- best result found at iteration 54)
 
 VARS
 {'stages': 2, 'entries': 128, 'timeout': 100000000, 'interscan_delay': 10000000}
