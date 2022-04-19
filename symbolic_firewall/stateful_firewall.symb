@@ -1,0 +1,11 @@
+{
+    "sizes": {
+        "logentries": 10,
+        "stages": 2
+    },
+    "symbolics": {
+        "entries": 1024,
+        "timeout": 346498273,
+        "interscan_delay": 1000000000
+    }
+}

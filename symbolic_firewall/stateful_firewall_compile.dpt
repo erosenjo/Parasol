@@ -1,0 +1,337 @@
+/* A stateful firewall with stages
+   and a cuckoo operation to mitigate collisions. */
+
+// externs count packets, 
+// log insert attempts and failures, 
+// and log forwarding decisions for return-flow packets.
+extern count_data_packet();
+extern count_recirc_packet();
+extern insert_attempt(int src, int dst, bool success);
+extern decide(int src, int dst, bool permitted);
+extern write_logs();
+
+// Symbolics
+// size stages = 2;
+// const int entries = 32;
+// size logentries = 4;
+
+symbolic size stages;
+symbolic int entries;
+symbolic size logentries;
+
+
+// how long to time out, 
+symbolic int timeout;
+// how long to wait between checking indices for timeouts
+symbolic int interscan_delay;
+
+// other possible symbolics:
+
+// select between a cuckoo hash table and a simpler multi-hash
+
+// make hash polynomials symbolic
+
+/* 
+To finish this example, we need an objective function and a measurement function.
+
+objective function: 
+   minimize the number of authorized packets that get dropped, subject 
+   to the constraint that the bandwidth overhead from cuckoo and timeout scan 
+   operations is less than X percent of the workload. (maybe 1 percent?)
+    - the bandwidth limit will force interscan_delay to be high, and stages / entries to be large. 
+    - minimizing dropped authorized packets will force the interscan_delay to be low and the timeout to be small.
+        
+measurement function: 
+    in python, use a hash table to track the complete set of authorized (src, dst) pairs. 
+    when a trusted packet arrives (tos = 1), call:
+        ``extern authorize(int src, int dst);`` -- which will add (src, dst) to a complete map of authorized flows. 
+    when an external packet arrives (tos = 0) and the program decides whether to forward or drop, 
+    (at the lines that print "DECISION: ..."), call:
+    ``extern decision(int src, int dst, bool permitted);``
+    in python, this function will check whether the decision that the switch made was correct, 
+    based on complete data, and increment an appropriate counter
+*/
+
+
+
+const int NULL = 0;
+const int TRUE = 1; 
+const int FALSE = 0;
+const int<<8>> TOS_TRUSTED = 1;
+
+entry event ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos);
+event cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int fst_dst);
+exit event port_out (int<<9>> egr_port);
+exit event ip_out (int<<9>> egr_port, int src, int dst);
+
+
+type stage = {
+    Array.t<<32>> src_arr;
+    Array.t<<32>> dst_arr;
+    Array.t<<32>> tses;
+}
+
+constr stage create_fwstage(int entries) = {
+    src_arr=Array.create(entries); 
+    dst_arr=Array.create(entries);    
+    tses = Array.create(entries);
+};
+
+global stage[stages] fw_stages = [create_fwstage(entries) for i < stages];
+global Array.t<<32>> cuckoo_insert_semaphore = Array.create(1);
+
+
+
+memop incr(int memval, int incrval) {
+    return memval + incrval;
+}
+memop always_mem(int memval, int newval) {
+    return memval;
+}
+memop always_new(int memval, int newval){
+    return newval;    
+}
+memop mem_eq_search(int memval, int searchval){
+    if (memval == searchval){
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+} 
+memop new_if_null(int memval, int newval){
+    if (memval == NULL){
+        return newval;
+    } else {
+        return memval;
+    }
+}
+// if memval is null or searchval, return null.
+// otherwise, return memval. 
+// memval == null -> null
+// memval == searchval --> null
+// (memval != null) && (memval != searchval) --> memval
+memop null_if_eq(int memval, int searchval){
+    if (memval == searchval) {
+        return NULL;
+    } else {
+        return memval;
+    }
+}
+
+
+// hash copying breaks phv dependencies
+// (this program creates a lot of phv pressure)
+fun int hash_copy(int x) {
+    return hash<<32>>(1, x);
+}
+
+
+handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) { 
+    count_data_packet();   
+    int ts = Sys.time();
+    // case: ip pkt from trusted host. 
+    // int<<8>> idx = hash<<8>>(size_to_int(7), src); // first index..
+    if (tos == TOS_TRUSTED) {
+        printf ("[LUCID] insert attempt (%d, %d)", src, dst);    
+        int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src) for i<stages];
+        int src_output = 1;
+        int dst_output = 1;
+        int src_cpy = hash_copy(src);
+        int dst_cpy = hash_copy(dst);        
+        // insert, evicting others along the way.
+        for (stage < stages) {
+            // null output is a match on one field.
+            if ((src_output != NULL) && (dst_output != NULL)) {
+                printf ("[LUCID] stage: %d reading idx: [%d]", size_to_int(stage), idxes[stage]);    
+                src_output = Array.update(fw_stages[stage]#src_arr, idxes[stage], null_if_eq, src_cpy, new_if_null, src_cpy); 
+                dst_output = Array.update(fw_stages[stage]#dst_arr, idxes[stage], null_if_eq, dst_cpy, new_if_null, dst_cpy);                 
+                printf ("[LUCID] stage: %d output: (%d, %d)", size_to_int(stage), src_output, dst_output);    
+                // update timestamp on authorized packets.
+                if ((src_output == NULL) && (dst_output == NULL)) {
+                    Array.set(fw_stages[stage]#tses, idxes[stage], ts);
+                }
+            }
+        }
+        // if we found somewhere to put the key, we're done.
+        if ((src_output == NULL) && (dst_output == NULL)) {
+            insert_attempt(src, dst, true);
+            generate port_out(igr_port);
+        } else {
+            // lock cuckoo semaphore
+            int insert_pending = Array.update(cuckoo_insert_semaphore, 0, always_mem, NULL, always_new, TRUE);
+            if (insert_pending == FALSE) {
+                printf ("[LUCID] inserting key with cuckoo(%d, %d)", src_cpy, dst_cpy);
+                generate cuckoo_insert(igr_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
+            }
+            else {
+                // lock failed. we did not authorize. 
+                insert_attempt(src, dst, false);
+            }            
+        }
+    } 
+    else {
+        int src_match = FALSE;
+        int dst_match = FALSE;
+        int src_cpy2 = hash_copy(src);
+        int dst_cpy2 = hash_copy(dst);
+        int<<logentries>> idx = hash<<logentries>>(7, dst);
+        // having a separate copy for this branch relieves PHV pressure.
+        for (stage < stages) {
+            // int<<8>> idx = hash<<8>>(size_to_int(stage + 7), src);
+            // look for ip if it has not been found yet. 
+            if ((src_match == FALSE) && (dst_match == FALSE)) {
+                // note that we check src array for dst and dst array for src -- 
+                // because this is the return direction of the flow.
+                src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst_cpy2);
+                dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src_cpy2);
+                idx = hash<<logentries>>(size_to_int(8+stage), dst); // next index..
+            }
+        }
+        // If its found, allow the packet.
+        if ((src_match == TRUE) && (dst_match == TRUE)) {
+            printf ("[LUCID] DECISION: permit");
+            decide(src, dst, true);
+            generate port_out(igr_port);
+        } else {
+            printf ("[LUCID] DECISION: drop");
+            decide(src, dst, false);
+        }
+    }
+}  
+
+
+memop new_if_not_null(int memval, int newval) {
+    if (newval != NULL){
+        return newval;
+    } else {
+        return memval;
+    }
+}
+
+memop mem_if_not_null(int memval, int newval) {
+    if (newval != NULL){
+        return memval;
+    } else {
+        return newval;
+    }
+}
+
+
+/* 
+
+1:
+(1, 2) --> 
+(0, 0)
+2:
+(0, 0) --> NO WRITE
+(0, 0) <-- NO READ
+
+
+*/
+
+memop set_and_get_if_not_null(int memval, int inp, int unused) {
+    bool isnull = (inp == NULL);
+    if (isnull) {
+        cell1 = memval;
+    } else {
+        if (true) {
+            cell1 = inp;
+        }
+    }
+    if (isnull) {
+        cell2 = inp;
+    } else {
+        if (true) {
+            cell2 = memval;
+        }
+    }
+    if (true) {
+        return cell2;
+    }
+}
+
+
+
+handle cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int fst_dst) {
+    count_recirc_packet();
+    // a cuckoo insert is guaranteed to install (src, dst) into the first stage 
+    // of the table. However, it might boot someone else out in the process, who then 
+    // has to be re-inserted.
+    // int evicted_src = hash_copy(src); 
+    // int evicted_dst = hash_copy(dst);
+    for (stage < stages) {
+        int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src);
+        printf ("[cuckoo_insert]@fw_stages[%d][%d]", size_to_int(stage), idx);
+        printf ("[cuckoo_insert] input: (%d, %d)", src, dst);
+        // do nothing if input is null.
+        src = Array.update_complex(fw_stages[stage]#src_arr, idx, set_and_get_if_not_null, src, 0, 0); 
+        dst = Array.update_complex(fw_stages[stage]#dst_arr, idx, set_and_get_if_not_null, dst, 0, 0); 
+        ts  = Array.update_complex(fw_stages[stage]#tses, idx, set_and_get_if_not_null, ts, 0, 0); 
+        // evicted_src = Array.update(fw_stages[stage]#src_arr, idx, mem_if_not_null, evicted_src, new_if_not_null, evicted_src); 
+        // evicted_dst = Array.update(fw_stages[stage]#dst_arr, idx, mem_if_not_null, evicted_dst, new_if_not_null, evicted_dst);                 
+        printf ("[cuckoo_insert] output: (%d, %d)", src, dst);
+    }
+    // insert succeeded without a victim.
+    if ((src == NULL) && (dst == NULL)) {
+        insert_attempt(src, dst, false);
+        printf("[cuckoo_insert] insert succeeded");
+        Array.set(cuckoo_insert_semaphore, 0, FALSE);
+        generate port_out(port);
+    }
+    else {
+        // there's a victim and we reached a cycle -- so give up.
+        if ((src == fst_src) && (dst == fst_dst)) {
+            printf("[cuckoo_insert] insert failed -- full");
+            Array.set(cuckoo_insert_semaphore, 0, FALSE);
+            insert_attempt(src, dst, false); // inert failed.
+        }
+        // there's a victim but no cycle -- so cuckoo_insert the victim. 
+        else {
+            printf("[cuckoo_insert] re-inserting victim");
+            generate cuckoo_insert(port, src, dst, ts, fst_src, fst_dst);
+        }
+    }
+}
+
+
+event delete(int stage, int<<logentries>> idx) {
+    count_recirc_packet();
+    for (s < stages) {
+        if (size_to_int(s) == stage) {
+            Array.set(fw_stages[s]#src_arr, idx, NULL);
+            Array.set(fw_stages[s]#dst_arr, idx, NULL);
+            Array.set(fw_stages[s]#tses, idx, NULL);
+        }
+    }
+}
+
+memop is_expired(int last_accessed, int cur_time) {
+    if ((cur_time - last_accessed) > timeout) {
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
+event check_timeout(int<<logentries>> idx) {
+    count_recirc_packet();
+    int cur_ts = Sys.time();
+    int<<logentries>> idx_cpy = hash<<logentries>>(1, idx);
+    int<<logentries>> next_idx = idx + 1;
+    // Event.delay is bugged in backend, so only use with interp.
+    // generate(Event.delay(check_timeout(next_idx), interscan_delay));
+    generate(check_timeout(next_idx));
+
+    for (stage < stages) {
+        int timeout_flag = Array.getm(fw_stages[stage]#tses, idx_cpy, is_expired, cur_ts);
+        if (timeout_flag == TRUE) {
+            generate delete(size_to_int(stage), idx);            
+        }
+    }
+}
+
+// placeholder event that signals the python externs to write their output
+event final_packet() {
+    int final_packet_foo = 1;
+    write_logs();
+}
