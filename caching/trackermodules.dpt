@@ -17,6 +17,7 @@
 // TODO: INTS ARE UNSIGNED
 
 
+symbolic int THRESH;
 symbolic int expire_thresh;
 
 
@@ -62,6 +63,30 @@ memop counter_incr_read(int memval, int minval) {
         return 0xffffffff;
     }
 }
+
+// do counter_incr_read and increment by 1.
+memop counter_incr_read_complex(int memval, int minval, int maxint) {
+    bool less_than_min = (memval + 1) < minval;
+    // always increment
+    if (true) {
+        cell1 = memval + 1;
+    }
+    // compute incremented value or 0xffffffff
+    if (less_than_min) {
+        cell2 = memval + 1;
+    }
+    else {
+        if (true) {
+            cell2 = memval | maxint;
+        }
+    }
+    // return computed result
+    if (true) {
+        return cell2;
+    }
+}
+
+
 memop counter_read(int memval, int minval) {
     // if the counter value is a new minimum, return the counter value.
     // otherwise, return MAXINT.
@@ -69,6 +94,31 @@ memop counter_read(int memval, int minval) {
         return memval;
     } else {
         return 0xffffffff;
+    }
+}
+
+// do counter_read, but in a complex memop that doesn't cause p4 error.
+memop counter_read_complex(int memval, int minval, int maxint) {
+    bool less_than_min = (memval + 1) < minval;
+    // always write back
+    if (true) {
+        cell1 = memval;
+    }
+    // compute value or 0xffffffff
+    if (less_than_min) {
+        // want just memval, but have to do an op or the P4 compiler complains..
+        // also want to use a const for maxint, but P4 compiler complains..
+        cell2 = memval & maxint;
+    }
+    else {
+        if (true) {
+        // want just maxint, but have to do an op or the P4 compiler complains..
+            cell2 = memval | maxint;
+        }
+    }
+    // return computed result
+    if (true) {
+        return cell2;
     }
 }
 
@@ -146,6 +196,7 @@ module Cmscache : {
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
+	int max_int = 0xffffffff;
 
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
@@ -157,14 +208,15 @@ module Cmscache : {
 
             if (match_1==1) {   // else if match, incr counter
                 matched = 1;
-                c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
+		c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read_complex,min_val, max_int, 0);
+                //c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
                 // cache hit, log it
                 //log_hit_cms(key);
             }
             else {  // else grab counter value
-                c_or_maxint = Array.getm(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val);
+		c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+                //c_or_maxint = Array.getm(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val);
             }
-
 
             if (expire==1) {
                 min_stg_to_set = size_to_int(i+1);
@@ -190,12 +242,25 @@ module Cmscache : {
                 min = Array.update(ca#cms[i], cms_idxes[i], compute_min, min, incr, 1);
             }
 
+
+	    if (min_val==0) { // cache slot was empty
+		generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
+	    } else {
+		if (min < THRESH) {
+			return;
+		} else {
+			generate add_val(ca,key,1,min_stg_to_set,key, timestamp);
+		}
+	    }
+
+/*
+
             // if cms count > thresh, let's insert
             // use MAT to decide if we're inserting
             // (or just compare against symbolic)
             match (min, min_val) with
             | _, 0 -> { generate add_val(ca,key,1,min_stg_to_set,key,timestamp); } // cache slot was empty
-
+            | 0b000000000000000000000000000*****,_ -> { return; } // below the threshold, so don't insert
             | 0b0000000000000000000000000010****,_ -> { return; } // below the threshold, so don't insert
             | 0b0000000000000000000000000011000*,_ -> { return; } // below the threshold, so don't insert
             | 0b00000000000000000000000000110010,_ -> { return; } // below the threshold, so don't insert
@@ -203,6 +268,7 @@ module Cmscache : {
             | _,_ -> { generate add_val(ca,key,1,min_stg_to_set,key, timestamp); }
 
 
+*/
         }
         else { return; }  // not adding to cache, forward pkt
 
@@ -249,7 +315,7 @@ module Precisioncache : {
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-		Array.set(ca#arrs[i]#times,mht_idxes[i],timestamp);
+		        Array.set(ca#arrs[i]#times,mht_idxes[i],timestamp);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
             }
@@ -265,6 +331,7 @@ module Precisioncache : {
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
+	int max_int = 0xffffffff;
 
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
@@ -272,7 +339,7 @@ module Precisioncache : {
 
         for (i < 'tab) {
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,timestamp);
+            int expire2 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,timestamp);
 
             if (match_1==1) {   // else if match, incr counter
                     c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
@@ -283,11 +350,11 @@ module Precisioncache : {
 	   	    //printf("HIT!!");
             }
             else {  // else grab counter value
-                c_or_maxint = Array.getm(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val);
+                c_or_maxint = Array.getm(ca#arrs[i]#counter,mht_idxes[i],counter_read,min_val);
             }
 
 
-            if (expire==1) {
+            if (expire2==1) {
                 min_stg_to_set = size_to_int(i+1);
                 min_val = 0;
             } else {
