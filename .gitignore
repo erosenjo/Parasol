@@ -1,0 +1,9 @@
+*.pcap
+*~
+*.swp
+*.swo
+
+__pycache__/
+*.py[cod]
+
+
