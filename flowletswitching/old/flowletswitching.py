@@ -6,8 +6,6 @@ import pickle
 
 flowlethopcounts = {}
 pkthopcounts = {}
-pktcounter = [0]
-
 
 def log_newflowlethop(hop,thresh):
     if thresh:  # new flowlet
@@ -18,15 +16,13 @@ def log_newflowlethop(hop,thresh):
         with open('flowlethops.txt','wb') as f:
             pickle.dump(flowlethopcounts, f)
 
-def log_pkthop(hop,pktlen):
-    pktcounter[0]+=1
+def log_pkthop(hop):
     if hop not in pkthopcounts:
-        pkthopcounts[hop] = pktlen
+        pkthopcounts[hop] = 1
     else:
-        pkthopcounts[hop] += pktlen
-    if pktcounter[0] > 9991:
-        with open('pkthops.txt','wb') as f:
-            pickle.dump(pkthopcounts, f)
+        pkthopcounts[hop] += 1
+    with open('pkthops.txt','wb') as f:
+        pickle.dump(pkthopcounts, f)
 
 
 def log_test(hop,timedelta):

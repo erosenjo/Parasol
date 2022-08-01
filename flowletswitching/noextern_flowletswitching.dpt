@@ -61,14 +61,11 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
     // making it 32 bits for now, then casting to 9 bits for egress_port
     int hophash = hash<<32>>(poly2,srcaddr,dstaddr,srcport,dstport,protocol,arr_time);
 
-
     // gonna have to hard code mat entries for hash, bc can't do modulo unless power of 2
     // fine for example but super annoying and would rather have more dynamic way of generating entries
     // using bit shifts for simple example, bc we can set num_hops = power of 2
     // for num_hops = 4, hash mod 4 = hash & 00000011 = hash & 3
     int newhop = hophash & (num_hops - 1);
-
-    //printf("NEW HOP: %d", newhop);
 
     //log_test(newhop,timedelta);
 
@@ -77,9 +74,7 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
     // newhop is default return, so if we don't hit the if case that contains return stmt, memop returns newhop
     int<<9>> egress_port = (int<<9>>) Array.update_complex(saved_hops, idx, choosehop, newhop, timedelta, newhop);
 
-    //printf("HOP: %d", egress_port);
-
-    log_pkthop(egress_port, len);
+    //log_pkthop(egress_port, len);
 
     generate ip_out(egress_port);
 

@@ -1,0 +1,20 @@
+{
+    "switches": 1,
+    "max time": 9999999,
+    "default input gap": 100,
+    "random seed": 0,
+    "python file": "flowletswitching.py",
+    "events": [
+        {
+            "name": "ip_in",
+            "args": [
+                6994958640,
+                699495864,
+                699466720,
+                1618,
+                51332,
+                6
+            ]
+        }
+    ]
+}
