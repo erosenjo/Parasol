@@ -1,0 +1,63 @@
+/* simple bloom filter module (for set membership) */
+// add to filter, read from filter, reset slot
+
+module BloomFilter : {
+    global type t<<'idx_sz, 'k>>;
+    constr t<<'idx_sz, 'k>> create(int m, int['k] seeds);
+
+    // fun defs
+    fun void add_to_struct(t<<'idx_sz, 'k>> filter, 'any key) [start <= filter; end filter];
+    fun bool check_membership(t<<'idx_sz, 'k>> filter, 'any key) [start <= filter; end filter];
+    fun void reset_index(t<<'idx_sz, 'k>> filter, int<<'idx_sz>> idx) [start <= filter; end filter];
+
+} {
+    
+    type t<<'idx_sz, 'k>> = {
+        Array.t<<1>>['k] arrs;
+        int['k] hash_seeds;
+        int<<'idx_sz>> m;
+    }
+    
+    constr t<<'idx_sz, 'k>> create(int m, int['k] seeds) = {
+        arrs = [Array.create(m) for i < 'k];
+        hash_seeds = seeds;
+        m = (int<<'idx_sz>>) m;
+    };
+    
+    fun void add_to_struct(t<<'idx_sz, 'k>> filter, 'any key) {
+        for (i < 'k) {
+            Array.set(filter#arrs[i], hash<<'idx_sz>>(filter#hash_seeds[i], key), 1);
+        }
+    }
+    
+    fun bool check_membership(t<<'idx_sz, 'k>> filter, 'any key) {
+        bool member = true;
+        for (i < 'k) { 
+            int<<1>> x = Array.get(filter#arrs[i], hash<<'idx_sz>>(filter#hash_seeds[i], key));
+            member = member && x == 1;
+        }
+        return member;
+    }
+    
+    fun void reset_index(t<<'idx_sz, 'k>> filter, int<<'idx_sz>> idx) {
+        for (i < 'k) {
+            Array.set(filter#arrs[i], idx, 0);
+        }
+    }
+
+
+}
+    
+
+global BloomFilter.t<<5, 2>> bf = BloomFilter.create(32, [0;1]);
+
+entry event test (int src, int dst);
+exit event test_ex (bool mem);
+
+handle test (int src, int dst) {
+    bool mem = false;
+    BloomFilter.add_to_struct(bf, [src; dst]);
+    generate test_ex(mem);
+
+}
+

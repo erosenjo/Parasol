@@ -1,0 +1,9 @@
+{
+    "sizes": {
+        "logbits": 5,
+        "hashes": 2
+    },
+    "symbolics": {
+        "bits": 32
+    }
+}
