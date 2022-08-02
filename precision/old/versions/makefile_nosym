@@ -1,0 +1,17 @@
+.PHONY: interp compile assemble test
+
+# run interpreter
+interp: 
+	../../dpt precision.dpt --spec precision.json
+
+# compile Lucid to P4
+compile: 
+	../../dptc precision_nosym.dpt ip_harness.p4 linker_config.json precision_build 
+
+# compile P4 to tofino
+assemble:
+	cd precision_build; make build	 
+
+# test P4 on the asic model
+test:
+	cd precision_build; make test ../precision_test.json

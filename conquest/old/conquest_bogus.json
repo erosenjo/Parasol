@@ -1,0 +1,19 @@
+{
+    "switches": 1,
+    "max time": 9999999,
+    "default input gap": 100,
+    "random seed": 0,
+    "events": [
+        {
+            "name": "ip_in",
+            "args": [
+                1,
+                2,
+                3,
+                4,
+                5,
+                6
+            ]
+        }
+    ]
+}

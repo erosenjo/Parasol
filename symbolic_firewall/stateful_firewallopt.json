@@ -20,7 +20,7 @@
     }
     },
     "optparams": {
-        "optalgo" : "simannealing",
+        "optalgo" : "random",
         "stop_iter" : 100,
         "temp" : 10,
         "stepsize": {

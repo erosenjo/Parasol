@@ -68,12 +68,21 @@ def sim_move():
 def simulated_annealing_step(curr_state, curr_cost, new_state, new_cost, best_state, best_cost, temp, iteration, step_size, bounds):
     # COST CALCULATION
     if new_cost < best_cost or (new_cost==best_cost and (new_state[0]*new_state[1])<=(best_state[0]*best_state[1])):
+    #if new_cost < best_cost or (new_cost==best_cost and new_state[1]<=best_state[1])
         best_state = new_state
         best_cost = new_cost
 
     diff = new_cost - curr_cost
     t = temp / float(iteration+1)
-    metropolis = math.exp(-diff/t)
+    if t==0:
+        print("ZERO TEMP")
+        print(iteration)
+        print(temp)
+        quit()
+    try:
+        metropolis = math.exp(-diff/t)
+    except OverflowError:
+        metropolis = float('inf')
     if diff < 0 or random() < metropolis:
         curr_state, curr_cost = new_state, new_cost
 

@@ -1,0 +1,13 @@
+{
+    "sizes": {
+        "logentries": 10,
+        "tables": 2,
+        "rows" : 4,
+        "logcols" : 13
+    },
+    "symbolics": {
+        "entries": 1024,
+        "cols" : 8192,
+        "expire_thresh_p": 100000000
+    }
+}

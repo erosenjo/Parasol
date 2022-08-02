@@ -1,10 +1,9 @@
 {
-  "sizes": {
-    "logcols" : 2,
-    "rows" : 4
-  },
-
-  "symbolics": {
-    "cols" : 4
-  }
+    "sizes": {
+        "logcols": 13,
+        "rows": 5
+    },
+    "symbolics": {
+        "cols": 8192
+    }
 }

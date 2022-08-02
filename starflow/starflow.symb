@@ -1,0 +1,12 @@
+{
+    "sizes": {
+        "max_short_idx": 3,
+        "num_long": 5,
+        "log_s_slots": 13,
+        "log_l_slots": 5
+    },
+    "symbolics": {
+        "S_SLOTS": 8192,
+        "L_SLOTS": 32
+    }
+}

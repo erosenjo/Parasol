@@ -1,0 +1,24 @@
+{
+    "entry" : 
+    [
+        {
+            "event" : "ip_in",
+	    "conditions": {"hdr.tcp.isValid()":[true]},
+            "inputs" : {
+                "srcaddr":"hdr.ip.src_addr",
+                "dstaddr":"hdr.ip.dst_addr",
+                "sport":"hdr.tcp.src_port",
+		"dport":"hdr.tcp.dst_port",
+		"resubmit":"hdr.prec.resubmit",
+		"resubmitted_min_stage":"hdr.prec.stg"
+            }
+        }
+    ],
+    "exit" : 
+    [
+        {
+            "event" : "ip_out",
+	    "outputs": { }
+        }
+    ]
+}

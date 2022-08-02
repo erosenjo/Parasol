@@ -14,8 +14,8 @@ const int S_SLOTS = 1024;
 const int L_SLOTS = 128;
 size max_short_idx = 1; // NOTE: must be a power of two minus 1. (num_short must be a power of 2.)
 size num_long = 6;
-size log_s_slots = 10; 	// log2(S_SLOTS), for hashing
-size log_l_slots = 7;	// log2(L_SLOTS), for hashing
+size log_s_slots = 10;  // log2(S_SLOTS), for hashing
+size log_l_slots = 7;   // log2(L_SLOTS), for hashing
 */
 
 symbolic int S_SLOTS;
@@ -80,8 +80,8 @@ memop read (int stored, int nothingval) {
 memop write (int stored, int newval) {
   return newval;
 }
-memop incr (int stored, int nothingval) { 
-  return stored + 1;
+memop incr (int stored, int incrval) { 
+  return stored + incrval;
 }
 
 memop sub (int stored, int cur) {
@@ -90,28 +90,30 @@ memop sub (int stored, int cur) {
 
 
 // increment index with rollover.
-memop incr_idx (int stored, int nothingval) { 
+memop incr_idx (int stored, int incrval) { 
   if (stored == max_idx) {
     return 0;
   }
   else {
-    return stored + 1;
+    return stored + incrval;
   }
 }
 
 // We need to get the index, and also the count. 
 
-memop decr_sat (int stored, int nothingval) {
+memop decr_sat (int stored, int decrval) {
   if (stored == 0) {
     return 0;
   }
   else {
-    return stored - 1;
+    return stored - decrval;
   }
 }
 
-fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int idx_minus_i) {
-  if (idx_minus_i == 0) {
+fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int idx, int i) {
+// fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int idx_minus_i) {
+  if (idx == i) {
+  // if (idx_minus_i == 0) {
     //int x = Array.update(rec, h1, read, 0, write, len);
     //int x = Array.update(rec, h1, write, len, write, len);
     //printf("==0: %d", x);
@@ -127,8 +129,10 @@ fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int i
 }
 
 
-fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int idx_minus_i) {
-  if (idx_minus_i == 0) {
+fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int idx, int i) {
+// fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int idx_minus_i) {
+  if (idx == i) {
+  // if (idx_minus_i == 0) {
     return Array.update(rec, h1, read, 0, write, len);
   } else {
     return Array.get(rec, h1);
@@ -139,6 +143,23 @@ fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int i
 extern cache_flush_short();
 extern cache_flush_long();
 
+
+// the index update as a complex memop.
+memop idx_update(int stored, int unused1, int unused2) {
+  bool is_max = (stored == max_idx);
+  if (is_max) {
+    cell1 = 0;
+  }
+  else {
+    if (true) {
+      cell1 = stored + 1;
+    }
+  }
+  if (true) {
+    return cell1;
+  }
+}
+
 handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>> tos) {  
   int len = (int<<32>>) len_short;
   int ct  = 0; int idx = 0; int oldct = 0;// idx = (count % num_rec_slots);
@@ -146,19 +167,22 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
   int[num_short] short_recs = [0 for i < num_short];
   int[num_long] long_recs = [0 for i < num_long];
 
-
   int blk_id = 0;
-  // update the key. 
-  int<<log_s_slots>> h1 = hash<<log_s_slots>>(h1_poly, src); 
-  int<<log_l_slots>> h2 = hash<<log_l_slots>>(h1_poly, src);
+  // update the key.
+  // hardcoding polynomial for now 
+  int<<log_s_slots>> h1 = hash<<log_s_slots>>(23, src); 
+  int<<log_l_slots>> h2 = hash<<log_l_slots>>(23, src);
+
   // Collision and bookkeeping logic.
   int is_match = Array.update(srcarr, h1, sub, src, write, src);
   if (is_match == match_flag) {
     ct = Array.update(ctarr, h1, incr, 1, incr, 1);
-    idx = Array.update(idxarr, h1, incr_idx, 1, incr_idx, 1);
-  } else {	// let's reset our counter (bc we flush on eviction) and check if this is 1st pkt, or an actual collision)
+    // idx = Array.update(idxarr, h1, incr_idx, 1, incr_idx, 1);
+    idx = Array.update_complex(idxarr, h1, idx_update, 0, 0, 0); // complex memop to workaround p4 error
+  } else {  // let's reset our counter (bc we flush on eviction) and check if this is 1st pkt, or an actual collision)
     oldct = Array.update(ctarr, h1, read, 0, write, 1); // if ct == 0, then it's a first pkt
   }
+
 
   int stored_src = is_match + src; // restore stored_src from is_match. 
 
@@ -197,32 +221,32 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
     // but are evicting the flow, 
     // then we recirculate to free the long array slot
     if (is_match != match_flag) {
-	if (oldct > 0) {	// not a first pkt
+    if (oldct != 0) {    // not a first pkt
           generate free_block(blk_id, h2);
-	}
+    }
     }
   }
 
   // **** persistent state update logic ****
   if (is_match == match_flag) {
-    short_recs = [update_or_get_s(arr_short[i], h1, len, idx - size_to_int(i)) for i < num_short];
+    short_recs = [update_or_get_s(arr_short[i], h1, len, idx, size_to_int(i)) for i < num_short];
     // we update position i = idx - num_short in the long array 
     // when we reach position idx. 
     // e.g., with num_short = 2: 
     // at index 7, we update position 5. the condition parameter for i = 5 is: 7 - (2 + 5) = 0
     // at index 2, we update position 0. the condition parameter for i = 0 is: 2 - (2 + 0) = 0
     // at index 1, we update position <none>. the condition parameter for i = 0 is: 1 - (2 + 0) = not 0
-    long_recs =  [update_or_get_l(arr_long[i], h2, len, idx - size_to_int(num_short+i)) for i < num_long];
+    long_recs =  [update_or_get_l(arr_long[i], h2, len, idx, size_to_int(num_short+i)) for i < num_long];
   }
   else {
-    if (oldct > 0) {	// not a first pkt
-    	short_recs = [Array.get(arr_short[i], h1) for i < num_short];
+    if (oldct != 0) {    // not a first pkt
+        short_recs = [Array.get(arr_short[i], h1) for i < num_short];
         long_recs = [Array.get(arr_long[i], h2) for i < num_long];
     }
   }
   // ***** event generation logic *****
   if (is_match != match_flag) {
-    if (oldct > 0) { 	// not first pkt
+    if (oldct != 0) {    // not first pkt
       if (blk_id == 0) {
         generate short_record(stored_src, oldct, short_recs);
       } else {
@@ -262,7 +286,7 @@ handle short_record(int src, int len, int[num_short] short_recs) {
   printf("short_record output event\n");
   cache_flush_short();
   //for (i < num_short) {
-  //	printf("%d",short_recs[i]);
+  //    printf("%d",short_recs[i]);
   //}
 
 }
@@ -271,3 +295,4 @@ handle long_record(int src, int len, int[num_short] short_recs, int[num_long] lo
   printf("long_record output event\n");
   cache_flush_long();
 }
+

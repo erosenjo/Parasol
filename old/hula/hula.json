@@ -1,0 +1,24 @@
+{
+    "switches": 1,
+    "max time": 9999999,
+    "default input gap": 100,
+    "random seed": 0,
+    "python file": "hula.py",
+    "events": [
+        {
+            "name": "hula_in",
+            "args": [
+		1,
+		2,
+		1,
+		128,
+		1,
+		1,
+		1,
+		1,
+		1,
+		1
+            ]
+        }
+    ]
+}

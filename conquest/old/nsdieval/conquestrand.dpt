@@ -1,0 +1,232 @@
+// lucid implementation of conquest 
+// we have a series of snapshots (cms), each of which represents a measurement interval of T nanoseconds
+// qdelay is time pkt spent in queue (we can get this from metadata in p4) 
+// this happens in egress pipeline, but for sake of interpreter we're doing in ingress and appending simulated q info to packet
+
+// T, C are constants that we know at compile time
+// h = 4 # snaps
+//const int C = 128;	// cols in snapshot
+//const int T = 16384;	// time interval in nanoseconds
+//const int LOG_CQ_T = 14;	// log2(time interval)
+//size LOG_CQ_C = 7;	// log2(C)
+
+
+symbolic size LOG_CQ_H;
+symbolic size H; // num snaps
+
+symbolic size LOG_CQ_C;
+symbolic int C; // size of snap rows (cols)
+
+symbolic size R; // number of rows in snap
+symbolic size LOG_CQ_T;  // time interval
+
+symbolic size T;
+
+
+//const int timest = LOG_CQ_T+size_to_int(LOG_CQ_H)-1;
+
+
+/* Arrays */
+global Array.t<<LOG_CQ_C>> reg_cleaning_index = Array.create(1);
+
+
+// snapshots
+global Array.t<<32>>[R][H] snaps = [[Array.create(C) for j < R] for i < H];
+
+/*
+global Array.t<<32>> snap_0_row_0 = Array.create(C);
+global Array.t<<32>> snap_0_row_1 = Array.create(C);
+global Array.t<<32>> snap_1_row_0 = Array.create(C);
+global Array.t<<32>> snap_1_row_1 = Array.create(C);
+global Array.t<<32>> snap_2_row_0 = Array.create(C);
+global Array.t<<32>> snap_2_row_1 = Array.create(C);
+global Array.t<<32>> snap_3_row_0 = Array.create(C);
+global Array.t<<32>> snap_3_row_1 = Array.create(C);
+*/
+
+/* Events */
+// pkt in
+entry event ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdelay, int<<48>> global_time, int total_len);
+// send back to switch
+exit event ip_out();
+
+/* Memops */
+memop incrpkt(int<<7>> memval, int<<7>> incrval) {
+	return memval + incrval;
+}
+memop incr(int memval, int incrval) {
+        return memval + incrval;
+}
+
+memop incr_cleaning(int<<LOG_CQ_C>> memval, int<<LOG_CQ_C>> incrval) {
+    return memval+incrval;
+}
+
+memop setf1 (int<<2>> memval, int<<2>> newval) {
+	return newval;
+}
+memop setfpkt (int<<7>> memval, int<<7>> newval) {
+        return newval;
+}
+
+
+memop compute_min(int memval, int minval) {
+	if (memval < minval) {
+		return memval;
+	} else {
+		return minval;
+	}
+}
+
+// complex memop for computing min
+memop compute_min_complex(int memval, int minval, int unused) {
+    bool m = memval < minval;
+    if (!m) { cell1= memval; }
+    else { if (m) { cell1=memval; }}
+    if (m) { return memval; }
+}
+
+/* externs */
+extern track_qlen(int qlen_est);
+
+/* Handlers */
+// type of variables? not all have to be 32-bit ints
+handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdelay, int<<48>> global_time, int total_len) {
+	// calculate the num of snapshots we should read (# snaps to read = qdelay / T)
+	// get epoch to decide which snaps we read/write/clean
+	// bit<48> d_i=eg_intr_md_from_prsr.global_tstamp;
+//    int<<8>> num_snapshots_to_read = (int<<8>>) qdelay >>> LOG_CQ_T;
+    //eg_md.snap_epoch=d_i[{{LOG_CQ_T}}+{{LOG_CQ_H}}-1:{{LOG_CQ_T}}];
+//    int<<LOG_CQ_H>> snap_epoch = (int<<LOG_CQ_H>>)global_time[timest:LOG_CQ_T}];
+//    int<<LOG_CQ_H>> snap_epoch = (int<<LOG_CQ_H>>)global_time[24:23];
+//      int<<LOG_CQ_H>> snap_epoch = (int<<LOG_CQ_H>>)global_time[LOG_CQ_T+T:LOG_CQ_T];
+    int<<LOG_CQ_H>> snap_epoch = hash<<LOG_CQ_H>>(1, global_time[LOG_CQ_T+T:LOG_CQ_T]);
+
+//    printf("EPOCH: %d", snap_epoch);
+
+    // prep reading vars - one for each row, snap (snap * rows)
+    // commenting this out for now, bc computing min as we go instead
+    //eg_md.snap_{{snapID}}_row_{{rowID}}_read=0;
+    //int[???] snap_reads = [0 for i in ???];
+
+    //prep random - might need this, depending on what action you take for heavy flows
+    //int<<8>> rbits = (int<<8>>)Sys.random();
+
+    //calc_cleaning_index
+    int<<LOG_CQ_C>> clean_index = Array.update(reg_cleaning_index, 0, incr_cleaning, 1, incr_cleaning, 1);
+
+
+    // calc hashes for reading/writing
+    //int<<LOG_CQ_C>>[???] idxes = [hash<<LOG_CQ_C>>(size_to_int(i)+2, src, dst,src_port,dst_port) for i in ???];
+    // TODO: get better hashes
+    int<<LOG_CQ_C>>[R][H] idxes = [[hash<<LOG_CQ_C>>(size_to_int(i+j), src, dst,src_port,dst_port) for j < R] for i < H];
+
+
+    int total_count = 0;
+
+
+    // write, clean, read
+    for (i < H) {
+        // check if we need to use the pkt to clean this snapshot
+        if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i)) {
+            for (j < R) {
+                Array.set(snaps[i][j], clean_index, 0);
+            }   
+
+        } else {
+            // decide if we're reading or writing
+            if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i+1)) { // writing
+                for (j < R) {
+                    Array.setm(snaps[i][j], idxes[i][j], incr, total_len);
+                }
+            } else {    // reading, only if qlen/T is large enough 
+                // if (num_snapshots_to_read > ) { // this should be a cyclical thing, but ignoring for now
+                    int min_val = 0xffffffff;
+                    for (j < R) {
+                        //min_val = Array.getm(snaps[i][j], idxes[i][j], compute_min, min_val);
+                        min_val = Array.update_complex(snaps[i][j], idxes[i][j], compute_min_complex, min_val, min_val, min_val);
+
+                    }
+                    total_count = total_count+min_val;
+
+              //  }
+            }
+
+
+        }
+
+    }
+
+*/
+
+    // TODO: REPORT TOTAL COUNT TO EXTERN
+    track_qlen(total_count);
+
+
+}
+
+/* 
+//  OLD
+	// write, clean, read
+	// need separate match action table for each snap, row
+	// clean snap reg @ pktcount
+	// we can't guarantee that measurement interval = pkts neeeded to clean sketch, bc measurement interval in bytes (not pkts)
+	// we assume user has picked appropriate intervals that are large enough to clean sketch
+	// it's ok if we get more pkts than we need to clean but NOT OK if pkts < cols 
+	// NOTE: num_to_read matches should be 0, 0, 1, 2 but we can't do that in lucid syntax (can do with tofino)
+	match (snap_epoch, num_to_read) with
+	| 0, 0 -> {s_0_r_0 = Array.update(snap_0_row_0, snap_0_row_0_hash, incr, 1, incr, 1);}
+	| 1, 0 -> {Array.set(snap_0_row_0, pktcount, 0);}
+	| 2, 1 -> {s_0_r_0 = Array.get(snap_0_row_0, snap_0_row_0_hash);}
+	| 3, 2 -> {s_0_r_0 = Array.get(snap_0_row_0, snap_0_row_0_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 0, 0 -> {s_0_r_1 = Array.update(snap_0_row_1, snap_0_row_1_hash, incr, 1, incr, 1);}
+        | 1, 0 -> {Array.set(snap_0_row_1, pktcount, 0);}
+        | 2, 1 -> {s_0_r_1 = Array.get(snap_0_row_1, snap_0_row_1_hash);}
+        | 3, 2 -> {s_0_r_1 = Array.get(snap_0_row_1, snap_0_row_1_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 1, 0 -> {s_1_r_0 = Array.update(snap_1_row_0, snap_1_row_0_hash, incr, 1, incr, 1);}
+        | 2, 0 -> {Array.set(snap_1_row_0, pktcount, 0);}
+        | 3, 1 -> {s_1_r_0 = Array.get(snap_1_row_0, snap_1_row_0_hash);}
+        | 0, 2 -> {s_1_r_0 = Array.get(snap_1_row_0, snap_1_row_0_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 1, 0 -> {s_1_r_1 = Array.update(snap_1_row_1, snap_1_row_1_hash, incr, 1, incr, 1);}
+        | 2, 0 -> {Array.set(snap_1_row_1, pktcount, 0);}
+        | 3, 1 -> {s_1_r_1 = Array.get(snap_1_row_1, snap_1_row_1_hash);}
+        | 0, 2 -> {s_1_r_1 = Array.get(snap_1_row_1, snap_1_row_1_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 2, 0 -> {s_2_r_0 = Array.update(snap_2_row_0, snap_2_row_0_hash, incr, 1, incr, 1);}
+        | 3, 0 -> {Array.set(snap_2_row_0, pktcount, 0);}
+        | 0, 1 -> {s_2_r_0 = Array.get(snap_2_row_0, snap_2_row_0_hash);}
+        | 1, 2 -> {s_2_r_0 = Array.get(snap_2_row_0, snap_2_row_0_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 2, 0 -> {s_2_r_1 = Array.update(snap_2_row_1, snap_2_row_1_hash, incr, 1, incr, 1);}
+        | 3, 0 -> {Array.set(snap_2_row_1, pktcount, 0);}
+        | 0, 1 -> {s_2_r_1 = Array.get(snap_2_row_1, snap_2_row_1_hash);}
+        | 1, 2 -> {s_2_r_1 = Array.get(snap_2_row_1, snap_2_row_1_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 3, 0 -> {s_3_r_0 = Array.update(snap_3_row_0, snap_3_row_0_hash, incr, 1, incr, 1);}
+        | 0, 0 -> {Array.set(snap_3_row_0, pktcount, 0);}
+        | 1, 1 -> {s_3_r_0 = Array.get(snap_3_row_0, snap_3_row_0_hash);}
+        | 2, 2 -> {s_3_r_0 = Array.get(snap_3_row_0, snap_3_row_0_hash);}
+
+        match (snap_epoch, num_to_read) with
+        | 3, 0 -> {s_3_r_1 = Array.update(snap_3_row_1, snap_3_row_1_hash, incr, 1, incr, 1);}
+        | 0, 0 -> {Array.set(snap_3_row_1, pktcount, 0);}
+        | 1, 1 -> {s_3_r_1 = Array.get(snap_3_row_1, snap_3_row_1_hash);}
+        | 2, 2 -> {s_3_r_1 = Array.get(snap_3_row_1, snap_3_row_1_hash);}
+
+
+	// find the min across rows --> min function?
+	// sum reads together (using mult layers)
+
+
+	// per flow actions: drop, nop, mark_ECN (requires random num)
+*/
+

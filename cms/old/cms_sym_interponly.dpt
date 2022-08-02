@@ -31,7 +31,7 @@ global Array.t<<32>> measure = Array.create(100);
 
 /* Events */
 // pkt in switch
-entry event ip_in (int<<9>> igr_port, int src, int dst, int flowid, int<<1>> hh);
+entry event ip_in (int<<9>> igr_port, int src, int dst, int flowid);
 // end of lucid program, send back to switch
 exit event ip_out (int<<9>> egr_port, int src, int dst, int<<1>> hh);
 
@@ -50,11 +50,11 @@ memop compute_min(int memval, int minval) {
 }
 
 /* Handlers */
-handle ip_in (int<<9>> igr_port, int src, int dst, int flowid, int<<1>> hh) {
+handle ip_in (int<<9>> igr_port, int src, int dst, int flowid) {
 	/* actual cms */
 	// init values
 	int min = 0xffffffff;
-	hh = 0;
+	int<<1>> hh = 0;
 
 	for (i < rows) {
 		// get index

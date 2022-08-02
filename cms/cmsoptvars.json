@@ -11,16 +11,16 @@
 	    "logcols" : "cols"
 	},
         "bounds" : {
-	    "rows" : [1,10],
-	    "cols" : [2, 65536]
+	    "rows" : [1,6],
+	    "cols" : [2, 8192]
 	}
     },
     "optparams": {
         "optalgo" : "simannealing",
-	"stop_iter" : 500,
+	"stop_iter" : 20,
 	"temp" : 10,
 	"stepsize": {
-	    "cols" : 200,
+	    "cols" : 3000,
 	    "rows" : 2
 	}
     },

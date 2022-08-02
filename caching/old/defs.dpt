@@ -1,0 +1,47 @@
+type regs = {
+    Array.t<<32>> keys;
+    Array.t<<32>> counter;
+    Array.t<<32>> values;
+    Array.t<<32>> dummy_reg;
+}
+
+constr regs create_regs(int ent) = {
+    keys = Array.create(ent);
+    counter = Array.create(ent);
+    values = Array.create(ent);
+    dummy_reg = Array.create(1);
+};
+
+
+
+
+/* Memops */
+memop key_match(int memval, int newval) {
+    if (memval == newval) { return 1; }
+    else { return 0; }
+}
+
+memop incr(int memval, int incrval) {
+    return memval+incrval;
+}
+
+memop get_min(int memval, int diffval) {
+    if (diffval > 0x7fffff) { // negative TODO: UNSIGNED
+        return 1;
+    } else {
+        return 0;
+    }
+}
+memop compute_min(int memval, int minval) {
+    if (memval + 1 < minval) {
+        return memval+1;
+    } else {
+        return minval;
+    }
+}
+
+/* externs */
+extern log_miss(int key);
+extern log_hit(int key);
+
+

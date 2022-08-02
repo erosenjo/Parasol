@@ -1,0 +1,57 @@
+/* single stage hash table */
+// for set membership - 1 or 0 - or counting
+// same interface as bloom
+
+memop incr(int<<'a>> x, int<<'b>> y) {
+  return x + 1;
+}
+
+
+module HashTable : {
+    global type t<<'idx_sz, 'k, 'a>>;
+    constr t<<'idx_sz, 'k, 'a>> create(int m, int['k] seeds, bool counting, int thresh);
+
+    // funs to match bloom and cms
+    fun void add_to_struct(t<<'idx_sz, 'k, 'a>> struct, 'any key) [start <= struct; end struct];
+    fun bool check(t<<'idx_sz, 'k, 'a>> struct, 'any key) [start <= struct; end struct];
+    fun void reset_index(t<<'idx_sz, 'k, 'a>> struct, int<<'idx_sz>> idx) [start <= struct; end struct];
+} {
+    type t<<'idx_sz, 'k, 'a>> = {
+        Array.t<<'a>> arr;
+        int hash_seed; 
+        int<<'idx_sz>> m;
+        bool counting;
+        int<<'a>> thresh;
+    }
+    
+    constr t<<'idx_sz, 'k, 'a>> create(int m, int['k] seeds, bool counting, int thresh) = {
+        arr = Array.create(m);
+        hash_seed = seeds[-1];
+        m = (int<<'idx_sz>>) m;
+        counting = counting;
+        thresh = (int<<'a>>) thresh;
+    };
+
+    fun void add_to_struct(t<<'idx_sz, 'k, 'a>> struct, 'any key) {
+        if (struct#counting) {
+            Array.setm(struct#arr, hash<<'idx_sz>>(struct#hash_seed, key), incr, 1);
+        } else {
+            Array.set(struct#arr, hash<<'idx_sz>>(struct#hash_seed, key), 1);
+        }
+    }
+
+    fun bool check(t<<'idx_sz, 'k, 'a>> struct, 'any key) {
+        int<<'a>> x = Array.get(struct#arr, hash<<'idx_sz>>(struct#hash_seed, key));
+        if (struct#counting) {
+           return x < struct#thresh;
+        } else {
+            return x == 1;
+        }
+    }
+
+    fun void reset_index(t<<'idx_sz, 'k, 'a>> struct, int<<'idx_sz>> idx) {
+        Array.set(filter#arr, idx, 0);
+    }
+
+}
+

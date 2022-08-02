@@ -27,7 +27,7 @@ symbolic size T;
 
 
 /* Arrays */
-global Array.t<<LOG_CQ_C>> reg_cleaning_index = Array.create(1);
+global Array.t<<32>> reg_cleaning_index = Array.create(1);
 
 
 // snapshots
@@ -58,7 +58,7 @@ memop incr(int memval, int incrval) {
         return memval + incrval;
 }
 
-memop incr_cleaning(int<<LOG_CQ_C>> memval, int<<LOG_CQ_C>> incrval) {
+memop incr_cleaning(int memval, int incrval) {
     return memval+incrval;
 }
 
@@ -113,11 +113,11 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
     //int<<8>> rbits = (int<<8>>)Sys.random();
 
     //calc_cleaning_index
-    int<<LOG_CQ_C>> clean_index = Array.update(reg_cleaning_index, 0, incr_cleaning, 1, incr_cleaning, 1);
+    int<<LOG_CQ_C>> clean_index = (int<<LOG_CQ_C>>)Array.update(reg_cleaning_index, 0, incr_cleaning, 1, incr_cleaning, 1);
 
 
     // calc hashes for reading/writing
-    //int<<LOG_CQ_C>>[???] idxes = [hash<<LOG_CQ_C>>(size_to_int(i)+2, src, dst,src_port,dst_port) for i in ???];
+    //int<<LOG_CQ_C>>[???] idxes = [hash<<LOG_CQ_C>>(size_to_int(i+2), src, dst,src_port,dst_port) for i in ???];
     // TODO: get better hashes
     int<<LOG_CQ_C>>[R][H] idxes = [[hash<<LOG_CQ_C>>(size_to_int(i+j), src, dst,src_port,dst_port) for j < R] for i < H];
 
@@ -135,7 +135,7 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
 
         } else {
             // decide if we're reading or writing
-            if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i)+1) { // writing
+            if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i+1)) { // writing
                 for (j < R) {
                     Array.setm(snaps[i][j], idxes[i][j], incr, total_len);
                 }

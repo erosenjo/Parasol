@@ -1,0 +1,210 @@
+/* lucid version of measuring tcp rtt in data plane, spin'20 */
+/* aka precursor to fridge */
+/* match data pkts w corresponding acks to produce rtt sample */
+/* multi-stg hash table to record outgoing pkts, delete once matched */
+/* lazily expire and overwrite old records */
+
+
+/* symbolics */
+symbolic int table_size;
+symbolic size tables;
+symbolic size log_tables;
+symbolic int TS_EXPIRE_THRESHOLD;
+
+
+/* consts */
+// tcp flags
+const int<<8>> TCP_FLAGS_F = 1; // fin
+const int<<8>> TCP_FLAGS_S = 2; // syn
+const int<<8>> TCP_FLAGS_R = 4; // rst
+const int<<8>> TCP_FLAGS_P = 8; // psh
+const int<<8>> TCP_FLAGS_A = 16; // ack
+//const int<<8>> tcp_s_a = TCP_FLAGS_S+TCP_FLAGS_A;
+const int<<8>> tcp_s_a = 18;
+//const int<<8>> tcp_a_p = TCP_FLAGS_A + TCP_FLAGS_P;
+const int<<8>> tcp_a_p = 24;
+//const int TS_EXPIRE_THRESHOLD = 50000000;  // 50ms, 50*1000*1000
+const int TS_LEGITIMATE_THRESHOLD = 2000000000; // 2000*1000*1000
+
+/* Arrays */
+global PairArray.t<<32>>[tables] pkt_tables = [PairArray.create(table_size) for i<tables];
+
+/* Events */
+entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp);
+exit event tcp_out(int<<1>> pkt_type, int rtt);
+exit event dropped();
+
+/* Externs */
+extern log_collision();
+extern log_timeout(bool timeout);
+extern log_rttsample(int sample);
+
+/* Memops */
+// memval1 is signature, memval2 is timestamp
+memop insert(int memval1, int memval2, int newval1, int newval2) {
+    bool existing_timestamp_is_old = (newval2-memval2) > TS_EXPIRE_THRESHOLD;
+    bool current_entry_empty = memval1 == 0;
+
+    if (existing_timestamp_is_old || current_entry_empty) {
+        cell1 = newval1;
+    } 
+    if (existing_timestamp_is_old || current_entry_empty) {
+        cell2= newval2;
+    }
+    //log_timeout(existing_timestamp_is_old);
+    if (existing_timestamp_is_old || current_entry_empty) {
+        return cell2;
+    }
+
+}
+
+memop read(int memval1, int memval2, int newval1, int newval2) {
+    bool current_entry_matched = memval1 == newval1;
+    bool timestamp_legitimate = (newval2 - memval2)<TS_LEGITIMATE_THRESHOLD;
+
+    if (current_entry_matched && timestamp_legitimate) {
+        cell1 = 0;
+    }
+    if (current_entry_matched && timestamp_legitimate) {
+        cell2 = 0;
+    }
+    if (current_entry_matched && timestamp_legitimate) {
+        return memval2;
+    }
+}
+
+fun void drop() {
+    generate dropped();
+}
+
+// if syn, try to insert into table
+fun void syn_pkt_1(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+    // ++ is concatenation in p4, ^ in lucid
+    int<<32>> tmp_1=hash<<32>>(1,(int<<26>>)0 ^ ihl ^ (int<<2>>)0);
+    int<<32>> tmp_2=hash<<32>>(1,(int<<26>>)0 ^ data_offset ^ (int<<2>>)0);
+    int<<32>> tmp_3=(int<<16>>)0 ^ len;
+    int<<32>> tmp_4=tmp_1+tmp_2;
+    int<<32>> tmp_5=tmp_3-tmp_4;
+
+
+    int expected_ack = seq_no+tmp_5;
+    expected_ack = expected_ack + 1;
+
+    printf("EACK: %d", expected_ack);
+
+    int pkt_signature = hash<<32>>(10398247, srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+
+    int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, expected_ack) for i < tables];
+
+    printf("SIG %d", pkt_signature);
+
+    int rtt = 0;
+
+    for (i < tables) {
+        if (rtt==0) {
+            rtt = PairArray.update(pkt_tables[i], idxes[i], insert, pkt_signature, timestamp, 0);
+        }
+    }
+//        if (rtt==0) { log_collision(); }
+
+    generate tcp_out(1, rtt);
+
+
+}
+
+// if syn, try to insert into table
+fun void syn_pkt(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+    int<<32>> tmp_1=hash<<32>>(1,(int<<26>>)0 ^ ihl ^ (int<<2>>)0);
+    int<<32>> tmp_2=hash<<32>>(1,(int<<26>>)0 ^ data_offset ^ (int<<2>>)0);
+    int<<32>> tmp_3=(int<<16>>)0 ^ len;
+    int<<32>> tmp_4=tmp_1+tmp_2;
+    int<<32>> tmp_5=tmp_3-tmp_4;
+
+    int expected_ack = seq_no+tmp_5;
+
+    printf("EACK: %d", expected_ack);
+
+    int pkt_signature = hash<<32>>(10398247, srcAddr, dstAddr, srcPort, dstPort, expected_ack);
+
+    printf("SIG %d", pkt_signature);
+
+    int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, expected_ack) for i < tables];
+
+    int rtt = 0;
+
+    for (i < tables) {
+        if (rtt==0) {
+            rtt = PairArray.update(pkt_tables[i], idxes[i], insert, pkt_signature, timestamp, 0);
+        }
+    }
+//        if (rtt==0) { log_collision(); }
+
+    generate tcp_out(1, rtt);
+
+}
+
+// if ack, read from table
+fun void ack_pkt(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+    int pkt_signature = hash<<32>>(10398247, dstAddr, srcAddr, dstPort, srcPort, ack_no);
+
+    int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no) for i < tables];
+
+    printf("ACK: %d", ack_no);
+    printf("SIG %d", pkt_signature);
+
+    int rtt = 0;
+    // for loop
+    for (i < tables) {
+        if (rtt==0) {
+            //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
+            //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no);
+
+            rtt = PairArray.update(pkt_tables[i], idxes[i], read, pkt_signature, timestamp, 0);
+
+        }
+    }
+/*
+    if (rtt != 0) { 
+        //rtt = timestamp-rtt;    
+        printf("MATCH!!");
+        log_rttsample(timestamp-rtt); 
+    }
+*/
+
+    generate tcp_out(0, timestamp-rtt);
+
+}
+
+handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+    // decide if syn or ack
+    //int<<1>> pkt_type = 0;	// true is syn, false is ack
+
+    match (tcp_flags, len) with
+    | TCP_FLAGS_S,_ -> { syn_pkt_1(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp); }
+    | tcp_s_a,_ -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | TCP_FLAGS_A,0b0000000000****** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | TCP_FLAGS_A,0b000000000100**** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | TCP_FLAGS_A,0b0000000001010000 -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | tcp_a_p,0b0000000000****** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | tcp_a_p,0b000000000100**** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | tcp_a_p,0b0000000001010000 -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    // len < 80
+    | _,0b0000000000****** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    | _,0b000000000100**** -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+    // len < 1600
+    | _,0b000000********** -> {syn_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp); printf("LEN1");}
+    | _,0b0000010********* -> {syn_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp); printf("LEN2");}
+    | _,0b0000011000****** -> {syn_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp); printf("LEN3");}
+    | _,0b0000011001000000 -> {syn_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp); printf("LEN4");}
+    | TCP_FLAGS_R, _ -> {drop();}
+    | TCP_FLAGS_F, _ -> {drop();}
+    | _,_ -> {ack_pkt(tcp_flags, len, ihl, data_offset, seq_no, ack_no, srcAddr, dstAddr, srcPort, dstPort, timestamp);}
+
+
+
+    // return computed RTT, to send to controller or do whatever
+    //generate tcp_out(pkt_type, rtt);
+}
+
+
+

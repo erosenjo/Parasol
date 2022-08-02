@@ -43,7 +43,7 @@ def gen_traffic(pkts):
             #print(int(hexadecimal(pkt[IP].src),0))
             #print(pkt[IP].dst)
             #print(int(hexadecimal(pkt[IP].dst),0))
-            if len(events) > 2000:
+            if len(events) > 80000:
                 break
 
     info["events"] = events
@@ -54,7 +54,7 @@ def gen_traffic(pkts):
     return exact 
 
 
-#exact = gen_traffic("univ1_pt1.pcap")
+exact = gen_traffic("univ1_pt1.pcap")
 #print(exact)
 
 

@@ -1,0 +1,10 @@
+{
+    "switches": 1,
+    "max time": 9999999,
+    "default input gap": 10000,
+    "random seed": 0,
+    "python file": "precision.py",
+    "events": [
+        {"name":"ip_in", "args": [1,0,0,1]}
+    ]
+}

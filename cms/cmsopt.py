@@ -3,6 +3,7 @@
 
 import json
 from scapy.all import *
+import pickle
 
 # helpers
 def i2Hex (n):
@@ -26,10 +27,15 @@ class Opt:
     # this should convert pcap into json format for interp (can write it here, or write in init_iteration, see starflow)
     # call this once before we start optimization
     def gen_traffic(self):
+
+        testinfo = {}
+        testinfo["name"]= "cms_sym_test"
+        testinfo["input_port"]= "128"
+        infopkts = []
         info = {}
         info["switches"] = 1
         info["max time"] = 9999999
-        info["default input gap"] = 100
+        info["default input gap"] = 1
         info["random seed"] = 0
         info["python file"] = "cms_sym.py"
         events = []
@@ -46,12 +52,27 @@ class Opt:
                     self.ground_truth[str(src_int)+str(dst_int)] = 1
                 else:
                     self.ground_truth[str(src_int)+str(dst_int)] += 1
+
+
+                pi = {"ip.src" : pkt[IP].src, "ip.dst": pkt[IP].dst}
+
+
+                infopkts.append(pi)
                 #print(pkt[IP].src)
                 #print(int(hexadecimal(pkt[IP].src),0))
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
-                if len(events) > 20:
+                if len(events) > 100000:
                     break
+
+
+
+        testinfo["packets"] = infopkts
+        testinfo["model-output"]=[]
+
+
+        with open('cms_sym_test.json','w') as f:
+            json.dump(testinfo,f,indent=4)
 
         info["events"] = events
         with open('cms_sym.json', 'w') as f:
@@ -62,13 +83,28 @@ class Opt:
     # order in list is same ordered specified in opt json
     def calc_cost(self,measure):  # compute avg error for our cms (mean abs error)
         m = measure[0]  # cms only has 1 output file, so 1 set of measurements
-        s = 0
+        s = []
         for k in self.ground_truth:
-            s += abs(m[k]-self.ground_truth[k])
-        return float(s)/float(len(m))
+            #if abs(m[k]-self.ground_truth[k])/self.ground_truth[k] > 1:
+                #print("ERR!! ERROR > 1")
+                #print("est: "+str(m[k]))
+                #print("gt: "+str(self.ground_truth[k]))
+                #print("key: "+str(k))
+                #quit()
+            s.append(abs(m[k]-self.ground_truth[k])/self.ground_truth[k])
+        #if sum(s)/len(s) > 1:
+            #print("ERR!!!")
+            #quit()
+        print(sum(s)/len(s))
+        return sum(s)/len(s)
 
     # called before every interp run
     def init_iteration(self, symbs):
         pass
 
 
+
+o = Opt("univ1_pt1.pcap")
+o.gen_traffic()
+#m = [pickle.load(open('test.txt','rb'))]
+#o.calc_cost(m)

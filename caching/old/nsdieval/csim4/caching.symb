@@ -1,0 +1,15 @@
+{
+    "sizes": {
+        "logentries": 8,
+        "tables": 3,
+        "logcols": 11,
+        "rows": 1
+    },
+    "symbolics": {
+        "entries": 256,
+        "cols": 2048,
+        "eviction": true,
+        "expire_thresh": 48048279,
+        "THRESH": 10
+    }
+}

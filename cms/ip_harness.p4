@@ -30,6 +30,19 @@ header ipv4_h {
     ipv4_addr_t dst_addr;
 }
 
+header tcp_h {
+    bit<16> src_port;
+    bit<16> dst_port;
+    bit<32> seq_no;
+    bit<32> ack_no;
+    bit<4> data_offset;
+    bit<4> res;
+    bit<8> flags;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgent_ptr;
+}
+
 struct ip_event_fields_t {
     bit<8> tos; 
     bit<16> len;
@@ -42,11 +55,10 @@ struct header_t {
     ethernet_h ethernet;
     @DPT_HEADER_INSTANCES
     ipv4_h ip;
+	tcp_h tcp;
 }
 struct metadata_t {
     @DPT_METADATA_INSTANCES
-    bit<1> hh;
-    bit<32> flowid;
 }
 
 struct empty_header_t {}
@@ -105,6 +117,10 @@ parser EthIpParser(packet_in pkt, out header_t hdr, out metadata_t md){
     }
     state parse_ip {
         pkt.extract(hdr.ip);
+        transition parse_tcp;
+    }
+    state parse_tcp {
+        pkt.extract(hdr.tcp);
         transition accept;
     }
 }
@@ -160,39 +176,14 @@ control Ingress(
 
 	}
 
-	action use_ip_out_event() {
-		ig_tm_md.ucast_egress_port = md.ip_out.egr_port;
-		hdr.ip.src_addr = md.ip_out.src;
-		hdr.ip.dst_addr = md.ip_out.dst;  
-	}
-
-	action setflowid(bit<32> flowid) {
-		md.flowid = flowid;
-	}
-
-	table getflowid {
-		key = {
-			hdr.ip.src_addr : exact;
-			hdr.ip.dst_addr : exact;
-		}
-		actions = {
-			setflowid;
-		}
-	}
-
 	apply {
 		// assume we have a pre-populated tcam table that gives us flowid
-		getflowid.apply(); 
 		@ENTRY_CALL
 
 		if (md.dptMeta.eventType !=0) {
 			@DPT_HANDLERS
 
 			@EXIT_CALL
-			if (md.hh == 1) {
-				// mirror to controller, or take some action (leaving blank for now)
-				nop();
-			}
 		}
 		else {
 			drop();

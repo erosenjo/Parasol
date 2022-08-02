@@ -1,0 +1,36 @@
+{
+    "symbolicvals": {
+        "sizes" : {
+	    "tables" : 2,
+	    "log_tables" : 7
+        },
+	"symbolics" : {
+	    "table_size" : 128,
+	    "TS_EXPIRE_THRESHOLD" : 65810239
+        },
+	"logs" : {
+	    "log_tables" : "table_size"
+	},
+	"bounds" : {
+	    "tables" : [1, 5],
+	    "table_size" : [64, 65536],
+	    "TS_EXPIRE_THRESHOLD" : [10000000, 100000000]
+        }
+    },
+    "optparams": {
+        "optalgo" : "random",
+        "stop_iter" : 20,
+        "temp" : 10,
+        "stepsize": {
+            "tables": 2,
+            "table_size": 8000,
+            "TS_EXPIRE_THRESHOLD": 20000000
+        }
+    },
+    "symfile" : "rttrand.symb",
+    "lucidfile" : "rttrand.dpt",
+    "outputfiles" : ["numsamplesrand.txt"],
+    "optmodule" : "rttoptrand",
+    "trafficpcap" : "univ1_pt1.pcap"
+
+}

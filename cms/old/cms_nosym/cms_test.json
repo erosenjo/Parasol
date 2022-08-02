@@ -1,0 +1,19 @@
+{
+    "name" : "cms_test", 
+    "input_port": "128",
+    "packets": [
+        {"ip.src" : "1.1.1.1", "ip.dst" : "2.2.2.2", "payload.length" : 256},
+        {"ip.src" : "2.1.1.1", "ip.dst" : "2.2.2.2", "payload.length" : 256},
+        {"ip.src" : "3.1.1.1", "ip.dst" : "2.2.2.2", "payload.length" : 256},
+        {"ip.src" : "4.1.1.1", "ip.dst" : "2.2.2.2", "payload.length" : 768},
+        {"ip.src" : "5.1.1.1", "ip.dst" : "2.2.2.2", "payload.length" : 768}
+    ],
+    "model-output":
+    [
+        {"port" : 128, "ip.src" : "2.2.2.2", "ip.dst" : "1.1.1.1"},
+        {"port" : 128, "ip.src" : "2.2.2.2", "ip.dst" : "2.1.1.1"},
+        {"port" : 128, "ip.src" : "2.2.2.2", "ip.dst" : "3.1.1.1"},
+        {"port" : 128, "ip.src" : "2.2.2.2", "ip.dst" : "4.1.1.1"},
+        {"port" : 128, "ip.src" : "2.2.2.2", "ip.dst" : "5.1.1.1"}
+    ]
+}

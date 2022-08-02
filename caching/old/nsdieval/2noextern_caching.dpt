@@ -1,0 +1,56 @@
+/* data plane caching application */
+// choose between cms and precision for eviction/insertion
+
+
+// include cms, include precision
+//include "defs.dpt"
+//include "precisioncachemodule.dpt"
+//include "noextern_cmscachemodule.dpt"
+include "2noextern_trackermodules.dpt"
+
+/* cache regs */
+/* Memops */
+/* externs */
+// ^ defined in indiv module files
+
+/* symbolics */
+symbolic int entries;
+symbolic size logentries;
+symbolic size tables;
+symbolic int cols;  // for cms only, but same interface
+symbolic size logcols;
+symbolic size rows;
+symbolic bool eviction; // decide which struct to use for evictions
+
+/* module */
+module Cache = Cmscache if eviction else Precisioncache;
+global Cache.t<<logentries,tables,logcols,rows>> c = Cache.create(entries,cols);
+//global Cmscache.t<<logentries, tables, logcols, rows>> pc = Cmscache.create(entries,cols);
+//global Precisioncache.t<<logentries, tables, logcols, rows>> pc = Precisioncache.create(entries,cols);
+
+
+/* events */
+entry event ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp);
+exit event ip_out();
+
+/* handler */
+handle ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp) {
+/*
+    //min_stg = Cache.cache(c,key,insert,min_stg,cacheval);
+    //min_stg = Cmscache.cache(pc,key,insert,min_stg,cacheval);
+    //min_stg = Precisioncache.cache(pc,key,insert,min_stg,cacheval);
+    if (min_stg == 0) {
+        generate ip_out();
+    }
+    else {
+        generate ip_in(key, 1, min_stg, key);
+    }
+*/
+
+    Cache.cache(c,key,insert,min_stg,cacheval,timestamp);
+//    Cmscache.cache(pc,key,insert,min_stg,cacheval,timestamp);
+    generate ip_out();
+
+}
+
+

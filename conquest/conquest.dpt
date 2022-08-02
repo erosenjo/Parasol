@@ -117,7 +117,7 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
 
 
     // calc hashes for reading/writing
-    //int<<LOG_CQ_C>>[???] idxes = [hash<<LOG_CQ_C>>(size_to_int(i)+2, src, dst,src_port,dst_port) for i in ???];
+    //int<<LOG_CQ_C>>[???] idxes = [hash<<LOG_CQ_C>>(size_to_int(i+2), src, dst,src_port,dst_port) for i in ???];
     // TODO: get better hashes
     int<<LOG_CQ_C>>[R][H] idxes = [[hash<<LOG_CQ_C>>(size_to_int(i+j), src, dst,src_port,dst_port) for j < R] for i < H];
 
@@ -135,7 +135,7 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
 
         } else {
             // decide if we're reading or writing
-            if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i)+1) { // writing
+            if (snap_epoch==(int<<LOG_CQ_H>>)size_to_int(i+1)) { // writing
                 for (j < R) {
                     Array.setm(snaps[i][j], idxes[i][j], incr, total_len);
                 }

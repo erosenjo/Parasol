@@ -1,0 +1,36 @@
+{
+    "entry" : 
+    [
+        {
+            "event" : "tcp_in",
+            "conditions" : {"hdr.ip.isValid()" : [true], "hdr.tcp.isValid()" : [true]},
+            "inputs" : {
+		"tcp_flags":"hdr.tcp.flags",
+		"len":"hdr.ip.total_len",
+		"ihl":"hdr.ip.ihl",
+		"data_offset":"hdr.tcp.data_offset",
+		"seq_no":"hdr.tcp.seq_no",
+		"ack_no":"hdr.tcp.ack_no",
+		"srcAddr":"hdr.ip.src_addr",
+		"dstAddr":"hdr.ip.dst_addr",
+		"srcPort":"hdr.tcp.src_port",
+		"dstPort":"hdr.tcp.dst_port",
+		"timestamp":"md.timestamp"
+            }
+        }
+    ],
+    "exit" : 
+    [
+        {
+            "event" : "tcp_out",
+            "outputs" : {
+		    "md.pkt_type" : "pkt_type",
+		    "md.rtt" : "rtt"
+            }
+        },
+	{
+            "event" : "dropped",
+            "outputs" : { }
+        }
+    ]
+}

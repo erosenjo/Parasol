@@ -1,0 +1,22 @@
+{
+    "entry" : 
+    [
+        {
+            "event" : "ip_in",
+	    "conditions": {"hdr.cache.isValid()":[true]},
+            "inputs" : {
+                "key":"hdr.cache.key",
+                "insert":"hdr.cache.insert",
+                "min_stg":"hdr.cache.min_stg",
+		"cacheval":"hdr.cache.cacheval"
+            }
+        }
+    ],
+    "exit" : 
+    [
+        {
+            "event" : "ip_out",
+	    "outputs": { }
+        }
+    ]
+}

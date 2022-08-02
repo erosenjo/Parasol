@@ -34,7 +34,7 @@ class Opt:
                 args = [128, src_int, dst_int, pktlen, tos]
                 p = {"name":"ip_in", "args":args}
                 self.events.append(p)
-                if len(self.events) > 2000:
+                if len(self.events) > 20000:
                     break
         self.ground_truth = len(self.events)
 
@@ -42,8 +42,10 @@ class Opt:
     # our measurement is total number of cache evictions/flushes
     def calc_cost(self,measure):
         ratio = measure[0]/self.ground_truth
+        '''
         if ratio < 0.4: # all sols that produce eviction ratio less than thresh are equally as good (not considering resources)
             ratio = 0
+        '''
         return ratio
 
     # we need free block events before we send data traffic to init long cache
@@ -63,4 +65,9 @@ class Opt:
 
         with open('starflow.json','w') as f:
             json.dump(info, f, indent=4)
+
+
+
+
+
 

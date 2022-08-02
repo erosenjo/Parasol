@@ -1,0 +1,44 @@
+{
+    "symbolicvals" : {
+	"sizes": {
+        "LOG_CQ_H": 2,
+	    "H": 4,
+        "LOG_CQ_C": 5,
+        "R": 2,
+        "LOG_CQ_T": 27,
+        "T": 1
+	},
+	"symbolics": {
+	    "C": 32
+	},
+	"logs" : {
+	    "LOG_CQ_H" : "H",
+        "LOG_CQ_C" : "C"
+	},
+    "bounds" : {
+	    "H" : [4,8],
+	    "C" : [16, 512],
+        "R" : [1,4],
+        "LOG_CQ_T" : [4,22],
+        "T" : [0,1]
+	}
+    },
+    "optparams": {
+    "optalgo" : "simannealing",
+	"stop_iter" : 1,
+	"temp" : 10,
+	"stepsize": {
+	    "H" : 1,
+	    "C" : 20,
+        "R" :1,
+        "LOG_CQ_T": 5,
+        "T" : 1
+	}
+    },
+    "symfile" : "conquest.symb",
+    "lucidfile" : "conquest.dpt",
+    "outputfiles" : ["qlens.txt"],
+    "optmodule" : "conquestopt",
+    "trafficpcap" : "univ1_pt1.pcap"
+
+}

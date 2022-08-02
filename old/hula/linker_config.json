@@ -1,0 +1,29 @@
+{
+    "entry" : 
+    [
+        {
+            "event" : "hula_in",
+            "conditions" : {"hdr.ip.isValid()" : [true], "ig_intr_md.ingress_port" : [128]},
+            "inputs" : {
+		"srcAddr":"hdr.ip.src_addr",
+		"dstAddr":"hdr.ip.dst_addr",
+		"ipv4protocol":"hdr.ip.protocol",
+		"srcPort":"hdr.tcp.srcPort",
+		"dstPort":"hdr.tcp.dstPort",
+		"curr_time":"ig_prsr_md.global_tstamp",
+		"ingress_port":"ig_intr_md.ingress_port",
+		"packet_length":"hdr.ip.total_len",
+		"hdr_path_util":"hdr.hula.path_util"
+            }
+        }
+    ],
+    "exit" : 
+    [
+        {
+            "event" : "hula_out",
+            "outputs" : {
+		"hdr.hula.path_util" : "hdr_path_util"
+            }
+        }
+    ]
+}

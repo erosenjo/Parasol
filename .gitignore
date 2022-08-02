@@ -2,10 +2,25 @@
 *~
 *.swp
 *.swo
+*.npy
+*.tar.gz
+*.tgz
 
 __pycache__/
 *.py[cod]
 
 
 build/
-*build/
+*build*/
+
+# excluding conquest traces (att)
+conquest/conquest.json
+conquest/old/nsdieval/conquestrand.json
+fridge/fridge.json
+precision/old/precisionrand.json
+rtt/old/nsdieval/rttrand.json
+rtt/rtt.json
+precision/precision.json
+cms/old/nsdieval/cms_symrand.json
+
+
