@@ -1,0 +1,33 @@
+{
+    "symbolicvals" : {
+	"sizes": {
+            "log_size": 10,
+	    "tables": 1
+	},
+	"symbolics": {
+	    "table_size": 1024
+	},
+	"logs" : {
+	    "log_size" : "table_size"
+	},
+        "bounds" : {
+	    "tables" : [1,5],
+	    "table_size" : [256, 8192]
+	}
+    },
+    "optparams": {
+        "optalgo" : "random",
+	"stop_iter" : 30,
+	"temp" : 10,
+	"stepsize": {
+	    "table_size" : 1500,
+	    "tables" : 2
+	}
+    },
+    "symfile" : "hash.symb",
+    "lucidfile" : "hash.dpt",
+    "outputfiles" : ["colls.txt"],
+    "optmodule" : "hashopt",
+    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+
+}

@@ -1,0 +1,52 @@
+/* simple multi-stage hash */
+
+symbolic int table_size;
+symbolic size log_size;
+symbolic size tables;
+
+
+global PairArray.t<<32>>[tables] hashtabs = [PairArray.create(table_size) for i < tables];
+
+/* Memops */
+memop key_match(int keyval, int used, int newkey, int unused) {
+    bool empty = used==0;
+    bool matched = keyval==newkey;
+
+    if (empty) { cell2 = 1; }
+    else { if (matched) { cell2 = 1; } }
+
+    if (empty) { cell1 = newkey; }
+
+    if (empty || matched) { return cell2; }
+
+}
+
+extern log_collision();
+
+
+/* events */
+entry event ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort);
+exit event ip_out();
+
+
+/* handler */
+handle ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort) {
+    // precompute hashes
+    int<<log_size>>[tables] idxes = [hash<<log_size>>(size_to_int(i+2),srcAddr,dstAddr,srcPort,dstPort) for i < tables];
+    int keyval = hash<<32>>(1,srcAddr,dstAddr,srcPort,dstPort);
+
+    // for each table, check if it's a match (user counter to identify empty vs collision)
+    int match_val = 0;
+    for (i < tables) {
+        if (match_val==0) {
+            match_val = PairArray.update(hashtabs[i],idxes[i],key_match,keyval,0,0);
+        }
+    }
+
+//    if (match_val==0) { log_collision(); }
+
+    generate ip_out();
+}
+
+
+
