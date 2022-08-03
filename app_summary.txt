@@ -1,0 +1,79 @@
+This is a summary of the data structures implemented in Parasol, along with their associated (symbolic) parameters and optimization function.
+
+Bloom filter: approximate set membership. Assume single register array.
+    parameters:
+    -bits
+    -number of hashes
+    optimization/measurement:
+    -minimize false positive rate (record query answer per packet and ground truth answers)
+
+Caching: a key value store that tracks popularity of uncached keys. Implemented as either a hash table (cache) and cms (key popularity), or with precision.
+    parameters:
+    -cache entries (columns in reg array)
+    -cache tables (num reg arrays)
+    -cms columns
+    -cms rows
+    -cms expiring threshold (in ns)
+    -cms heavy hitter threshold
+    -boolean for structure choice
+    optimization/measurement:
+    -maximize hit rate (extern that keeps counter of hits/misses)
+
+CMS: simple sketch for identifying heavy hitters. Can include timeout/count threshold as parameters (see caching example).
+    -rows
+    -columns
+    optimization/measurement:
+    -minimize mean absolute error (record approximate count for each packet and ground truth counts)
+
+Conquest: queue length measurement in the data plane, to identify which flows are contributing to queue. Implemented as a series of sketches that are periodically rotated through.
+    parameters:
+    -snapshots (cms)
+    -rows in snapshot
+    -columns in snapshot
+    -time window (in ns, determines how often we cycle through snaps)
+    optimization/measurement:
+    -maximize f-score (precision, recall) (extern records qlength estimation when qlength is large enough, compute how often we correctly identify a large queue and how good the estimation was using ground truth qlength -> see conquest paper/Danny's simulation code for more detail)
+
+Flowlet switching: load-balancing application that sends flowlets on randomly chosen next hop, all packets in same flowlet will go to same hop. Assume single register array that saves the hop and most recent arrival time for each flowlet.
+    parameters:
+    -flowlet slots (columns in reg array)
+    -IPG threshold (in ns; packets with IPG smaller than threshold considered part of same flowlet)
+    optimization/measurement:
+    -minimize gap to even distribution (measure the pkts in bytes sent along each hop and compute error with an even distribution of bytes across each hop)
+
+Fridge: unbiased delay measurements. Hash-indexed array storing time of syn packets, to get matched when corresponding ack arrives. Entries added to fridge with probability p; aggressively overwrite and correct bias as samples collected. Assume single fridge (register array).
+    parameters
+    -entry probability
+    -fridge size (columns in reg array)
+    optimization/measurement:
+    -minimze max percentile error (measure rtt sample (in ns) and correction factor, compute cdf from measurements and ground truth, compute error at various percentiles -> see fridge paper for more details)
+
+Hash: simple multi-stage hash table. Assume entries are never evicted.
+    parameters:
+    -tables (num reg arrays)
+    -entries (per table) (columns in reg array)
+    optimization/measurement:
+    -minimize number of collisions (extern that keeps counter of collisions)
+
+Precision: heavy hitter detection. Implemented as a series of tables that store flow key and counter. Probabilistically insert new entries upon collisions.
+    parameters:
+    -tables
+    -entries (columns in reg array)
+    optimization/measurement:
+    -minimize mean absolute error (same as cms)
+
+Rtt: measure rtt in the data plane. Store timestamp of syn packets and match with corresponding ack. Implemented as multi-stage hash table; lazily evict expired records.
+    parameters
+    -tables
+    -table size (columns in reg array)
+    -timeout threshold (in ns)
+    optimization/measurement:
+    -maximize read success rate - number of samples generated in data plane / ground truth number of samples (record each successful sample and ground truth samples -> see rtt paper for more details)
+
+Starflow: 
+
+Stateful firewall:
+
+
+
+
