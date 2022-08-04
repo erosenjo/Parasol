@@ -34,7 +34,6 @@
     "lucidfile" : "stateful_firewall.dpt",
     "outputfiles" : ["stateful_firewall_out_trace.pkl"],
     "optmodule" : "stateful_firewallopt",
-    "compilefile": "stateful_firewall_compile.dpt",
     "trafficpcap" : "univ1_pt1.pcap"
 
 }

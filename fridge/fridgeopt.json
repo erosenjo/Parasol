@@ -28,7 +28,6 @@
     "lucidfile" : "fridge.dpt",
     "outputfiles" : ["rtt_correction.txt"],
     "optmodule" : "fridgeopt",
-    "compilefile": "noextern_fridge.dpt",
     "trafficpcap" : "univ1_pt1.pcap"
 
 }
