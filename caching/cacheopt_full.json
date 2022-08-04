@@ -46,7 +46,7 @@
     },
     "symfile" : "caching.symb",
     "lucidfile" : "caching.dpt",
-    "outputfiles" : ["misses.txt"],
+    "outputfiles" : ["misses.pkl"],
     "optmodule" : "cacheopt",
     "trafficpcap" : ""
 

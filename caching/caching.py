@@ -8,25 +8,25 @@ hits = [0]
 
 def log_miss(key):
     misses[0]+=1
-    with open('misses.txt','wb') as f:
+    with open('misses.pkl','wb') as f:
         pickle.dump(misses[0],f)
 
 
 def log_hit(key):
     hits[0]+=1
-    with open('hits.txt','wb') as f:
+    with open('hits.pkl','wb') as f:
         pickle.dump(hits[0],f)
 
 
 # creating sep ones for cms, bc apparently can't have same for both?
 def log_miss_cms(key):
     misses[0]+=1
-    with open('misses.txt','wb') as f:
+    with open('misses.pkl','wb') as f:
         pickle.dump(misses[0],f)
 
 
 def log_hit_cms(key):
     hits[0]+=1
-    with open('hits.txt','wb') as f:
+    with open('hits.pkl','wb') as f:
         pickle.dump(hits[0],f)
 

@@ -16,7 +16,7 @@ def log_count(srca,dsta,sport,dport,c):
         counts[fid] = c
 
 
-    with open('counts.txt','wb') as f:
+    with open('counts.pkl','wb') as f:
         pickle.dump(counts,f)    
 
 

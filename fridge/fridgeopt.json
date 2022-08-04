@@ -26,7 +26,7 @@
     },
     "symfile" : "fridge.symb",
     "lucidfile" : "fridge.dpt",
-    "outputfiles" : ["rtt_correction.txt"],
+    "outputfiles" : ["rtt_correction.pkl"],
     "optmodule" : "fridgeopt",
     "trafficpcap" : "univ1_pt1.pcap"
 

@@ -34,7 +34,7 @@
     },
     "symfile" : "starflow.symb",
     "lucidfile" : "starflow.dpt",
-    "outputfiles" : ["total.txt"],
+    "outputfiles" : ["total.pkl"],
     "stop_iter" : 1,
     "optalgo" : "random",
     "optmodule" : "starflowopt",

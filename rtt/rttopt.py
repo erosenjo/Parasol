@@ -260,11 +260,11 @@ class Opt:
 
 
 
-        with open('gttest.txt','wb') as f:
+        with open('gttest.pkl','wb') as f:
             pickle.dump(tests,f)
         
         print(len(gt))
-        with open('gtnumsamples.txt','wb') as f:
+        with open('gtnumsamples.pkl','wb') as f:
             pickle.dump(len(gt),f)
 
         '''

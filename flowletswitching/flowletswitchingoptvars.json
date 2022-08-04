@@ -26,7 +26,7 @@
     },
     "symfile" : "flowletswitching.symb",
     "lucidfile" : "flowletswitching.dpt",
-    "outputfiles" : ["pkthops.txt"],
+    "outputfiles" : ["pkthops.pkl"],
     "optmodule" : "flowletswitchingopt",
     "trafficpcap" : "univ1_pt1.pcap"
 

@@ -37,7 +37,7 @@
     },
     "symfile" : "conquest.symb",
     "lucidfile" : "conquest.dpt",
-    "outputfiles" : ["qlens.txt"],
+    "outputfiles" : ["qlens.pkl"],
     "optmodule" : "conquestopt",
     "trafficpcap" : "univ1_pt1.pcap"
 

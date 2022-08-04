@@ -27,7 +27,7 @@
     },
     "symfile" : "precision.symb",
     "lucidfile" : "precision.dpt",
-    "outputfiles" : ["counts.txt"],
+    "outputfiles" : ["counts.pkl"],
     "optmodule" : "precisionopt",
     "trafficpcap" : "univ1_pt1.pcap"
 

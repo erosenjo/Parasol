@@ -148,9 +148,9 @@ def random_opt(symbolics_opt, opt_info, o):
     # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
     #best_sol = prioritize(best_sols,opt_info)
 
-    with open('testing_sols_rand.txt','wb') as f:
+    with open('testing_sols_rand.pkl','wb') as f:
         pickle.dump(testing_sols,f)
-    with open('testing_eval_rand.txt','wb') as f:
+    with open('testing_eval_rand.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
     # return the first solution in list of acceptable sols
@@ -256,9 +256,9 @@ def simulated_annealing(symbolics_opt, opt_info, o):
         testing_eval.append(candidate_cost)
         
     #best_sol = prioritize(best_sols,opt_info)
-    with open('testing_sols_sa.txt','wb') as f:
+    with open('testing_sols_sa.pkl','wb') as f:
         pickle.dump(testing_sols,f)
-    with open('testing_eval_sa.txt','wb') as f:
+    with open('testing_eval_sa.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
     # return first sol in list of sols
@@ -338,9 +338,9 @@ def exhaustive(symbolics_opt, opt_info, o):
         symbolics_opt = starting
 
 
-    with open('testing_sols_exhaustive.txt','wb') as f:
+    with open('testing_sols_exhaustive.pkl','wb') as f:
         pickle.dump(testing_sols,f)
-    with open('testing_eval_exhaustive.txt','wb') as f:
+    with open('testing_eval_exhaustive.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
     return best_sols[0], best_cost

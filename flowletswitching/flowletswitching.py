@@ -15,7 +15,7 @@ def log_newflowlethop(hop,thresh):
             flowlethopcounts[hop] = 1
         else:
             flowlethopcounts[hop] += 1
-        with open('flowlethops.txt','wb') as f:
+        with open('flowlethops.pkl','wb') as f:
             pickle.dump(flowlethopcounts, f)
 
 def log_pkthop(hop,pktlen):
@@ -25,7 +25,7 @@ def log_pkthop(hop,pktlen):
     else:
         pkthopcounts[hop] += pktlen
     if pktcounter[0] > 9991:
-        with open('pkthops.txt','wb') as f:
+        with open('pkthops.pkl','wb') as f:
             pickle.dump(pkthopcounts, f)
 
 

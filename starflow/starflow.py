@@ -15,7 +15,7 @@ cache_total = [0]
 def cache_flush_short():
     cache_short[0] += 1
     cache_total[0] += 1
-    with open('total.txt','wb') as f:
+    with open('total.pkl','wb') as f:
         pickle.dump(cache_total[0],f)
     '''
     cache_short += 1
@@ -26,7 +26,7 @@ def cache_flush_short():
 def cache_flush_long():
     cache_long[0] += 1
     cache_total[0] += 1
-    with open('total.txt','wb') as f:
+    with open('total.pkl','wb') as f:
         pickle.dump(cache_total[0],f)
     '''
     cache_long += 1

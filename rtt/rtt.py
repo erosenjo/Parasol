@@ -11,28 +11,28 @@ tests = {}
 
 def log_collision():
     collisions[0] += 1
-    with open('collisions.txt','wb') as f:
+    with open('collisions.pkl','wb') as f:
         pickle.dump(collisions[0],f)
 
 def log_timeout(t):
     if t:
         timeouts[0] += 1
-        with open('timeouts.txt','wb') as f:
+        with open('timeouts.pkl','wb') as f:
             pickle.dump(timeouts[0],f)
 
 def log_rttsample(sample):
     numsamples[0]+=1
-    with open('numsamples.txt','wb') as f:
+    with open('numsamples.pkl','wb') as f:
         pickle.dump(numsamples[0],f)
 
     samples.append(sample)
-    with open('samples.txt','wb') as f:
+    with open('samples.pkl','wb') as f:
         pickle.dump(samples,f)
 
 
 def log_test(ack, rtt):
     tests[ack] = rtt
-    with open('tests.txt','wb') as f:
+    with open('tests.pkl','wb') as f:
         pickle.dump(tests,f)
 
 
