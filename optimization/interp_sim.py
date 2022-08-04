@@ -163,7 +163,10 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     '''
     #cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
 
-    cmd = ["../../lucid/dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    #cmd = ["../../lucid/dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+
+    cmd = ["../../lucid/dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+
 
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
