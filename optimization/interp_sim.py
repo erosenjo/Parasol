@@ -4,8 +4,8 @@ from optalgos import *
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
 def interp_sim(lucidfile,outfiles):
     # run the interpreter
-    cmd = ["../../dpt", "--suppress-final-state", lucidfile]
-
+    #cmd = ["../../dpt", "--suppress-final-state", lucidfile]
+    cmd = ["../../lucid/dpt", "--suppress-final-state", lucidfile]
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
     ret = subprocess.run(cmd)
@@ -161,7 +161,9 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     else:
         cmd = ["../../dptc", "noextern_caching_precision.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
     '''
-    cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    #cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+
+    cmd = ["../../lucid/dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
 
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)

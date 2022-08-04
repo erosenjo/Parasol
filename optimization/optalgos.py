@@ -280,6 +280,72 @@ def basin_hopping(symbolics_opt, opt_info, o):
     res = basinhopping(gen_cost, x0, minimizer_kwargs=args,niter=100)
 '''
 
+# EXHAUSTIVE SEARCH
+# start from lower bound and go until upper bound
+# keep all variables but 1 static, do for all vars
+# note that this is impractical and shouldn't actually be used for optimization
+def exhaustive(symbolics_opt, opt_info, o):
+    logvars = opt_info["symbolicvals"]["logs"].values()
+
+    # the starting solution values are what we use when we keep a variable static
+    starting = copy.deepcopy(symbolics_opt)
+
+    # init best solution as starting, and best cost as inf
+    best_sols = [copy.deepcopy(symbolics_opt)]
+    best_cost = float("inf")
+    # we need bounds
+    bounds = {}
+    if "bounds" in opt_info["symbolicvals"]:    # not necessarily required for every opt, but def for exhaustive
+        bounds = opt_info["symbolicvals"]["bounds"]
+    else:
+        sys.exit("exhaustive requires bounds on symbolics")
+
+    # log sols/costs and output
+    testing_sols = []
+    testing_eval = []
+
+    # start loop
+    # don't really care about time for exhaustive, but leaving it anyways
+    start_time = time.time()
+   
+    # go through each symbolic value
+    for sv in bounds:
+        # start at lower bound, stop once we get to upper bound
+        # use stepsize to go through range
+        for v in range(bounds[sv][0],bounds[sv][1]+opt_info["optparams"]["stepsize"][sv], opt_info["optparams"]["stepsize"][sv]):
+            # do corrections for powers of 2
+            if sv in logvars:
+                symbolics_opt[sv]=closest_power(v)
+            else:
+                symbolics_opt[sv] = v
+
+            # get cost
+            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+
+            # if new cost < best, replace best (if stgs <= tofino)
+            if cost < best_cost:
+                best_cost = cost
+                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+                best_sols = [copy.deepcopy(symbolics_opt)]
+            elif cost == best_cost:
+                best_sols.append(copy.deepcopy(symbolics_opt))
+
+            # save costs to write to file later
+            testing_sols.append(copy.deepcopy(symbolics_opt))
+            testing_eval.append(cost)
+
+        # reset to starting before going to the next variable
+        symbolics_opt = starting
+
+
+    with open('testing_sols_exhaustive.txt','wb') as f:
+        pickle.dump(testing_sols,f)
+    with open('testing_eval_exhaustive.txt','wb') as f:
+        pickle.dump(testing_eval,f)
+
+    return best_sols[0], best_cost
+
+
 # bayesian optimization
 
 # genetic algo

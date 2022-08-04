@@ -55,6 +55,9 @@ def main():
     elif opt_info["optparams"]["optalgo"] == "simannealing":
         best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o)
 
+    elif opt_info["optparams"]["optalgo"] == "exhaustive":
+        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o)
+
     end_time = time.time()
     # write symb with final sol
     update_sym_sizes(best_sol, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
