@@ -63,16 +63,30 @@ Precision: heavy hitter detection. Implemented as a series of tables that store 
     -minimize mean absolute error (same as cms)
 
 Rtt: measure rtt in the data plane. Store timestamp of syn packets and match with corresponding ack. Implemented as multi-stage hash table; lazily evict expired records.
-    parameters
+    parameters:
     -tables
     -table size (columns in reg array)
     -timeout threshold (in ns)
     optimization/measurement:
     -maximize read success rate - number of samples generated in data plane / ground truth number of samples (record each successful sample and ground truth samples -> see rtt paper for more details)
 
-Starflow: 
+Starflow: cache for telemetry data (aka grouped packet vectors) (implements select and grouping for a query). Implemented as 2 caches -- narrow and wide buffers. Narrow buffers can store more flows but smaller amount of data per flow than wide. If flow fills up its narrow buffer, attempt to allocate wide buffer. When buffer is full, flush the entries to software.
+    parameters:
+    -slots in narrow buffer
+    -slots in wide buffer
+    -rows in narrow buffer
+    -rows in wide buffer
+    optimization/measurement:
+    -minimize eviction ratio (evicted GPVs / total number of pkts -> see starflow paper for more details) (measure every time entry gets flushed from either narrow/wide buffer - from eviction or bc full)
 
-Stateful firewall:
+Stateful firewall: firewall with stages and cuckoo insert operation to mitigate collisions
+    parameters:
+    -stages (rows?)
+    -entries (columns in reg array)
+    -timeout (in ns?)
+    -delay (in ns?) (how long to wait before checking for timeouts)
+    optimization/measurement:
+    -minimize sum of bytes processed by recirculation and bytes that endhosts resend when legit traffic gets dropped (count recirculations and count how many incorrect pcakets get dropped)
 
 
 
