@@ -12,6 +12,7 @@ __pycache__/
 
 build/
 *build*/
+nsdieval/
 
 # excluding conquest traces (att)
 conquest/conquest.json
