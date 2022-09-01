@@ -1,0 +1,31 @@
+{
+    "num_stgs": 12,
+    "total_mem": 65536,
+    "hashes": 4,
+    "const_vars": [
+        {
+            "int": {
+                "name": "S_SLOTS",
+                "value": 1024
+            },
+            "size": {
+                "name": "max_short_idx",
+                "value": 2
+            }
+        }
+    ],
+    "ilp_vars": [
+        {
+            "int": {
+                "name": "L_SLOTS",
+                "lb": 32
+            },
+            "size": {
+                "name": "num_long",
+                "lb": 3
+            }
+        }
+    ]
+}
+
+
