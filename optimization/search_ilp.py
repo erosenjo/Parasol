@@ -33,25 +33,15 @@ def highestPowerof2(n): # from: https://www.geeksforgeeks.org/highest-power-2-le
             break;
     return res;
 
-def solve():
+# num_stgs, total_mem, hashes: resources
+# ilp_vars: vars we need to solve for
+# const_vars: vars whose values were already chosen by opt technique
+def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
     # Model
     solver = Model("solver")
 
-    # read in constants from json file
-    # these include: resource constraints of switch, value of var chosen by opt, what variable we need to solve for (and any bounds), what resource to opt for/maximize?
-    opt_info = {}
-    with open("ilp_info.json") as f:
-        opt_info = json.load(f)
-    # resources
-    num_stgs = opt_info["num_stgs"]
-    total_mem = opt_info["total_mem"]
-    hashes = opt_info["hashes"]
-    # variable values chosen by search
     # int vars represent length of reg array (e.g., cols)
     # size vars represent number of reg arrays (e.g., rows)
-    const_vars = opt_info["const_vars"]
-    # variables we need to solve for
-    ilp_vars = opt_info["ilp_vars"]
     # VARIABLES
     # we create vars for both the consts and ones we solve for
     # consts have a constraint that they equal their given value
@@ -115,6 +105,8 @@ def solve():
         ilp_vars_sizes[size_name] = []
         ilp_vars_ints[int_name] = []
 
+        ilp_width_var = solver.addVar(lb=0, ub=total_mem, vtype=GRB.INTEGER, name=int_name)
+
         for n in range(num_stgs):
             # size vars
             ilp_vars_sizes[size_name].append(solver.addVar(vtype=GRB.BINARY, name=size_name+","+str(n)))
@@ -124,9 +116,12 @@ def solve():
             ilp_vars_ints[int_name].append(solver.addVar(lb=0, ub=total_mem, vtype=GRB.INTEGER, name=int_name+","+str(n)))
             stages_vars_ints[n] = stages_vars_ints[n] + [ilp_vars_ints[int_name][-1]]
             # add constr that arrays not placed have width=0 
-            solver.addConstr(ilp_vars_ints[int_name][-1] <= ilp_vars_sizes[size_name][-1]*total_mem)
+            #solver.addConstr(ilp_vars_ints[int_name][-1] <= ilp_vars_sizes[size_name][-1]*total_mem)
             # add constr that placed arrays have width > 0
-            solver.addConstr(ilp_vars_ints[int_name][-1] >= ilp_vars_sizes[size_name][-1])
+            #solver.addConstr(ilp_vars_ints[int_name][-1] >= ilp_vars_sizes[size_name][-1])
+
+            # add constr that this equals size * int
+            solver.addConstr(ilp_vars_ints[int_name][-1] == ilp_vars_sizes[size_name][-1]*ilp_width_var)
 
         # add constr that we at least reach lower bound for size var
         solver.addConstr(quicksum(ilp_vars_sizes[size_name]) >= size_lb)
@@ -136,11 +131,13 @@ def solve():
         #   we assume that we have to place AT LEAST one reg array
         #   width of an array * indicator of first array == width of first array * indicator of array
         # if we don't place array, it's 0; otherwise it equals width of first array
+        '''
         for var in range(len(ilp_vars_ints[int_name])):
             #ind = ilp_vars_ints[int_name].index(var)
             if var == 0:
                 continue
             solver.addConstr(ilp_vars_ints[int_name][var]*ilp_vars_sizes[size_name][0] == ilp_vars_ints[int_name][0]*ilp_vars_sizes[size_name][var])
+        '''
 
     # CONSTRAINTS
     # num hashes per stage < hashes
@@ -159,6 +156,9 @@ def solve():
 
 
     # NOTE: for each int var, we're rounding down to nearest power of 2
+
+    ilp_sol = {}
+
     print('Solution:')
     print('Objective value =', solver.ObjVal)   # this is obj BEFORE rounding down to power of 2
     for s in const_vars_sizes:
@@ -170,14 +170,24 @@ def solve():
             print(i_stg.varName, '=', highestPowerof2(int(i_stg.X)))
 
     for s in ilp_vars_sizes:
+        s_val = 0
         for s_stg in ilp_vars_sizes[s]:
+            s_val += s_stg.X
             print(s_stg.varName, '=', s_stg.X)
+        ilp_sol[s] = s_val
 
     for i in ilp_vars_ints:
+        i_val = 0
         for i_stg in ilp_vars_ints[i]:
-            print(i_stg.varName, '=', highestPowerof2(int(i_stg.X)))
+            i_stg_val = highestPowerof2(int(i_stg.X))
+            if i_stg_val > 0:
+                i_val = i_stg_val
+            print(i_stg.varName, '=', i_stg_val)
+        ilp_sol[i] = i_val
 
+    return ilp_sol
 
+'''
 def main():
     solve()
 
@@ -185,7 +195,7 @@ def main():
 if __name__ == '__main__':
     main()
 
-
+'''
 
 
 
