@@ -6,6 +6,7 @@ from interp_sim import gen_cost
 import numpy as np
 from scipy.optimize import basinhopping
 import pickle
+from search_ilp import solve
 
 # helper funcs
 '''
@@ -80,8 +81,21 @@ def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
 
 def random_opt(symbolics_opt, opt_info, o):
     iterations = 0
+
+
+    # TODO: this is silly, but not sure a better way to do this rn
+    # using 0 bc these values don't matter, will get overwritten at some point
+    for var_group in opt_info["symbolicvals"]["ilp_vars"]:
+        opt_info["symbolicvals"]["symbolics"][var_group["int"]["name"]] = 0
+        opt_info["symbolicvals"]["sizes"][var_group["size"]["name"]] = 0
+
+    # solve ilp to get vals for other reg arrays
+    const_vars = opt_info["symbolicvals"]["const_vars"] 
+    ilp_sol = solve(opt_info["num_stgs"], opt_info["total_mem"], opt_info["hashes"], opt_info["symbolicvals"]["ilp_vars"], const_vars)
+    # add ilp result to symbolics
+    full_symbolics_opt = {**symbolics_opt, **ilp_sol} 
     # init best solution as starting, and best cost as inf
-    best_sols = [copy.deepcopy(symbolics_opt)]
+    best_sols = [copy.deepcopy(full_symbolics_opt)]
     best_cost = float("inf")
     # keep track of sols we've already tried so don't repeat
     tested_sols = []
@@ -122,28 +136,54 @@ def random_opt(symbolics_opt, opt_info, o):
                 break
 
         # get cost
-        cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False)
+        cost = gen_cost(full_symbolics_opt,full_symbolics_opt,opt_info, o,False)
 
-        # add sol to tested_sols to count it as already evaluated
-        # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
-        tested_sols.append(copy.deepcopy(symbolics_opt))
-
-        testing_sols.append(copy.deepcopy(symbolics_opt))
+        testing_sols.append(copy.deepcopy(full_symbolics_opt))
         testing_eval.append(cost)
 
-        # if new cost < best, replace best (if stgs <= tofino)
-        if cost < best_cost:
-            best_cost = cost
-            # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-            best_sols = [copy.deepcopy(symbolics_opt)]
-        elif cost == best_cost:
-            best_sols.append(copy.deepcopy(symbolics_opt))
 
-        # get next values
-        symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
+        if cost == -1:  # doesn't fit w/in stgs, not counting this as an iteration
+            print("TOO MANY STGS")
+            for var_group in opt_info["symbolicvals"]["ilp_vars"]:
+                var_group["size"]["ub"] = full_symbolics_opt[var_group["size"]["name"]] - 1
+                print(var_group["size"]["ub"])
+           
 
-        # incr iterations
-        iterations += 1
+        else: 
+            # add sol to tested_sols to count it as already evaluated
+            # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
+            # NOTE: ONLY adding randomly chosen symbolics to this, not ones from ilp
+            tested_sols.append(copy.deepcopy(symbolics_opt))
+
+
+            # if new cost < best, replace best (if stgs <= tofino)
+            if cost < best_cost:
+                best_cost = cost
+                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+                best_sols = [copy.deepcopy(full_symbolics_opt)]
+            elif cost == best_cost:
+                best_sols.append(copy.deepcopy(full_symbolics_opt))
+
+            # get next values (only if this actually fit w/in stgs, otherwise try again w/ same vals)
+            symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
+
+            # update const_vars
+            for var_group in const_vars:
+                var_group["int"]["value"] = symbolics_opt[var_group["int"]["name"]]
+                var_group["size"]["value"] = symbolics_opt[var_group["size"]["name"]]
+
+        # solve ilp
+        ilp_sol = solve(opt_info["num_stgs"], opt_info["total_mem"], opt_info["hashes"], opt_info["symbolicvals"]["ilp_vars"], const_vars)
+        # update symbolics opt w ilp sol
+        full_symbolics_opt = {**symbolics_opt, **ilp_sol}
+        # incr iterations (only if this actually fit w/in stgs, otherwise doesn't count)
+        if cost != -1:
+            iterations += 1
+            # remove upper bound for ilp vars??? consequence of this is we'll have to run ilp A LOT more, but it's fast
+            # (also means we have to compile to p4 more often, which can be slow)
+            for var_group in opt_info["symbolicvals"]["ilp_vars"]:
+                if "ub" in var_group["size"]:
+                    del var_group["size"]["ub"]
 
     # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
     #best_sol = prioritize(best_sols,opt_info)

@@ -126,6 +126,11 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
         # add constr that we at least reach lower bound for size var
         solver.addConstr(quicksum(ilp_vars_sizes[size_name]) >= size_lb)
 
+        # add constr that size is < ub, if it exists
+        if "ub" in var_group["size"]:
+            solver.addConstr(quicksum(ilp_vars_sizes[size_name]) <= var_group["size"]["ub"])
+
+
         # add constr so that regs have the same size
         # here's how we do this:
         #   we assume that we have to place AT LEAST one reg array
@@ -174,7 +179,7 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
         for s_stg in ilp_vars_sizes[s]:
             s_val += s_stg.X
             print(s_stg.varName, '=', s_stg.X)
-        ilp_sol[s] = s_val
+        ilp_sol[s] = int(s_val)
 
     for i in ilp_vars_ints:
         i_val = 0

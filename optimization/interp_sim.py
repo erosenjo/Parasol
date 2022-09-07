@@ -179,7 +179,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
         num_stg = int(f.readline())
 
     if num_stg > 12:
-        return opt_info["optparams"]["maxcost"]
+        return -1   # this is signal that we used too many stages, NOTE: no valid cost should ever produce -1
+        #return opt_info["optparams"]["maxcost"]
         #return 1 # miss rate of 100%
         #return float('inf')
 
