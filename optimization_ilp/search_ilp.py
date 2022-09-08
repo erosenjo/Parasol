@@ -9,12 +9,12 @@ import json
 #   deps????
 #   assume 1 reg array per stg?
 #   constraints assume 32 bit regs
-#   CLOSEST POWER OF 2: we can't enforce sol is power of 2 for ints, so we'll round down to closest power of 2 (if we round up, we could use more mem than avail)
 
 # changes from original:
 #   remove phv/metadata constraint
 #   remove tcam constraints
 #   ignoring stateful alu constraint (hashes more limited?)
+#   change memory variables (add variable to enforce equality)
 
 # starflow:
 #   vars: s_slots (cols), l_slots (cols), num_long (rows), max_short_idx (rows - 1)
@@ -40,7 +40,7 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
     # Model
     solver = Model("solver")
 
-    # int vars represent length of reg array (e.g., cols)
+    # int vars represent width of reg array (e.g., cols)
     # size vars represent number of reg arrays (e.g., rows)
     # VARIABLES
     # we create vars for both the consts and ones we solve for
@@ -48,8 +48,8 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
     # variables for each reg_array, stg pair
     #   value should be num of reg arrays in each stg
     # variables for each reg_array_size, stg pair
-    #   value should be mem used by single reg array in that stg (???)
-    # NOTE: using intvar bc numvar is continuous var (we can't have floats)
+    #   value should be mem used by single reg array in that stg (0 if reg array not in that stg)
+    # variable for width of ^ reg arrays (to ensure that they're all equal size)
     const_vars_sizes = {}
     const_vars_ints = {}
     vars_int_size_groups = {} # keep track of which sizes/ints go together
@@ -92,7 +92,7 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
         solver.addConstr(quicksum(const_vars_sizes[size_name]) == size_val)
         #solver.Add(sum(const_vars_sizes[size_name]) == size_val)        
 
-    # VARIABLES (not constant)
+    # VARIABLES (not constant, these are what we're solving for)
     ilp_vars_sizes = {}
     ilp_vars_ints = {}
     for var_group in ilp_vars:
@@ -105,6 +105,7 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
         ilp_vars_sizes[size_name] = []
         ilp_vars_ints[int_name] = []
 
+        # using this variable to ensure all reg arrays are equal width
         ilp_width_var = solver.addVar(lb=0, ub=total_mem, vtype=GRB.INTEGER, name=int_name)
 
         for n in range(num_stgs):
@@ -112,37 +113,23 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
             ilp_vars_sizes[size_name].append(solver.addVar(vtype=GRB.BINARY, name=size_name+","+str(n)))
             stages_vars_sizes[n] = stages_vars_sizes[n] + [ilp_vars_sizes[size_name][-1]]
 
-            # int vars
+            # int (symbolic) vars
             ilp_vars_ints[int_name].append(solver.addVar(lb=0, ub=total_mem, vtype=GRB.INTEGER, name=int_name+","+str(n)))
             stages_vars_ints[n] = stages_vars_ints[n] + [ilp_vars_ints[int_name][-1]]
-            # add constr that arrays not placed have width=0 
-            #solver.addConstr(ilp_vars_ints[int_name][-1] <= ilp_vars_sizes[size_name][-1]*total_mem)
-            # add constr that placed arrays have width > 0
-            #solver.addConstr(ilp_vars_ints[int_name][-1] >= ilp_vars_sizes[size_name][-1])
 
-            # add constr that this equals size * int
+            # add constr that this equals size * int (aka make sure all reg arrays are same width, or 0)
+            # if reg not placed in stage n, int var = 0 * ilp_width_var
+            # else, int var = ilp_width_var
             solver.addConstr(ilp_vars_ints[int_name][-1] == ilp_vars_sizes[size_name][-1]*ilp_width_var)
 
         # add constr that we at least reach lower bound for size var
         solver.addConstr(quicksum(ilp_vars_sizes[size_name]) >= size_lb)
 
         # add constr that size is < ub, if it exists
+        # NOTE: we dynamically add upper bounds; if sol uses too many stages, go back to ilp with (tighter) upper bound
         if "ub" in var_group["size"]:
             solver.addConstr(quicksum(ilp_vars_sizes[size_name]) <= var_group["size"]["ub"])
 
-
-        # add constr so that regs have the same size
-        # here's how we do this:
-        #   we assume that we have to place AT LEAST one reg array
-        #   width of an array * indicator of first array == width of first array * indicator of array
-        # if we don't place array, it's 0; otherwise it equals width of first array
-        '''
-        for var in range(len(ilp_vars_ints[int_name])):
-            #ind = ilp_vars_ints[int_name].index(var)
-            if var == 0:
-                continue
-            solver.addConstr(ilp_vars_ints[int_name][var]*ilp_vars_sizes[size_name][0] == ilp_vars_ints[int_name][0]*ilp_vars_sizes[size_name][var])
-        '''
 
     # CONSTRAINTS
     # num hashes per stage < hashes
@@ -155,13 +142,12 @@ def solve(num_stgs, total_mem, hashes, ilp_vars, const_vars):
         solver.addConstr(quicksum(stg) <= total_mem)
 
     # simple test objective function
-    # TODO: specific to starflow
+    # TODO: this is specific to starflow; should user specify this?
     solver.setObjective(quicksum(ilp_vars_ints["L_SLOTS"]), GRB.MAXIMIZE)
     solver.optimize()
 
 
     # NOTE: for each int var, we're rounding down to nearest power of 2
-
     ilp_sol = {}
 
     print('Solution:')
