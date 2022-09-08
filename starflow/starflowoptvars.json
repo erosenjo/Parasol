@@ -1,35 +1,36 @@
 {
     "symbolicvals" : {
-	"sizes": {
+    "sizes": {
         "max_short_idx" : 2,
-	    "num_long" : 4,
-	    "log_s_slots" : 13,
-	    "log_l_slots" : 12
-	},
-	"symbolics": {
-	    "S_SLOTS" : 8192,
-	    "L_SLOTS" : 32
-	},
+        "num_long" : 4,
+        "log_s_slots" : 13,
+        "log_l_slots" : 12
+    },
+    "symbolics": {
+        "S_SLOTS" : 8192,
+        "L_SLOTS" : 32
+    },
     "logs": {
-	    "log_s_slots" : "S_SLOTS",
-	    "log_l_slots": "L_SLOTS"
-	},
+        "log_s_slots" : "S_SLOTS",
+        "log_l_slots": "L_SLOTS"
+    },
     "bounds" : {
         "num_long" : [5,8],
         "max_short_idx" : [1, 3],
-	    "S_SLOTS" : [64, 8192],
-	    "L_SLOTS" : [32, 4096]
+        "S_SLOTS" : [64, 8192],
+        "L_SLOTS" : [32, 4096]
     }
     },
     "optparams": {
-	"optalgo" : "simannealing",
-	"stop_iter" : 1,
-	"temp" : 10,
-	"stepsize": {
-	   "max_short_idx" : 1,
-	   "num_long" : 1,
-	   "S_SLOTS" : 1000,
-	   "L_SLOTS" : 200
+    "optalgo" : "random",
+    "stop_iter" : 100,
+    "temp" : 10,
+    "maxcost" : 100,
+    "stepsize": {
+       "max_short_idx" : 1,
+       "num_long" : 1,
+       "S_SLOTS" : 1000,
+       "L_SLOTS" : 200
     }
     },
     "symfile" : "starflow.symb",

@@ -1,0 +1,64 @@
+{
+    "symbolicvals" : {
+	"sizes": {
+        "max_short_idx" : 2,
+	    "log_s_slots" : 13,
+	    "log_l_slots" : 12
+	},
+	"symbolics": {
+	    "S_SLOTS" : 8192
+	},
+    "logs": {
+	    "log_s_slots" : "S_SLOTS",
+	    "log_l_slots": "L_SLOTS"
+	},
+    "bounds" : {
+        "max_short_idx" : [1, 5],
+	    "S_SLOTS" : [64, 16384]
+    },
+    "ilp_vars" : [
+        {
+            "int": {
+                "name": "L_SLOTS",
+                "lb" : 32
+            },
+            "size": {
+                "name": "num_long",
+                "lb": 3
+            }
+        }
+    ],
+    "const_vars": [
+            {
+                "int": {
+                    "name": "S_SLOTS",
+                    "value": 8192
+                },
+                "size": {
+                    "name": "max_short_idx",
+                    "value": 2
+                }
+            }
+    ]
+    },
+    "optparams": {
+	"optalgo" : "random",
+	"stop_iter" : 100,
+	"temp" : 10,
+    "maxcost" : 1,
+	"stepsize": {
+	   "max_short_idx" : 1,
+	   "S_SLOTS" : 1000
+    }
+    },
+    "symfile" : "starflow.symb",
+    "lucidfile" : "starflow.dpt",
+    "outputfiles" : ["total.pkl"],
+    "stop_iter" : 1,
+    "optmodule" : "starflowopt",
+    "trafficpcap" : "univ1_pt1.pcap",
+    "num_stgs" : 12,
+    "total_mem" : 65536,
+    "hashes" : 4
+
+}
