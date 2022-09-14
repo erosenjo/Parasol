@@ -446,23 +446,40 @@ def exhaustive(symbolics_opt, opt_info, o):
             else:
                 symbolics_opt[sv] = v
 
-            # get cost
-            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
 
-            # if new cost < best, replace best (if stgs <= tofino)
-            if cost < best_cost:
-                best_cost = cost
-                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-                best_sols = [copy.deepcopy(symbolics_opt)]
-            elif cost == best_cost:
-                best_sols.append(copy.deepcopy(symbolics_opt))
+            # go through other vars, assuming only 2 for now
+            for sv2 in bounds:
+                if sv == sv2:
+                    continue
+                for v in range(bounds[sv2][0],bounds[sv2][1]+opt_info["optparams"]["stepsize"][sv2], opt_info["optparams"]["stepsize"][sv2]):
+                    # do corrections for powers of 2
+                    if sv2 in logvars:
+                        symbolics_opt[sv2]=closest_power(v)
+                    else:
+                        symbolics_opt[sv2] = v
+       
+                    if symbolics_opt in testing_sols:
+                        continue
+                    #print(symbolics_opt)
+           
+                    # get cost
+                    cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+                    #cost = 0
 
-            # save costs to write to file later
-            testing_sols.append(copy.deepcopy(symbolics_opt))
-            testing_eval.append(cost)
+                    # if new cost < best, replace best (if stgs <= tofino)
+                    if cost < best_cost:
+                        best_cost = cost
+                        # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+                        best_sols = [copy.deepcopy(symbolics_opt)]
+                    elif cost == best_cost:
+                        best_sols.append(copy.deepcopy(symbolics_opt))
+
+                    # save costs to write to file later
+                    testing_sols.append(copy.deepcopy(symbolics_opt))
+                    testing_eval.append(cost)
 
         # reset to starting before going to the next variable
-        symbolics_opt = starting
+        #symbolics_opt = starting
 
 
     with open('testing_sols_exhaustive.pkl','wb') as f:
