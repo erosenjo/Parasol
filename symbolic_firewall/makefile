@@ -6,7 +6,7 @@ SOURCE := stateful_firewall
 # compile lucid itself
 lucid: 
 	{ \
-	cd ../../lucid ;\
+	cd ../.. ;\
 	make ;\
 	cd - ;\
 	}
@@ -25,7 +25,7 @@ ccompile: lucid
 
 # compile Lucid to P4 with symbolics
 compile: lucid
-	../../lucid/dptc $(SOURCE).dpt ip_harness.p4 linker_config.json $(SOURCE)_build --symb $(SOURCE).symb --silent
+	../../dptc $(SOURCE).dpt $(SOURCE)_build --symb $(SOURCE).symb --silent
 
 # compile P4 to tofino
 assemble:

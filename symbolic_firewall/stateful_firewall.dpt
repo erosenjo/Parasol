@@ -64,10 +64,9 @@ const int TRUE = 1;
 const int FALSE = 0;
 const int<<8>> TOS_TRUSTED = 1;
 
-entry event ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos);
-event cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int fst_dst);
-exit event port_out (int<<9>> egr_port);
-exit event ip_out (int<<9>> egr_port, int src, int dst);
+entry event ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos);
+event cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int fst_dst);
+exit event port_out (int<<8>> egr_port);
 
 
 type stage = {
@@ -129,12 +128,14 @@ fun int hash_copy(int x) {
     return hash<<32>>(1, x);
 }
 
-handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) { 
+handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) { 
     count_data_packet();   
     int ts = Sys.time();
+    int<<8>> out_port = igr_port;
+    int<<8>> tos_cpy = tos;
     // case: ip pkt from trusted host. 
     // int<<8>> idx = hash<<8>>(size_to_int(7), src); // first index..
-    if (tos == TOS_TRUSTED) {
+    if (tos_cpy == TOS_TRUSTED) {
         //printf ("[LUCID] insert attempt (%d, %d)", src, dst);    
         int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
         int src_output = 1;
@@ -160,14 +161,14 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
         // if we found somewhere to put the key, we're done.
         if ((src_output == NULL) && (dst_output == NULL)) {
             insert_attempt(src, dst, true);
-            generate port_out(igr_port);
+            generate port_out(out_port);
             log_insert(src, dst, Sys.time());
         } else {
             // lock cuckoo semaphore
             int insert_pending = Array.update(cuckoo_insert_semaphore, 0, always_mem, NULL, always_new, TRUE);
             if (insert_pending == FALSE) {
                 //printf ("[LUCID] inserting key with cuckoo(%d, %d)", src_cpy, dst_cpy);
-                generate cuckoo_insert(igr_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
+                generate cuckoo_insert(out_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
             }
             else {
                 // lock failed. we did not authorize. 
@@ -198,7 +199,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
         if ((src_match == TRUE) && (dst_match == TRUE)) {
             //printf ("[LUCID] DECISION: permit");
             decide(src, dst, Sys.time(), true, len);
-            generate port_out(igr_port);
+            generate port_out(out_port);
         } else {
             //printf ("[LUCID] DECISION: drop");
             decide(src, dst, Sys.time(), false, len);
@@ -259,7 +260,7 @@ memop set_and_get_if_not_null(int memval, int inp, int unused) {
 
 
 
-handle cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int fst_dst) {
+handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int fst_dst) {
     count_recirc_packet();
     // a cuckoo insert is guaranteed to install (src, dst) into the first stage 
     // of the table. However, it might boot someone else out in the process, who then 
@@ -303,7 +304,8 @@ handle cuckoo_insert(int<<9>> port, int src, int dst, int ts, int fst_src, int f
 }
 
 
-event delete(int stage, int<<logentries>> idx, int elapsed_time) {
+event delete(int stage, int<<16>> idx_inp, int elapsed_time) {
+    int<<logentries>> idx = (int<<logentries>>) idx_inp;
     printf ("deleting fw[%d][%d] -- not accessed in %dns", stage, idx, elapsed_time);
     int cur_time = Sys.time();
     count_recirc_packet();
@@ -327,13 +329,14 @@ memop is_expired(int last_accessed, int cur_time) {
     }
 }
 
-event check_timeout(int<<logentries>> idx) {
+event check_timeout(int<<16>> idx_inp) {
+    int<<logentries>> idx = (int<<logentries>>) idx_inp;
     count_recirc_packet();
     int cur_time = Sys.time();
     int<<logentries>> idx_cpy = hash<<logentries>>(1, idx);
     int<<logentries>> next_idx = idx + 1;
     // Event.delay is bugged in backend, so only use with interp.
-    generate(Event.delay(check_timeout(next_idx), interscan_delay));
+    generate(Event.delay(check_timeout((int<<16>>)next_idx), interscan_delay));
     // if (next_idx == 0){
     //     generate(Event.delay(check_timeout(next_idx), interscan_delay));
     // } else{
@@ -343,15 +346,15 @@ event check_timeout(int<<logentries>> idx) {
     for (stage < stages) {
         int last_accessed = Array.get(fw_stages[stage]#tses, idx_cpy);
         int elapsed_time = cur_time - last_accessed; 
-        int timeout_flag = FALSE;
+        // int timeout_flag = FALSE;
         if ((elapsed_time > timeout) && (last_accessed != 0)) {
-            timeout_flag = TRUE;
+            generate delete(size_to_int(stage), (int<<16>>)idx, elapsed_time);            
+            // timeout_flag = TRUE;
         }
         // printf ("idx: %d cur_time: %d last_accessed: %d timeout_flag: %d", idx, cur_time, last_accessed, timeout_flag);
         // int timeout_flag = Array.getm(fw_stages[stage]#tses, idx_cpy, is_expired, cur_time);
-        if (timeout_flag == TRUE) {
-            generate delete(size_to_int(stage), idx, elapsed_time);            
-        }
+        // if (timeout_flag == TRUE) {
+        // }
     }
 }
 
