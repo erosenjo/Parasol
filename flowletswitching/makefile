@@ -1,16 +1,17 @@
 .PHONY: interp compile assemble test
+LUCID_DIR = /media/data/mh43/lucid
 
 # run interpreter
 interp: 
-	../../dpt --suppress-final-state flowletswitching.dpt
+	$(LUCID_DIR)/dpt --suppress-final-state flowletswitching.dpt
 
 # compile Lucid to P4
 compile: 
-	../../dptc flowletswitching.dpt ip_harness.p4 linker_config.json flowletswitching_build --symb flowletswitching.symb
+	$(LUCID_DIR)/dptc flowletswitching.dpt build --symb flowletswitching.symb --silent
 
 # compile P4 to tofino
 assemble:
-	cd flowletswitching_build; make build	 
+	cd build; make build	 
 
 # test P4 on the asic model
 test:

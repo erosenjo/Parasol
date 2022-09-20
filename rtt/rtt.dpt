@@ -38,7 +38,7 @@ global PairArray.t<<32>>[tables] pkt_tables = [PairArray.create(table_size) for 
 
 /* Events */
 entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp);
-exit event tcp_out(int<<1>> pkt_type, int rtt);
+exit event tcp_out(int<<1>> pkt_type, int rtt, int<<7>> dummy_bytes);
 exit event dropped();
 
 /* Externs */
@@ -168,7 +168,7 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
             log_test(ack_no,timestamp-rtt);
             log_rttsample(timestamp-rtt);
         }
-        generate tcp_out(0, timestamp-rtt);
+        generate tcp_out(0, timestamp-rtt, 0);
 
     } 
 else {
@@ -189,12 +189,12 @@ else {
         }
         //        if (rtt==0) { log_collision(); }
 
-        generate tcp_out(1, rtt);
+        generate tcp_out(1, rtt, 0);
     }
 
 
     // return computed RTT, to send to controller or do whatever
-    //generate tcp_out(pkt_type, rtt);
+    //generate tcp_out(pkt_type, rtt, 0);
 }
 
 

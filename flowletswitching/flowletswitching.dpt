@@ -22,7 +22,7 @@ global Array.t<<32>> saved_hops = Array.create(flowlets);
 
 /* events */
 entry event ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport, int<<16>> dstport, int<<8>> protocol, int<<16>> len);
-exit event ip_out(int<<9>> egress_port);
+exit event ip_out(int<<9>> egress_port, int<<7>> dummy_bytes);
 
 /* externs */
 //extern log_newflowlethop(int hop, bool thresh);	// count the number of flowlets sent across each path
@@ -81,7 +81,7 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     log_pkthop(egress_port, len);
 
-    generate ip_out(egress_port);
+    generate ip_out(egress_port, 0);
 
 }
 

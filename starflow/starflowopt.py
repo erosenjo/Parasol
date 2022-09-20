@@ -31,7 +31,8 @@ class Opt:
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
                 pktlen = pkt[IP].len
                 tos = pkt[IP].tos
-                args = [128, src_int, dst_int, pktlen, tos]
+                # adding 0 as dummy variable for byte alignment
+                args = [128, src_int, dst_int, pktlen, tos,0]
                 p = {"name":"ip_in", "args":args}
                 self.events.append(p)
                 if len(self.events) > 20000:
@@ -67,7 +68,9 @@ class Opt:
             json.dump(info, f, indent=4)
 
 
-
+#o = Opt("univ1_pt1.pcap")
+#o.gen_traffic()
+#o.init_iteration({})
 
 
 

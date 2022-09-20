@@ -1,17 +1,19 @@
 .PHONY: interp compile assemble test
+LUCID_DIR = /media/data/mh43/lucid
+
 
 # run interpreter
 interp: 
-	../../dpt --suppress-final-state cms_sym.dpt
+	$(LUCID_DIR)/dpt --suppress-final-state cms_sym.dpt
 
 # compile Lucid to P4
 compile: 
-	../../dptc cms_sym.dpt ip_harness.p4 linker_config.json cms_sym_build --symb cms_sym.symb
+	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb --silent
 
 # compile P4 to tofino
 assemble:
-	cd cms_sym_build; make build	 
+	cd build; make build	 
 
 # test P4 on the asic model
 test:
-	cd cms_sym_build; make test ../cms_sym.json
+	cd build; make test ../cms_sym.json

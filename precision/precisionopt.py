@@ -32,7 +32,7 @@ class Opt:
         info["max time"] = 9999999
         info["default input gap"] = 10
         info["random seed"] = 0
-        info["python file"] = "precisionrand.py"
+        info["python file"] = "precision.py"
 
         counts = {}
         events = []
@@ -46,9 +46,8 @@ class Opt:
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
                 sport = pkt[TCP].sport
                 dport = pkt[TCP].dport
-                # getting int value of flags
-                # this is so annoying is there a better way?
-                args = [src_int, dst_int, sport, dport, 0,0]
+                # adding last 0 as dummy value for byte alignment 
+                args = [src_int, dst_int, sport, dport, 0,0,0]
                 p = {"name":"ip_in", "args":args}
                 events.append(p)
 
@@ -64,7 +63,7 @@ class Opt:
 
 
         info["events"] = events
-        with open('precisionrand.json', 'w') as f:
+        with open('precision.json', 'w') as f:
             json.dump(info, f, indent=4)
 
 

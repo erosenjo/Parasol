@@ -5,7 +5,8 @@ from optalgos import *
 def interp_sim(lucidfile,outfiles):
     # run the interpreter
     #cmd = ["../../dpt", "--suppress-final-state", lucidfile]
-    cmd = ["../../lucid/dpt", "--suppress-final-state", lucidfile]
+    #cmd = ["../../lucid/dpt", "--suppress-final-state", lucidfile]
+    cmd = ["make", "interp"]
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
     ret = subprocess.run(cmd)
@@ -165,8 +166,11 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
 
     #cmd = ["../../lucid/dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
 
-    cmd = ["../../lucid/dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-
+    # OLD LUCID COMPILATION
+    #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    # NEW LUCID COMPILATION
+    #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "build", "--symb", opt_info["symfile", "--silent"]
+    cmd = ["make", "compile"]
 
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
@@ -175,6 +179,7 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
         print("err")
         quit()
     num_stg = 0
+    # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
     with open('build/num_stages.txt') as f:
         num_stg = int(f.readline())
 

@@ -50,8 +50,8 @@ and compile-time loops to calculate the modulo. Something like this:
 */
 
 
-entry event ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>> tos);
-exit event ip_out (int<<9>> egr_port, int src, int dst);
+entry event ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>> tos, int<<7>> dummy_bytes);
+exit event ip_out (int<<9>> egr_port, int src, int dst, int<<7>> dummy_bytes);
 
 
 // records that the cache emits when something gets evicted. 
@@ -61,7 +61,7 @@ event long_record(int src, int len, int[num_short] short_recs, int[num_long] lon
 
 
 // free a "long slot" by pushing it's index back onto the stack. 
-event free_block(int block_id, int<<log_l_slots>> h2);
+event free_block(int block_id, int<<16>> h2_align);
 
 global Array.t<<32>> srcarr = Array.create(S_SLOTS);
 global Array.t<<32>> ctarr = Array.create(S_SLOTS);
@@ -160,7 +160,7 @@ memop idx_update(int stored, int unused1, int unused2) {
   }
 }
 
-handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>> tos) {  
+handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>> tos, int<<7>> dummy_bytes) {  
   int len = (int<<32>>) len_short;
   int ct  = 0; int idx = 0; int oldct = 0;// idx = (count % num_rec_slots);
 
@@ -172,6 +172,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
   // hardcoding polynomial for now 
   int<<log_s_slots>> h1 = hash<<log_s_slots>>(23, src); 
   int<<log_l_slots>> h2 = hash<<log_l_slots>>(23, src);
+  int<<16>> h2_align = (int<<16>>) h2;
 
   // Collision and bookkeeping logic.
   int is_match = Array.update(srcarr, h1, sub, src, write, src);
@@ -222,7 +223,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
     // then we recirculate to free the long array slot
     if (is_match != match_flag) {
     if (oldct != 0) {    // not a first pkt
-          generate free_block(blk_id, h2);
+          generate free_block(blk_id, h2_align);
     }
     }
   }
@@ -271,7 +272,9 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
 // block_ids range from 1-L_SLOTS
 // we leave slot at index 0 empty bc 0 tells us we have no more blocks left
 // (aka, the number of blocks we have is L_SLOTS - 1)
-handle free_block(int block_id, int<<log_l_slots>> h2) {
+handle free_block(int block_id, int<<16>> h2_align) {
+  // byte-alignment
+  int<<log_l_slots>> h2 = (int<<log_l_slots>>) h2_align;
   // get a pointer to an unused slot in the free stack.
   int stack_idx = Array.update(stack_top, 0, incr, 1, incr, 1);
   //int stack_idx = Array.update(stack_top, 0, read, 0, incr, 1);

@@ -45,7 +45,8 @@ class Opt:
                     continue
                 src_int = int(hexadecimal(pkt[IP].src),0)
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
-                args = [128, src_int, dst_int]
+                # 0 as dummy argument, for byte-alignment
+                args = [128, src_int, dst_int, 0]
                 p = {"name":"ip_in", "args":args}
                 events.append(p)
                 if str(src_int)+str(dst_int) not in self.ground_truth:
@@ -62,10 +63,12 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].src),0))
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
-                if len(events) > 100000:
+                if len(events) >= 500000:
                     break
 
 
+        print("PACKETS:",len(events))
+        print("FLOWS:",len(self.ground_truth))
 
         testinfo["packets"] = infopkts
         testinfo["model-output"]=[]
@@ -104,7 +107,7 @@ class Opt:
 
 
 
-o = Opt("univ1_pt1.pcap")
-o.gen_traffic()
+#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+#o.gen_traffic()
 #m = [pickle.load(open('test.txt','rb'))]
 #o.calc_cost(m)

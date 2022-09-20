@@ -1,17 +1,18 @@
 .PHONY: interp compile assemble test
+LUCID_DIR = /media/data/mh43/lucid
 
 # run interpreter
 interp: 
-	../../dpt --suppress-final-state hash.dpt 
+	$(LUCID_DIR)/dpt --suppress-final-state hash.dpt 
 
 # compile Lucid to P4
 compile: 
-	../../dptc hash.dpt ip_harness.p4 linker_config.json hash_build --symb hash.symb 
+	$(LUCID_DIR)/dptc hash.dpt build --symb hash.symb --silent 
 
 # compile P4 to tofino
 assemble:
-	cd hash_build; make build	 
+	cd build; make build	 
 
 # test P4 on the asic model
 test:
-	cd hashmodule_build; make test ../hashmodule_test.json
+	cd build; make test ../hashmodule_test.json

@@ -30,11 +30,11 @@ global Cache.t<<logentries,tables,logcols,rows>> c = Cache.create(entries,cols);
 
 
 /* events */
-entry event ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp);
+entry event ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes);
 exit event ip_out();
 
 /* handler */
-handle ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp) {
+handle ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) {
 /*
     //min_stg = Cache.cache(c,key,insert,min_stg,cacheval);
     //min_stg = Cmscache.cache(pc,key,insert,min_stg,cacheval);
@@ -43,12 +43,12 @@ handle ip_in(int key, int<<1>> insert, int min_stg, int cacheval, int timestamp)
         generate ip_out();
     }
     else {
-        generate ip_in(key, 1, min_stg, key);
+        generate ip_in(key, 1, min_stg, key, 0);
     }
 */
 
 
-    Cache.cache(c,key,insert,min_stg,cacheval,timestamp);
+    Cache.cache(c,key,insert,min_stg,cacheval,timestamp, 0);
 //    Cmscache.cache(pc,key,insert,min_stg,cacheval,timestamp);
     generate ip_out();
 
