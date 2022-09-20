@@ -78,7 +78,7 @@ def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
         new_vars[var] = randint(bounds[var][0],bounds[var][1])
     return new_vars
 
-def random_opt(symbolics_opt, opt_info, o):
+def random_opt(symbolics_opt, opt_info, o, timetest):
     iterations = 0
     # init best solution as starting, and best cost as inf
     best_sols = [copy.deepcopy(symbolics_opt)]
@@ -123,51 +123,52 @@ def random_opt(symbolics_opt, opt_info, o):
                 break
 
 
-        # TIME CHECK (save sols/costs we've evaled up to this point)
         curr_time = time.time()
-        # 5 min (< 10)
-        if 300 <= (curr_time - start_time) < 600:
-            with open('5min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('5min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 10 min (< 30)
-        if 600 <= (curr_time - start_time) < 1800:
-            with open('10min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('10min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 30 min
-        if 1800 <= (curr_time - start_time) < 2700:
-            with open('30min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('30min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 45 min
-        if 2700 <= (curr_time - start_time) < 3600:
-            with open('45min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('45min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 60 min
-        if 3600 <= (curr_time - start_time) < 5400:
-            with open('60min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('60min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 90 min
-        if 5400 <= (curr_time - start_time) < 7200:
-            with open('90min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('90min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 120  min (end)
-        if 7200 <= (curr_time - start_time):
-            with open('120min_testing_sols_rand.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('120min_testing_eval_rand.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-            break
+        # TIME TEST (save sols/costs we've evaled up to this point)
+        if timetest:
+            # 5 min (< 10)
+            if 300 <= (curr_time - start_time) < 600:
+                with open('5min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('5min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 10 min (< 30)
+            if 600 <= (curr_time - start_time) < 1800:
+                with open('10min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('10min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 30 min
+            if 1800 <= (curr_time - start_time) < 2700:
+                with open('30min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('30min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 45 min
+            if 2700 <= (curr_time - start_time) < 3600:
+                with open('45min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('45min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 60 min
+            if 3600 <= (curr_time - start_time) < 5400:
+                with open('60min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('60min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 90 min
+            if 5400 <= (curr_time - start_time) < 7200:
+                with open('90min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('90min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 120  min (end)
+            if 7200 <= (curr_time - start_time):
+                with open('120min_testing_sols_rand.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('120min_testing_eval_rand.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+                break
 
 
         # get cost
@@ -180,10 +181,12 @@ def random_opt(symbolics_opt, opt_info, o):
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cost)
 
+        '''
         with open('running_testing_sols_rand.pkl','ab+') as f:
             pickle.dump(symbolics_opt,f)
         with open('running_testing_eval_rand.pkl','ab+') as f:
             pickle.dump(symbolics_opt,f)
+        '''
 
         # if new cost < best, replace best (if stgs <= tofino)
         if cost < best_cost:
@@ -219,7 +222,7 @@ def random_opt(symbolics_opt, opt_info, o):
 #   if the var has large search space, probably want larger step size
 #   step size is std dev --> 99% of all steps w/in 3*stepsize of curr var val
 #   ^ not exactly true, bc we have to do some rounding (can't have floats)
-def simulated_annealing(symbolics_opt, opt_info, o):
+def simulated_annealing(symbolics_opt, opt_info, o, timetest):
     temp = opt_info["optparams"]["temp"]
     bounds = opt_info["symbolicvals"]["bounds"]
     step_size = opt_info["optparams"]["stepsize"]
@@ -268,51 +271,52 @@ def simulated_annealing(symbolics_opt, opt_info, o):
             if (time.time()-start_time) >= opt_info["optparams"]["stop_time"]:
                 break
 
-        # TIME CHECK (save sols/costs we've evaled up to this point)
         curr_time = time.time()
-        # 5 min (< 10)
-        if 300 <= (curr_time - start_time) < 600:
-            with open('5min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('5min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 10 min (< 30)
-        if 600 <= (curr_time - start_time) < 1800:
-            with open('10min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('10min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 30 min
-        if 1800 <= (curr_time - start_time) < 2700:
-            with open('30min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('30min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 45 min
-        if 2700 <= (curr_time - start_time) < 3600:
-            with open('45min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('45min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 60 min
-        if 3600 <= (curr_time - start_time) < 5400:
-            with open('60min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('60min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 90 min
-        if 5400 <= (curr_time - start_time) < 7200:
-            with open('90min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('90min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-        # 120  min (end)
-        if 7200 <= (curr_time - start_time):
-            with open('120min_testing_sols_sa.pkl','wb') as f:
-                pickle.dump(testing_sols,f)
-            with open('120min_testing_eval_sa.pkl','wb') as f:
-                pickle.dump(testing_eval,f)
-            break
+        # TIME TEST (save sols/costs we've evaled up to this point)
+        if timetest:
+            # 5 min (< 10)
+            if 300 <= (curr_time - start_time) < 600:
+                with open('5min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('5min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 10 min (< 30)
+            if 600 <= (curr_time - start_time) < 1800:
+                with open('10min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('10min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 30 min
+            if 1800 <= (curr_time - start_time) < 2700:
+                with open('30min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('30min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 45 min
+            if 2700 <= (curr_time - start_time) < 3600:
+                with open('45min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('45min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 60 min
+            if 3600 <= (curr_time - start_time) < 5400:
+                with open('60min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('60min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 90 min
+            if 5400 <= (curr_time - start_time) < 7200:
+                with open('90min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('90min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+            # 120  min (end)
+            if 7200 <= (curr_time - start_time):
+                with open('120min_testing_sols_sa.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
+                with open('120min_testing_eval_sa.pkl','wb') as f:
+                    pickle.dump(testing_eval,f)
+                break
 
 
         # if we're choosing between structs, random step for choice is coin toss
@@ -411,7 +415,7 @@ def basin_hopping(symbolics_opt, opt_info, o):
 # start from lower bound and go until upper bound
 # keep all variables but 1 static, do for all vars
 # note that this is impractical and shouldn't actually be used for optimization
-def exhaustive(symbolics_opt, opt_info, o):
+def exhaustive(symbolics_opt, opt_info, o, timetest):
     logvars = opt_info["symbolicvals"]["logs"].values()
 
     # the starting solution values are what we use when we keep a variable static

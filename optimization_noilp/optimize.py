@@ -1,10 +1,10 @@
-import time, importlib
+import time, importlib, argparse
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
 
-def init_opt():
+def init_opt(optfile):
     # import json file
-    opt_info = json.load(open(sys.argv[1]))
+    opt_info = json.load(open(optfile))
 
     # import opt class that has funcs we need to get traffic, cost
     optmod = importlib.import_module(opt_info["optmodule"])
@@ -30,14 +30,22 @@ def init_opt():
 
 # usage: python3 optimize.py <json opt info file>
 def main():
+    parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python")
+    parser.add_argument("optfile", metavar="optfile", help="name of json file with optimization info")
+    parser.add_argument("--timetest", help="time test, output results at benchmark times", action="store_true")
+    args = vars(parser.parse_args())
+
+    '''
     if len(sys.argv) < 2:
         print("usage: python3 optimize.py <json opt info file>")
         quit()
-    opt_info = json.load(open(sys.argv[1]))
+    '''
+
+    #opt_info = json.load(open(args["optfile"]))
     #print(opt_info)
 
     # initialize everything we need to run opt algo
-    opt_info,symbolics_opt, o = init_opt()
+    opt_info,symbolics_opt, o = init_opt(args["optfile"])
 
     # optimize!
     start_time = time.time()
@@ -50,13 +58,13 @@ def main():
 
 
     elif opt_info["optparams"]["optalgo"] == "random":    # if not using own, should for sure have optalgo field
-        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o)
+        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o, args["timetest"])
 
     elif opt_info["optparams"]["optalgo"] == "simannealing":
-        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o)
+        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args["timetest"])
 
     elif opt_info["optparams"]["optalgo"] == "exhaustive":
-        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o)
+        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args["timetest"])
 
     end_time = time.time()
     # write symb with final sol
