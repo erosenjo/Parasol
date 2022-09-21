@@ -3,6 +3,11 @@
 // qdelay is time pkt spent in queue (we can get this from metadata in p4) 
 // this happens in egress pipeline, but for sake of interpreter we're doing in ingress and appending simulated q info to packet
 
+// SUPER IMPORTANT NOTE: T is not actually 2^LOG_CQ_T, instead T = LOG_CQ_H - 1
+//  this was a consequence of working around some lucid quirks
+//  TODO: check if still necessary
+
+
 // T, C are constants that we know at compile time
 // h = 4 # snaps
 //const int C = 128;	// cols in snapshot
