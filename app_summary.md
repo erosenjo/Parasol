@@ -36,11 +36,12 @@ Simple sketch for identifying heavy hitters. Can include timeout/count threshold
 ### parameters
 - rows (+)
 - columns (+)
-###optimization objective/measurement:
+### optimization objective/measurement:
 - minimize mean absolute error (record approximate count for each packet and ground truth counts)
 ### parameter search
 - for general heavy hitter identification app
 - max cols, then max rows (with fixed cols) --> cols affect error rate of sketch, rows affect confidence
+- (simple)
 ### performance
 - compile time: ~3s 
 - interpreter time: ~35s (500000 pkts, 55095 flows)
@@ -101,6 +102,7 @@ Simple multi-stage hash table. Assume entries are never evicted.
 ### optimization objective/measurement:
 - minimize number of collisions (extern that keeps counter of collisions)
 ### parameter search
+- (simple)
 ### performance
 
 
@@ -112,10 +114,11 @@ Heavy hitter detection. Implemented as a series of tables that store flow key an
 ### optimization objective/measurement:
 - minimize mean absolute error (same as cms)
 ### parameter search
-- max out tables (most limited, can't have 2 tables in same stg), then max out entries 
+- max out tables first? (most limited, can't have 2 tables in same stg), then entries (is it reasonable to assume programmer would know this?)
+- (simple)
 ### performance
 - compile time: ~4.5 min (MAT entries)
-- interpreter time:  >35 min(666096 pkts, flows) (recirculation) (externs!!!)
+- interpreter time:  ~4min (666096 pkts)
 
 ## [RTT](https://www.cs.princeton.edu/~xiaoqic/documents/paper-P4RTT-SPIN20.pdf)
 Measure rtt in the data plane. Store timestamp of syn packets and match with corresponding ack. Implemented as multi-stage hash table; lazily evict expired records.
