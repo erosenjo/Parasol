@@ -27,7 +27,8 @@ symbolic size log_l_slots;
 
 
 // calculated from symbolic variables. 
-size num_short = max_short_idx + 1; 
+//size num_short = max_short_idx + 1; 
+symbolic size num_short;
 const int max_idx = size_to_int(num_short + num_long) - 1;
 
 /* 
