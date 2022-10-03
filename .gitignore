@@ -16,7 +16,7 @@ build/
 *build*/
 nsdieval/
 
-# excluding conquest traces (att)
+# excluding conquest traces
 conquest/conquest.json
 conquest/old/nsdieval/conquestrand.json
 flowletswitching/flowletswitching.json
@@ -28,4 +28,5 @@ rtt/rtt.json
 precision/precision.json
 cms/old/nsdieval/cms_symrand.json
 starflow/starflow.json
+*_test.json
 

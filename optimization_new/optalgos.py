@@ -4,7 +4,7 @@ from interp_sim import gen_cost, compile_num_stages
 import numpy as np
 from scipy.optimize import basinhopping
 import pickle
-from search_ilp import solve
+#from search_ilp import solve
 from treelib import Node, Tree
 
 # CONSTANTS
@@ -534,6 +534,7 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info):
             if log2 and not ((v & (v-1) == 0) and v != 0):
                 continue
             tree.create_node((to_find[0],v), parent=root)
+        symbolics_opt[to_find[0]] = lb
         tree.show()
         # keep going if we have more variables (to_find[1:] not empty)
         if not to_find[1:]: # we're done! we've found all vars for this path
@@ -611,12 +612,11 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning):
 
     print("UB+PRUNE TIME:", time.time()-opt_start_time)
 
+    print("TOTAL SOLS:", len(solutions))
     #print(sols_by_mem.keys())
     #print("MAX MEM", max(list(sols_by_mem.keys())))
-    #print("MAX MEM SOLS", sols_by_mem[max(list(sols_by_mem.keys()))])
+    print("MAX MEM SOLS", sols_by_mem[max(list(sols_by_mem.keys()))])
 
-    exit()
-   
     # run interpreter on ones w/ most memory first, then maybe next highest???
     # STEP 3: run interpreter to get cost, optimize for non-resource parameters
     # search through that parameter space, using interpreter to get cost

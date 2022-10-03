@@ -1,0 +1,34 @@
+{
+    "symbolicvals" : {
+    "sizes": {
+        "logentries": 8,
+        "tables": 3
+    },
+    "symbolics": {
+        "entries": 8192
+
+    },
+    "logs" : {
+        "logentries": "entries"
+    },
+    "bounds" : {
+        "tables" : [1,5],
+        "entries" : [128, 16384]
+    }
+    },
+    "optparams": {
+        "optalgo" : "simannealing",
+        "stop_iter" : 20,
+        "temp" : 10,
+        "stepsize": {
+            "tables": 1,
+            "entries": 2000
+        }
+    },
+    "symfile" : "precision.symb",
+    "lucidfile" : "precision.dpt",
+    "outputfiles" : ["counts.pkl"],
+    "optmodule" : "precisionopt",
+    "trafficpcap" : "univ1_pt1.pcap"
+
+}

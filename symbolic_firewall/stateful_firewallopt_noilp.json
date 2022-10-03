@@ -1,0 +1,39 @@
+{
+    "symbolicvals" : {
+    "sizes": {
+        "logentries": 4,
+        "stages":2
+    },
+    "symbolics": {
+        "entries": 128,
+        "timeout" : 100000000,
+        "interscan_delay" : 10000000
+    },
+    "logs" : {
+        "logentries" : "entries"
+    },
+    "bounds" : {
+        "stages": [2,2],
+        "entries": [32, 1024],
+        "timeout": [1000000,1000000000],
+        "interscan_delay" : [1000000,1000000000]
+    }
+    },
+    "optparams": {
+        "optalgo" : "random",
+        "stop_iter" : 100,
+        "temp" : 10,
+        "stepsize": {
+            "stages": 1,
+	        "entries": 512,
+            "timeout": 100000000,
+            "interscan_delay": 100000000
+        }
+    },
+    "symfile" : "stateful_firewall.symb",
+    "lucidfile" : "stateful_firewall.dpt",
+    "outputfiles" : ["stateful_firewall_out_trace.pkl"],
+    "optmodule" : "stateful_firewallopt",
+    "trafficpcap" : "univ1_pt1.pcap"
+
+}
