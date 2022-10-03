@@ -450,40 +450,72 @@ def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory):
         symbolics_opt[var_to_opt] = 1
     '''
 
-    # while we're using < 12 stages, compile, increase val (if it's not memory)
-    # if it's memory, do the reverse: compile, decrease val if using > 12 stgs
+    # while we're using < 12 stages, compile, increase val
+    # note that we could save time by doing the reverse for memory vals (bc we have hard upper bound)
+    # HOWEVER, we wouldn't know how many stgs each value uses if we do the reverse (start at upper bound, stop once stgs <=12)
+    # (this is bc we wouldn't compile for memory vals < upper bound, we'd stop once we hit 12 stgs)
+    # NOTE: we keep compiling once we hit stgs = 12 bc we could add more resources without using more stgs
+    # (this happens specifically w/ memory vars, but maybe could happen with others?) 
+    best_stgs = {}   # stgs used by each solution we try
     while True:
+        print("SYM COMPILING:", symbolics_opt)
         # compile it and get num stages used
         stgs_used = compile_num_stages(symbolics_opt, opt_info)
         # incr if we still have more stages to use
         if stgs_used == 0:   # this should only happen if there's no num_stages.txt file, or the program actually doesn't use any stages (which indicates an error somewhere)
             sys.exit("lucid to p4 compiler returned 0 stages used")
-        elif stgs_used < 12: # keep going! we have more resources to use
+        elif stgs_used <= 12: # keep going! we (potentially) have more resources to use
+            '''
             # if this is a memory variable, we only hit this case if the next highest value returns > 12 stgs
             # so this is the best option without going over
             if memory:
-                return symbolics_opt[var_to_opt]
+                best_stgs[symbolics_opt[var_to_opt]] = stgs_used
+                return symbolics_opt[var_to_opt], best_stgs
             # otherwise, we can keep going
+            '''
+            # if this is a memory var, then check if we've reached resource upper bound
+            # if yes, then stop bc we can't fit more onto the pipeline
             # if we need log2 of this number, then just go to next multiple of 2
             if log2:
+                best_stgs[symbolics_opt[var_to_opt]] = stgs_used
+                if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2:
+                    return symbolics_opt[var_to_opt], best_stgs
                 symbolics_opt[var_to_opt] *= 2
             else:
+                best_stgs[symbolics_opt[var_to_opt]] = stgs_used
+                if memory and symbolics_opt[var_to_opt] == single_stg_mem:
+                    return symbolics_opt[var_to_opt], best_stgs
                 symbolics_opt[var_to_opt] += 1
-        elif stgs_used == 12:    # we hit the limit, this is the value we're using
-            return symbolics_opt[var_to_opt]
+
         else:   # stages > 12, using too many stgs so go back to the previous value we tried
+            '''
             # if memory, we need to decrease and try again (bc working backwards from upper bound)
             # TODO: this assumes memory has to be power of 2 --> what to decrease by if not?
             if memory:
                 symbolics_opt[var_to_opt] //= 2
                 continue
+            '''
             # if this is supposed to be multiple of 2, then divide
             if log2:
                 symbolics_opt[var_to_opt] //= 2
             # otherwise, just decrement
-            else: 
+            else:
                 symbolics_opt[var_to_opt] -= 1
-            return symbolics_opt[var_to_opt]
+            return symbolics_opt[var_to_opt], best_stgs
+
+        '''
+        elif stgs_used == 12:    # we hit the limit, this is the value we're using for upper bound
+            best_stgs[symbolics_opt[var_to_opt]] = stgs_used
+            # if it's memory, we still want to keep going until we either hit ub or stgs > 12
+            if memory and log2 and symbolics_opt[var_to_opt] < single_stg_mem_log2:
+                symbolics_opt[var_to_opt] *= 2
+                continue
+            elif memory and not log2 and symbolics_opt[var_to_opt] < single_stg_mem:
+                symbolics_opt[var_to_opt] += 1
+                continue
+            # if it's not memory, return the upper bound
+            return symbolics_opt[var_to_opt], best_stgs
+        '''
 
 
 # TODO: is this stupid? is there a better way to do this??? idk but i'm getting soooooo confused
@@ -515,25 +547,27 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info):
             log2 = True
             if lb < 2:  # if user gives us higher bound, don't overwrite it
                 lb = 2
-
+ 
         # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
         # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
+        # NOT starting from upper bound anymore; need to compile each solution to estimate stgs (starting at lb)
         if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
-            if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
-            else: symbolics_opt[to_find[0]] = single_stg_mem
-            ub = get_max_val(symbolics_opt,to_find[0], opt_info, log2, True)
+            #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
+            #else: symbolics_opt[to_find[0]] = single_stg_mem
+            symbolics_opt[to_find[0]] = lb
+            ub, stgs_used = get_max_val(symbolics_opt,to_find[0], opt_info, log2, True)
             #tree.create_node((to_find[0],ub), parent=root)
         else:
             # keep compiling until we hit max stgs, get ub 
             #print("FIND BOUNDS")
             symbolics_opt[to_find[0]] = lb
-            ub = get_max_val(symbolics_opt, to_find[0], opt_info, log2, False)
+            ub, stgs_used = get_max_val(symbolics_opt, to_find[0], opt_info, log2, False)
         # once we get the bounds, make a node for each possible value
         for v in range(lb, ub+1):
             # if we need multiple of 2, skip it if it's not
             if log2 and not ((v & (v-1) == 0) and v != 0):
                 continue
-            tree.create_node((to_find[0],v), parent=root)
+            tree.create_node([to_find[0],v,stgs_used[v]], parent=root)
         symbolics_opt[to_find[0]] = lb
         tree.show()
         # keep going if we have more variables (to_find[1:] not empty)
@@ -581,15 +615,15 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning):
 
     print("UPPER BOUND TIME:", time.time()-opt_start_time)    
 
-    # STEP 2: prune solutions found in step 1 by throwing out solutions that use less memory than other solutions
+    # STEP 2: prune solutions found in step 1 by throwing out solutions that use less resources (memory, stgs) than others
     # iterate through each path in tree
     # need a formula for calculating total memory = x * y + j * k
-    # once we calc total memory, remove solutions that are < max
+    # once we calc total resources, remove solutions that are < max
     # (NOTE: is there any case where < max is preffered?) (maybe keep a few that are the next closest?)
-    # TODO: sort by things other than memory? --> hash units, reg accesses?
-    # TODO: does this extend to all examples??
+    # TODO: sort by things other than memory --> hash units, reg accesses?
     solutions = bounds_tree.paths_to_leaves()
     sols_by_mem = {}
+    sols_by_stgs = {}
     mem_formula = opt_info["optparams"]["mem_formula"]
     for sol in solutions:
         mem_formula = opt_info["optparams"]["mem_formula"]
@@ -609,13 +643,24 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning):
             sols_by_mem[mem_usage] += [sol]
         else:
             sols_by_mem[mem_usage] = [sol]
+        # compute stg usage (num stgs at leaf)
+        stg_usage = bounds_tree.get_node(sol[-1]).tag[2]
+        if stg_usage in sols_by_stgs:
+            sols_by_stgs[stg_usage] += [sol]
+        else:
+            sols_by_stgs[stg_usage] = [sol]
 
     print("UB+PRUNE TIME:", time.time()-opt_start_time)
 
     print("TOTAL SOLS:", len(solutions))
     #print(sols_by_mem.keys())
     #print("MAX MEM", max(list(sols_by_mem.keys())))
-    print("MAX MEM SOLS", sols_by_mem[max(list(sols_by_mem.keys()))])
+    best_mem_sols = sols_by_mem[max(list(sols_by_mem.keys()))]
+    best_stgs_sols = sols_by_stgs[max(list(sols_by_stgs.keys()))]
+    print("MAX MEM SOLS", len(best_mem_sols))
+    print("MAX STGS SOLS", len(best_stgs_sols))
+    best_mem_stgs = [sol for sol in best_mem_sols if sol in best_stgs_sols]
+    print("OVERLAP SOLS (MEM+STGS)", len(best_mem_stgs))
 
     # run interpreter on ones w/ most memory first, then maybe next highest???
     # STEP 3: run interpreter to get cost, optimize for non-resource parameters
