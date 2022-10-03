@@ -1,0 +1,56 @@
+{
+    "symbolicvals" : {
+    "sizes": {
+        "logentries": 8,
+        "tables": 3,
+        "logcols": 7,
+        "rows": 2
+    },
+    "symbolics": {
+        "entries": 256,
+        "cols": 128,
+        "eviction": true,
+        "expire_thresh": 50000000,
+	"THRESH" : 50
+
+    },
+    "logs" : {
+        "logentries": "entries",
+        "logcols" : "cols"
+    },
+    "bounds" : {
+        "tables" : [1,12],
+        "entries" : [32, 131072],
+        "rows" : [1,12],
+        "cols" : [32, 131072],
+        "expire_thresh": [30000000,50000000],
+	"THRESH" : [1, 60]
+    }
+    },
+    "structchoice": {
+        "var": "eviction",
+        "False": ["rows", "cols", "logcols"]
+    },
+    "optparams": {
+        "optalgo" : "ordered",
+        "stop_time" : 8000,
+        "order_resource" : ["tables", "rows", "entries", "cols"],
+        "non_resource" : ["eviction", "expire_thresh", "THRESH"],
+        "mem_formula" : "(tables*entries) + (rows*cols)",
+        "temp" : 100,
+        "stepsize": {
+            "tables": 1,
+            "entries": 100,
+            "cols" : 5000,
+            "rows" : 2,
+            "expire_thresh": 10000000,
+	    "THRESH": 10
+        }
+    },
+    "symfile" : "caching.symb",
+    "lucidfile" : "caching.dpt",
+    "outputfiles" : ["misses.pkl"],
+    "optmodule" : "cacheopt",
+    "trafficpcap" : ""
+
+}
