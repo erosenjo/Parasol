@@ -13,15 +13,18 @@
         "logentries" : "entries"
     },
     "bounds" : {
-        "stages": [2,2],
-        "entries": [32, 1024],
+        "stages": [1,12],
+        "entries": [32, 131072],
         "timeout": [1000000,1000000000],
         "interscan_delay" : [1000000,1000000000]
     }
     },
     "optparams": {
-        "optalgo" : "random",
-        "stop_iter" : 100,
+        "optalgo" : "ordered",
+        "stop_time" : 8000,
+        "order_resource" : ["stages", "entries"],
+        "non_resource" : ["interscan_delay", "timeout"],
+        "mem_formula" : "stages * entries",
         "temp" : 10,
         "stepsize": {
             "stages": 1,

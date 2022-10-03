@@ -1,33 +1,36 @@
 {
     "symbolicvals" : {
-	"sizes": {
+	    "sizes": {
             "logcols": 5,
-	    "rows": 1
-	},
-	"symbolics": {
-	    "cols": 32
-	},
-	"logs" : {
-	    "logcols" : "cols"
-	},
-        "bounds" : {
-	    "rows" : [1,6],
-	    "cols" : [2, 8192]
-	}
+	        "rows": 1
+	    },
+	    "symbolics": {
+	        "cols": 32
+	    },
+	    "logs" : {
+	        "logcols" : "cols"
+	    },
+            "bounds" : {
+	        "rows" : [1,10],
+	        "cols" : [2, 65536]
+	    }
     },
     "optparams": {
+        "search" : "simple",
+        "order" : ["cols", "rows"],
         "optalgo" : "simannealing",
-	"stop_iter" : 20,
-	"temp" : 10,
-	"stepsize": {
-	    "cols" : 3000,
-	    "rows" : 2
-	}
+	    "stop_time" : 8000,
+	    "temp" : 10,
+        "maxcost" : 50000, 
+	    "stepsize": {
+	        "cols" : 3000,
+	        "rows" : 1
+	    }
     },
     "symfile" : "cms_sym.symb",
     "lucidfile" : "cms_sym.dpt",
     "outputfiles" : ["test.pkl"],
     "optmodule" : "cmsopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
 
 }

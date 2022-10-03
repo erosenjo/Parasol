@@ -11,23 +11,23 @@
 	    "log_flowlets" : "flowlets"
 	},
         "bounds" : {
-	    "flowlets" : [2,1024],
-	    "IPG_thresh" : [60000000, 60000000]
+	    "flowlets" : [2,65536],
+	    "IPG_thresh" : [1000000, 100000000]
 	}
     },
     "optparams": {
-    "optalgo" : "random",
+    "optalgo" : "exhaustive",
 	"stop_iter" : 20,
 	"temp" : 10,
 	"stepsize": {
-	    "flowlets" : 50,
-	    "IPG_thresh" : 1
+	    "flowlets" : 100,
+	    "IPG_thresh" : 1000000
 	}
     },
     "symfile" : "flowletswitching.symb",
     "lucidfile" : "flowletswitching.dpt",
     "outputfiles" : ["pkthops.pkl"],
     "optmodule" : "flowletswitchingopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
 
 }

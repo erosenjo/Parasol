@@ -16,16 +16,21 @@
         "LOG_CQ_C" : "C"
 	},
     "bounds" : {
-	    "H" : [4,8],
-	    "C" : [16, 512],
+        "H" : [4,32],
         "R" : [1,4],
-        "LOG_CQ_T" : [4,22],
-        "T" : [0,1]
-	}
+        "C" : [32, 131072],
+        "LOG_CQ_T" : [4,22]
+	},
+    "rules" : {
+        "T" : "LOG_CQ_H - 1"
+    }
     },
     "optparams": {
-    "optalgo" : "simannealing",
+    "optalgo" : "ordered",
 	"stop_iter" : 1,
+    "order_resource" : ["H", "R", "C"],
+    "non_resource" : ["LOG_CQ_T"],
+    "mem_formula" : "H*R*C",
 	"temp" : 10,
 	"stepsize": {
 	    "H" : 1,

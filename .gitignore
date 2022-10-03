@@ -6,6 +6,7 @@
 *.tar.gz
 *.tgz
 *.pkl
+*.txt
 
 __pycache__/
 *.py[cod]

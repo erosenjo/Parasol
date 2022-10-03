@@ -12,13 +12,16 @@
         "logentries": "entries"
     },
     "bounds" : {
-        "tables" : [1,5],
-        "entries" : [128, 16384]
+        "tables" : [1,12],
+        "entries" : [32, 131072]
     }
     },
     "optparams": {
-        "optalgo" : "simannealing",
-        "stop_iter" : 20,
+        "optalgo" : "ordered",
+        "stop_time" : 8000,
+        "order_resource" : ["tables", "entries"],
+        "non_resource" : [],
+        "mem_formula" : "tables * entries",
         "temp" : 10,
         "stepsize": {
             "tables": 1,

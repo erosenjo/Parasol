@@ -12,16 +12,17 @@
     },
     "bounds" : {
         "ENTRY_PROB_LOG2": [1,15],
-	    "fridge_size" : [128, 4096]
+	    "fridge_size" : [64, 65536]
     }
     },
     "optparams": {
-        "optalgo" : "simannealing",
+        "optalgo" : "exhaustive",
         "stop_iter" : 20,
         "temp" : 10,
+        "maxcost" : 10,
         "stepsize": {
             "ENTRY_PROB_LOG2": 1,
-	        "fridge_size": 500
+	        "fridge_size": 100
         }
     },
     "symfile" : "fridge.symb",
