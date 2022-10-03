@@ -1,5 +1,14 @@
 .PHONY: interp compile assemble test
 LUCID_DIR = /media/data/mh43/lucid
+OPT_DIR = /media/data/mh43/Lucid4All/optimization_noilp
+
+# run p4all optimizer
+optimize:
+	python3 $(OPT_DIR)/optimize.py cacheopt_full.json
+
+# run p4all optimizer, time test
+optimize_timetest:
+	python3 $(OPT_DIR)/optimize.py cacheopt_full.json --timetest
 
 # run interpreter
 interp: 

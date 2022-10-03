@@ -136,7 +136,7 @@ class Opt:
                     break
 
 
-        
+        print(len(gt))        
 
         info["events"] = events
         ecdf = ECDF([x/1000000 for x in gt])

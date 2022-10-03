@@ -78,13 +78,7 @@ def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
         new_vars[var] = randint(bounds[var][0],bounds[var][1])
     return new_vars
 
-def random_opt(symbolics_opt, opt_info, o, timetest):
-    # start w/ randomly chosen values
-    symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {})
-    #log_h = int(math.log2(symbolics_opt["H"]))
-    #symbolics_opt["T"] = log_h-1
-
-
+def random_opt(symbolics_opt, opt_info, o):
     iterations = 0
     # init best solution as starting, and best cost as inf
     best_sols = [copy.deepcopy(symbolics_opt)]
@@ -129,52 +123,51 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
                 break
 
 
+        # TIME CHECK (save sols/costs we've evaled up to this point)
         curr_time = time.time()
-        # TIME TEST (save sols/costs we've evaled up to this point)
-        if timetest:
-            # 5 min (< 10)
-            if 300 <= (curr_time - start_time) < 600:
-                with open('5min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('5min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 10 min (< 30)
-            if 600 <= (curr_time - start_time) < 1800:
-                with open('10min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('10min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 30 min
-            if 1800 <= (curr_time - start_time) < 2700:
-                with open('30min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('30min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 45 min
-            if 2700 <= (curr_time - start_time) < 3600:
-                with open('45min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('45min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 60 min
-            if 3600 <= (curr_time - start_time) < 5400:
-                with open('60min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('60min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 90 min
-            if 5400 <= (curr_time - start_time) < 7200:
-                with open('90min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('90min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 120  min (end)
-            if 7200 <= (curr_time - start_time):
-                with open('120min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('120min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                break
+        # 5 min (< 10)
+        if 300 <= (curr_time - start_time) < 600:
+            with open('5min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('5min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 10 min (< 30)
+        if 600 <= (curr_time - start_time) < 1800:
+            with open('10min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('10min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 30 min
+        if 1800 <= (curr_time - start_time) < 2700:
+            with open('30min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('30min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 45 min
+        if 2700 <= (curr_time - start_time) < 3600:
+            with open('45min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('45min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 60 min
+        if 3600 <= (curr_time - start_time) < 5400:
+            with open('60min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('60min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 90 min
+        if 5400 <= (curr_time - start_time) < 7200:
+            with open('90min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('90min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+        # 120  min (end)
+        if 7200 <= (curr_time - start_time):
+            with open('120min_testing_sols_rand.pkl','wb') as f:
+                pickle.dump(testing_sols,f)
+            with open('120min_testing_eval_rand.pkl','wb') as f:
+                pickle.dump(testing_eval,f)
+            break
 
 
         # get cost
@@ -205,9 +198,6 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
         # get next values
         symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
 
-        log_h = int(math.log2(symbolics_opt["H"]))
-        symbolics_opt["T"] = log_h-1
-
         # incr iterations
         iterations += 1
 
@@ -231,31 +221,17 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
 #   if the var has large search space, probably want larger step size
 #   step size is std dev --> 99% of all steps w/in 3*stepsize of curr var val
 #   ^ not exactly true, bc we have to do some rounding (can't have floats)
-def simulated_annealing(symbolics_opt, opt_info, o, timetest):
+def simulated_annealing(symbolics_opt, opt_info, o):
     temp = opt_info["optparams"]["temp"]
     bounds = opt_info["symbolicvals"]["bounds"]
     step_size = opt_info["optparams"]["stepsize"]
     logvars = opt_info["symbolicvals"]["logs"].values()
-
-    # decide if we're stopping by time, iterations, or both (whichever reaches thresh first)
-    iters = False
-    simtime = False
-    iter_time = False
-    if "stop_iter" in opt_info["optparams"]:
-        iters = True
-    if "stop_time" in opt_info["optparams"]:
-        simtime = True
-    if iters and simtime:
-        iter_time = True
 
     structchoice = False
     structinfo = {}
     if "structchoice" in opt_info:
         structchoice = True
         structinfo = opt_info["structchoice"]
-
-    # start time
-    start_time = time.time()
 
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
@@ -270,64 +246,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest):
     testing_eval = [best_cost]
 
     # run the algorithm
-    #for i in range(opt_info["optparams"]["stop_iter"]-1):   # minus 1 bc counting init cost as iteration
-    i = 1
-    while True:
-        if iters or iter_time:
-            if i >= opt_info["optparams"]["stop_iter"]:
-                break
-        if simtime or iter_time:
-            if (time.time()-start_time) >= opt_info["optparams"]["stop_time"]:
-                break
-
-        curr_time = time.time()
-        # TIME TEST (save sols/costs we've evaled up to this point)
-        if timetest:
-            # 5 min (< 10)
-            if 300 <= (curr_time - start_time) < 600:
-                with open('5min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('5min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 10 min (< 30)
-            if 600 <= (curr_time - start_time) < 1800:
-                with open('10min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('10min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 30 min
-            if 1800 <= (curr_time - start_time) < 2700:
-                with open('30min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('30min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 45 min
-            if 2700 <= (curr_time - start_time) < 3600:
-                with open('45min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('45min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 60 min
-            if 3600 <= (curr_time - start_time) < 5400:
-                with open('60min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('60min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 90 min
-            if 5400 <= (curr_time - start_time) < 7200:
-                with open('90min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('90min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 120  min (end)
-            if 7200 <= (curr_time - start_time):
-                with open('120min_testing_sols_sa.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('120min_testing_eval_sa.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                break
-
-
+    for i in range(opt_info["optparams"]["stop_iter"]-1):   # minus 1 bc counting init cost as iteration
         # if we're choosing between structs, random step for choice is coin toss
         if structchoice:
             symbolics_opt[structinfo["var"]] = bool(getrandbits(1))
@@ -367,9 +286,6 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest):
 
         # evaluate candidate point
         candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
-
-        # incr iteration
-        i += 1
 
         # check for new best solution
         if candidate_cost < best_cost:
@@ -424,7 +340,7 @@ def basin_hopping(symbolics_opt, opt_info, o):
 # start from lower bound and go until upper bound
 # keep all variables but 1 static, do for all vars
 # note that this is impractical and shouldn't actually be used for optimization
-def exhaustive(symbolics_opt, opt_info, o, timetest):
+def exhaustive(symbolics_opt, opt_info, o):
     logvars = opt_info["symbolicvals"]["logs"].values()
 
     # the starting solution values are what we use when we keep a variable static
@@ -459,40 +375,23 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
             else:
                 symbolics_opt[sv] = v
 
+            # get cost
+            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
 
-            # go through other vars, assuming only 2 for now
-            for sv2 in bounds:
-                if sv == sv2:
-                    continue
-                for v in range(bounds[sv2][0],bounds[sv2][1]+opt_info["optparams"]["stepsize"][sv2], opt_info["optparams"]["stepsize"][sv2]):
-                    # do corrections for powers of 2
-                    if sv2 in logvars:
-                        symbolics_opt[sv2]=closest_power(v)
-                    else:
-                        symbolics_opt[sv2] = v
-       
-                    if symbolics_opt in testing_sols:
-                        continue
-                    #print(symbolics_opt)
-           
-                    # get cost
-                    cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
-                    #cost = 0
+            # if new cost < best, replace best (if stgs <= tofino)
+            if cost < best_cost:
+                best_cost = cost
+                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+                best_sols = [copy.deepcopy(symbolics_opt)]
+            elif cost == best_cost:
+                best_sols.append(copy.deepcopy(symbolics_opt))
 
-                    # if new cost < best, replace best (if stgs <= tofino)
-                    if cost < best_cost:
-                        best_cost = cost
-                        # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-                        best_sols = [copy.deepcopy(symbolics_opt)]
-                    elif cost == best_cost:
-                        best_sols.append(copy.deepcopy(symbolics_opt))
-
-                    # save costs to write to file later
-                    testing_sols.append(copy.deepcopy(symbolics_opt))
-                    testing_eval.append(cost)
+            # save costs to write to file later
+            testing_sols.append(copy.deepcopy(symbolics_opt))
+            testing_eval.append(cost)
 
         # reset to starting before going to the next variable
-        #symbolics_opt = starting
+        symbolics_opt = starting
 
 
     with open('testing_sols_exhaustive.pkl','wb') as f:

@@ -5,6 +5,7 @@
 *.npy
 *.tar.gz
 *.tgz
+*.pkl
 
 __pycache__/
 *.py[cod]

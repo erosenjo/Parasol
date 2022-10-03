@@ -30,11 +30,12 @@ class Opt:
         info = {}
         info["switches"] = 1
         info["max time"] = 9999999
-        info["default input gap"] = 100
+        info["default input gap"] = 1
         info["random seed"] = 0
         info["python file"] = "flowletswitching.py"
         events = []
-        starttime = 1261067164.398500 # placeholder until figure out timestamps
+        #starttime = 1261067164.398500 # placeholder until figure out timestamps, univ1 trace
+        starttime = 1453381151.415037 # caida trace
         with PcapReader(self.pkts) as pcap_reader:
             for pkt in pcap_reader:
                 if not (pkt.haslayer(IP)) or not (pkt.haslayer(TCP)):
@@ -57,7 +58,8 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].src),0))
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
-                if len(events) > 10000:
+                #if len(events) > 10000:
+                if len(events) >= 500000:
                     break
 
         self.ground_truth = self.ground_truth/4
@@ -106,7 +108,7 @@ class Opt:
 
 
 
-#o = Opt("univ1_pt1.pcap")
+#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
 #o.gen_traffic()
 #m = [pickle.load(open('pkthops.txt','rb'))]
 #o.calc_cost(m)

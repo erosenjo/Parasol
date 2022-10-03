@@ -23,7 +23,7 @@ exit event ip_out ();
 
 
 /* Externs */
-//extern update_count(int x, int y, int z);
+extern update_count(int x, int y, int z);
 
 /* Memops */
 memop incr(int memval, int incrval) {
@@ -71,7 +71,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<7>> dummy_bytes) {
 	// python function call here to update the count for a specific flow
 	// we could also keep track of what gets reported as heavy hitter by returning hh instead of min
 	//m.update_count(min, [src; dst]);
-	//update_count(src, dst, min);
+	update_count(src, dst, min);
 
 	generate ip_out();
 }

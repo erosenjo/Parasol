@@ -140,6 +140,25 @@ def update_sym_sizes(symbolics_opt, sizes, symbolics):
             symbolics[var] = symbolics_opt[var]
     return sizes, symbolics
 
+
+def compile_num_stages(symbolics_opt, opt_info):
+    # gen symbolic file so we can compile with new values
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    # NEW LUCID COMPILATION
+    #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "build", "--symb", opt_info["symfile", "--silent"]
+    cmd = ["make", "compile"]
+    ret = subprocess.run(cmd)
+    if ret.returncode != 0: # stop if there's an error running interp
+        print("err")
+        quit()
+    num_stg = 0
+    # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
+    with open('build/num_stages.txt') as f:
+        num_stg = int(f.readline())
+    return num_stg
+
+
 def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     # if scipyalgo is true, then symolics_opt is np array, not dict
     print("VARS")
@@ -151,9 +170,13 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
             symbolics_opt[sym_keys[v]] = int(symbolics_opt_vars[v])
     else:
         symbolics_opt = symbolics_opt_vars
+
+    '''
+    # moving generation of symbolic file to compile_num_stages function
     # gen symbolic file
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    '''
 
     # compile to p4 and check if stgs <= tofino --> what to return if it takes too many stgs/doesn't compile? inf cost? boolean?
     '''
@@ -161,6 +184,7 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
         cmd = ["../../dptc", "noextern_caching_cms.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
     else:
         cmd = ["../../dptc", "noextern_caching_precision.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
+    '''
     '''
     #cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
 
@@ -182,6 +206,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
     with open('build/num_stages.txt') as f:
         num_stg = int(f.readline())
+    '''
+    num_stg = compile_num_stages(symbolics_opt, opt_info)
 
     if num_stg > 12:
         return opt_info["optparams"]["maxcost"]

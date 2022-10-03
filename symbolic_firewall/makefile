@@ -1,4 +1,5 @@
 .PHONY: interp compile assemble test
+LUCID_DIR = /media/data/mh43/lucid
 
 SOURCE := stateful_firewall
 # SOURCE := $(shell basename "*.dpt" .dpt)
@@ -16,16 +17,16 @@ optimize: lucid
 	python3 ../optimization/optimize.py stateful_firewallopt.json
 
 # run interpreter
-interp: lucid
-	../../lucid/dpt $(SOURCE).dpt --symb $(SOURCE).symb
+interp: 
+	$(LUCID_DIR)/dpt $(SOURCE).dpt --symb $(SOURCE).symb --suppress-final-state
 
 # compile Lucid to P4 without symbolics
-ccompile: lucid
-	../../lucid/dptc $(SOURCE)_concrete.dpt ip_harness.p4 linker_config.json $(SOURCE)_build
+ccompile: 
+	$(LUCID_DIR)/dptc $(SOURCE)_concrete.dpt ip_harness.p4 linker_config.json $(SOURCE)_build
 
 # compile Lucid to P4 with symbolics
-compile: lucid
-	../../dptc $(SOURCE).dpt $(SOURCE)_build --symb $(SOURCE).symb --silent
+compile: 
+	$(LUCID_DIR)/dptc $(SOURCE).dpt build --symb $(SOURCE).symb --silent
 
 # compile P4 to tofino
 assemble:
