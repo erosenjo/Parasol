@@ -31,12 +31,13 @@ def init_opt(optfile, notraffic):
 
 # usage: python3 optimize.py <json opt info file>
 def main():
-    parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python")
+    parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python, default uses layout script instead of compiler")
     parser.add_argument("optfile", metavar="optfile", help="name of json file with optimization info")
     parser.add_argument("--timetest", help="time test, output results at benchmark times", action="store_true")
     parser.add_argument("--notrafficgen", help="don't call gen_traffic, this is just for testing", action="store_true")
     parser.add_argument("--nopruning", help="don't do pruning phase of ordered search", action="store_true")
-    args = vars(parser.parse_args())
+    parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
+    args = parser.parse_args()
 
     '''
     if len(sys.argv) < 2:
@@ -47,7 +48,7 @@ def main():
     #print(opt_info)
 
     # initialize everything we need to run opt algo
-    opt_info,symbolics_opt, o = init_opt(args["optfile"], args["notrafficgen"])
+    opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen)
 
     # optimize!
     start_time = time.time()
@@ -60,17 +61,17 @@ def main():
 
 
     elif opt_info["optparams"]["optalgo"] == "random":    # if not using own, should for sure have optalgo field
-        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o, args["timetest"])
+        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o, args.timetest)
 
     elif opt_info["optparams"]["optalgo"] == "simannealing":
-        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args["timetest"])
+        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest)
 
     elif opt_info["optparams"]["optalgo"] == "exhaustive":
-        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args["timetest"])
+        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest)
 
     # testing out ordered search
     elif opt_info["optparams"]["optalgo"] == "ordered":
-        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args["timetest"], args["nopruning"])
+        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile)
 
     end_time = time.time()
     # write symb with final sol

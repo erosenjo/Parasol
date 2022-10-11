@@ -141,6 +141,7 @@ def update_sym_sizes(symbolics_opt, sizes, symbolics):
     return sizes, symbolics
 
 
+# full lucid -> p4 compiler
 def compile_num_stages(symbolics_opt, opt_info):
     # gen symbolic file so we can compile with new values
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
@@ -149,15 +150,30 @@ def compile_num_stages(symbolics_opt, opt_info):
     #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "build", "--symb", opt_info["symfile", "--silent"]
     cmd = ["make", "compile"]
     ret = subprocess.run(cmd)
-    if ret.returncode != 0: # stop if there's an error running interp
-        print("err")
-        quit()
+    if ret.returncode != 0: # stop if there's an error running compiler
+        exit("compiler error")
     num_stg = 0
     # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
     with open('build/num_stages.txt') as f:
         num_stg = int(f.readline())
     return num_stg
 
+
+# partial compiler, data flow graph and layout script
+def layout(symbolics_opt, opt_info):
+    # gen symbolic file so we can compile with new values
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    # NEW DATA FLOW COMPILE AND LAYOUT
+    cmd = ["make", "layout"]
+    ret = subprocess.run(cmd)
+    if ret.returncode != 0: # stop if there's an error  
+        exit("layout error")
+    # NOTE: assuming that we're calling layout and opt from same working directory 
+    resfile = os.getcwd()+"/resources.json"
+    resources = json.load(open(resfile,'r'))
+    return resources
+    
 
 def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     # if scipyalgo is true, then symolics_opt is np array, not dict
@@ -207,12 +223,16 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     with open('build/num_stages.txt') as f:
         num_stg = int(f.readline())
     '''
+    
+    '''
+    # we don't need to compile here, we've already guaranteed that we're only picking compiling solutions
     num_stg = compile_num_stages(symbolics_opt, opt_info)
 
     if num_stg > 12:
         return opt_info["optparams"]["maxcost"]
         #return 1 # miss rate of 100%
         #return float('inf')
+    '''
 
     # call init_iteration for opt class
     o.init_iteration(symbolics_opt)
