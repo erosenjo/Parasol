@@ -29,7 +29,11 @@ A key value store that tracks popularity of uncached keys. Implemented as either
 - if cms: tables, entries, rows, columns, expiring threshold, hh threshold 
 ### performance
 - compile time: ~2min, ~3.5min
+- dataflow graph + layout time:  
 - interpreter time: (externs!!)
+- tofino compile time: ????
+### tofino?
+- phv allocation error
 
 ## CMS
 Simple sketch for identifying heavy hitters. Can include timeout/count threshold as parameters (see caching example).
@@ -41,9 +45,14 @@ Simple sketch for identifying heavy hitters. Can include timeout/count threshold
 ### parameter search order
 - rows, cols
 ### performance
-- compile time: ~3s 
+- compile time: ~3s
+- dataflow graph + layout time: ~0.7s 
 - interpreter time: ~35s (500000 pkts, 55095 flows)
-
+- tofino compile time: 
+### tofino?
+- lucid compiler estimates 12 stgs for 11 rows
+- tofino compiler uses 14 stgs for 11 rows
+- 10 rows fits on tofino
 
 ## [Conquest](https://www.cs.princeton.edu/~xiaoqic/documents/paper-ConQuest-CoNEXT19.pdf)
 Queue length measurement in the data plane, to identify which flows are contributing to queue. Implemented as a series of sketches that are periodically rotated through.
@@ -58,9 +67,13 @@ Queue length measurement in the data plane, to identify which flows are contribu
 - snapshots, rows, columns, time window
 - max number of reg accesses/stages/hashes
 ### performance
-- compile time: >22min (this is worst case, maxing out all values-32 sketches, 4 rows, 65536 cols), ~25s (realistic case) 
+- compile time: ~5s (realistic case), >22min (this is worst case, maxing out all values-32 sketches, 4 rows, 65536 cols)
+- dataflow graph + layout time: ERROR, layout stages?
 - interpreter time: ~32s (300001 pkts)
-
+- tofino compile time: ~13min
+### tofino?
+- lucid compiler stg estimation accurate
+- no compiler issues
 
 ## [Flowlet switching](http://web.mit.edu/domino/domino-sigcomm.pdf)
 Load-balancing application that sends flowlets on randomly chosen next hop, all packets in same flowlet will go to same hop. Assume single register array that saves the hop and most recent arrival time for each flowlet.
@@ -73,9 +86,12 @@ Load-balancing application that sends flowlets on randomly chosen next hop, all 
 - flowlet slots, IPG threshold
 - max memory (other resources are fixed)
 ### performance
-- compile time: ~1s 
+- compile time: ~0.7s
+- dataflow graph + layout time: ~0.5s 
 - interpreter time: ~45s (500000 pkts)
-
+- tofino compile time: ????
+### tofino?
+- table could not fit w/in a single input crossbar
 
 ## [Fridge](https://www.cs.princeton.edu/~jrex/papers/apocs22.pdf)
 Unbiased delay measurements. Hash-indexed array storing time of syn packets, to get matched when corresponding ack arrives. Entries added to fridge with probability p; aggressively overwrite and correct bias as samples collected. Assume single fridge (register array).
@@ -89,8 +105,11 @@ Unbiased delay measurements. Hash-indexed array storing time of syn packets, to 
 - max memory (other resources are fixed)
 ### performance
 - compile time: ~25s 
-- interpreter time: ~30s (666096 pkts, 212377 samples) 
-
+- dataflow graph + layout time: ~3s 
+- interpreter time: ~30s (666096 pkts, 212377 samples)
+- tofino compile time: ???? 
+### tofino?
+- phv allocation error
 
 ## Hash table
 Simple multi-stage hash table. Assume entries are never evicted.
@@ -102,7 +121,7 @@ Simple multi-stage hash table. Assume entries are never evicted.
 ### parameter search order
 - tables, entries
 ### performance
-
+### tofino?
 
 ## [Precision](https://www.cs.princeton.edu/~xiaoqic/documents/paper-PRECISION-ToN.pdf)
 Heavy hitter detection. Implemented as a series of tables that store flow key and counter. Probabilistically insert new entries upon collisions.
@@ -114,8 +133,13 @@ Heavy hitter detection. Implemented as a series of tables that store flow key an
 ### parameter search order
 - tables, entries
 ### performance
-- compile time: ~4.5 min (MAT entries)
+- compile time: ~2min (MAT entries)
+- dataflow graph + layout time: ~2min
 - interpreter time:  ~4min (666096 pkts)
+- tofino compile time: 37s
+### tofino?
+- lucid compiler stg estimate accurate
+- no compile issues
 
 ## [RTT](https://www.cs.princeton.edu/~xiaoqic/documents/paper-P4RTT-SPIN20.pdf)
 Measure rtt in the data plane. Store timestamp of syn packets and match with corresponding ack. Implemented as multi-stage hash table; lazily evict expired records.
@@ -128,8 +152,12 @@ Measure rtt in the data plane. Store timestamp of syn packets and match with cor
 ### parameter search order
 - tables, table size, timeout threshold
 ### performance
-- compile time: ~40s
-- interprer time: ~30s (619720 pkts) (w/o externs)
+- compile time: ~25s
+- dataflowgraph + layout time: ~3s
+- interprer time: ~30s (619720 pkts)
+- tofino compile time: ???? (7s)
+### tofino?
+- doesn't compile, internal compiler bug
 
 ## [Starflow](https://www.usenix.org/system/files/atc18-sonchack.pdf)
 Cache for telemetry data (aka grouped packet vectors) (implements select and grouping for a query). Implemented as 2 caches -- narrow and wide buffers. Narrow buffers can store more flows but smaller amount of data per flow than wide. If flow fills up its narrow buffer, attempt to allocate wide buffer. When buffer is full, flush the entries to software.
@@ -144,8 +172,11 @@ Cache for telemetry data (aka grouped packet vectors) (implements select and gro
 - rows in narrow, rows in wide, slots in narrow, slots in wide
 ### performance
 - compile time: ~1-2min
+- dataflow graph + layout time: ERROR
 - interpreter time: ~10s (20000 pkts)
-
+- tofino compile time: ???? (17hrs)
+### tofino?
+- doesn't compile, internal compiler bug
 
 ## Stateful firewall
 Firewall with stages and cuckoo insert operation to mitigate collisions
@@ -161,6 +192,8 @@ Firewall with stages and cuckoo insert operation to mitigate collisions
 ### performance
 - compile time: ~1.5min
 - interpreter time: ~5s
-
+- tofino compile time: ????
+### tofino?
+- doesn't compile, internal compiler bug
 
 
