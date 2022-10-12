@@ -165,7 +165,7 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
         if (rtt != 0) {
             //rtt = timestamp-rtt;
             //printf("MATCH!!");
-            log_test(ack_no,timestamp-rtt);
+            //log_test(ack_no,timestamp-rtt);
             log_rttsample(timestamp-rtt);
         }
         generate tcp_out(0, timestamp-rtt, 0);

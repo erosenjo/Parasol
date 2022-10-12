@@ -25,6 +25,8 @@
         "order_resource" : ["stages", "entries"],
         "non_resource" : ["interscan_delay", "timeout"],
         "mem_formula" : "stages * entries",
+        "hash_formula" : "stages+1",
+        "regaccess_formula" : "3*stages+1",
         "temp" : 10,
         "stepsize": {
             "stages": 1,

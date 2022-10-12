@@ -1,5 +1,3 @@
-
-
 import pickle
 
 
@@ -20,14 +18,19 @@ def log_timeout(t):
         with open('timeouts.pkl','wb') as f:
             pickle.dump(timeouts[0],f)
 
+# TODO: better way than hardcoding last sample number?
+# (same issue as precision; need to avoid writing to file at every extern call, so wait until the end)
 def log_rttsample(sample):
     numsamples[0]+=1
-    with open('numsamples.pkl','wb') as f:
-        pickle.dump(numsamples[0],f)
+    if numsamples[0] >= 181961:
+        #print("TEST TOTAL SAMPLES", numsamples)
+        with open('numsamples.pkl','wb') as f:
+            pickle.dump(numsamples[0],f)
 
     samples.append(sample)
-    with open('samples.pkl','wb') as f:
-        pickle.dump(samples,f)
+    if numsamples[0] >= 181961:
+        with open('samples.pkl','wb') as f:
+            pickle.dump(samples,f)
 
 
 def log_test(ack, rtt):

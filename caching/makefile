@@ -1,10 +1,10 @@
-.PHONY: interp compile assemble test
+.PHONY: opttest interp compile layout assemble test
 LUCID_DIR = /media/data/mh43/lucid
-OPT_DIR = /media/data/mh43/Lucid4All/optimization_noilp
+OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
-# run p4all optimizer
-optimize:
-	python3 $(OPT_DIR)/optimize.py cacheopt_full.json
+# run optimization process (using layout, no traffic gen)
+opttest:
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen
 
 # run p4all optimizer, time test
 optimize_timetest:
@@ -17,6 +17,10 @@ interp:
 # compile Lucid to P4
 compile: 
 	$(LUCID_DIR)/dptc caching.dpt build --symb caching.symb --silent
+
+#dfg compile and layout
+layout:
+	$(LUCID_DIR)/bin/layout.py caching.dpt --symb caching.symb
 
 # compile P4 to tofino
 assemble:

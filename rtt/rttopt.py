@@ -314,8 +314,10 @@ class Opt:
     # don't currently calc total num of rtt samples in trace, but can calc in gen_traffic
     def calc_cost(self,measure):
 
-        # read success rate (num samples/gt num samples
+        # read success rate (num samples/gt num samples)
         nums = measure[0]
+
+        print("READ SUCCESS RATE", (1-nums/self.ground_truth))
 
         return (1-nums/self.ground_truth)
 
@@ -395,8 +397,20 @@ class Opt:
 # then use similaritymeasures.area_between_two_curves
 # ecdf = ECDF([measurement])
 
-#o = Opt("univ1_pt1.pcap")
-#o.gen_traffic()
+'''
+o = Opt("univ1_pt1.pcap")
+o.gen_traffic()
+
+cmd = ["make", "interp"]
+ret = subprocess.run(cmd)
+
+measurement = []
+outfiles = ["numsamples.pkl"]
+for out in outfiles:
+    measurement.append(pickle.load(open(out,"rb")))
+o.calc_cost(measurement)
+'''
+
 #m = [pickle.load(open('samples.txt','rb'))]
 #o.calc_cost(m)
 

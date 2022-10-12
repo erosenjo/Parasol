@@ -1,12 +1,15 @@
-import time, importlib, argparse
+import time, importlib, argparse, os, sys
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
 
-def init_opt(optfile, notraffic):
+def init_opt(optfile, notraffic, cwd):
+    sys.path.append(cwd)
+    # NOTE: assuming optfile is in current working directory
     # import json file
     opt_info = json.load(open(optfile))
 
     # import opt class that has funcs we need to get traffic, cost
+    # NOTE: module has to be in current working directory
     optmod = importlib.import_module(opt_info["optmodule"])
     o = optmod.Opt(opt_info["trafficpcap"])
 
@@ -47,8 +50,11 @@ def main():
     #opt_info = json.load(open(sys.argv[1]))
     #print(opt_info)
 
+    # get current working directory
+    cwd = os.getcwd()
+
     # initialize everything we need to run opt algo
-    opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen)
+    opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen, cwd)
 
     # optimize!
     start_time = time.time()

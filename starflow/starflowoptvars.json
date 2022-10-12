@@ -31,6 +31,8 @@
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],
     "mem_formula" : "(num_short*S_SLOTS)+(num_long*L_SLOTS)",
+    "hash_formula" : "num_short + num_long",
+    "regaccess_formula" : "num_short + num_long",
     "stop_time" : 8000,
     "temp" : 10,
     "maxcost" : 100,

@@ -94,10 +94,11 @@ class Opt:
                 pkt_counter += 1                
 
                 #break
-                if len(events)>300000:
-                    break
+                #if len(events)>300000:
+                #    break
 
         if len(events)==1021724:
+            print("MAX EVENTS")
             events = events[:-1]
             pkt_counter -= 1
         #pkt_counter = 1021723
@@ -135,7 +136,7 @@ class Opt:
         decision_v=qlen_v*self.alpha
         #print(decision_v)
         est_b=est_v>decision_v
-        gt_b=gt_v>decision_v  
+        gt_b=gt_v>decision_v 
         #print(est_b)
         #print(np.sum(est_b))
         TP=np.sum(gt_b * est_b)
@@ -143,8 +144,8 @@ class Opt:
 
         total_est=np.sum(est_b)
         total_gt=np.sum(gt_b)
-        print(total_est)
-        print(total_gt)
+        print("TOTAL EST", total_est)
+        print("TOTAL GT", total_gt)
         print(TP)
         #print(total_gt)
         #print(total_est)
@@ -152,7 +153,7 @@ class Opt:
             precision=1
         else:
             precision=1.0*TP/total_est
-        print(precision)
+        print("PRECISION", precision)
         with open('precision.txt','a') as f:
             f.write(str(precision)+"\n")
 
@@ -162,14 +163,14 @@ class Opt:
         else:
             recall=1.0*TP/total_gt
 
-        print(recall)
+        print("RECALL", recall)
         with open('recall.txt','a') as f:
             f.write(str(recall)+"\n")
 
         # f-score
         f_score = (2 * precision * recall) / (precision + recall)
 
-        print(f_score)
+        print("FSCORE", f_score)
         return 1-f_score
 
 
@@ -180,6 +181,16 @@ class Opt:
 
 #o = Opt("univ1_pt1.pcap")
 #o.gen_traffic()
+
+#cmd = ["make", "interp"]
+#ret = subprocess.run(cmd)
+
+#measurement = []
+#outfiles = ["qlens.pkl"]
+#for out in outfiles:
+#    measurement.append(pickle.load(open(out,"rb")))
+#o.calc_cost(measurement)
+
 
 #test = pickle.load(open('qlens.txt','rb'))
 #print(o.calc_cost([test]))

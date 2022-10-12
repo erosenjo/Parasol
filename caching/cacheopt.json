@@ -37,6 +37,8 @@
         "order_resource" : ["tables", "rows", "entries", "cols"],
         "non_resource" : ["eviction", "expire_thresh", "THRESH"],
         "mem_formula" : "(tables*entries) + (rows*cols)",
+        "hash_formula" : "tables + rows",
+        "regaccess_formula" : "tables + rows",
         "temp" : 100,
         "stepsize": {
             "tables": 1,

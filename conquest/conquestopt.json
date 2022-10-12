@@ -5,7 +5,7 @@
 	    "H": 4,
         "LOG_CQ_C": 5,
         "R": 2,
-        "LOG_CQ_T": 27,
+        "LOG_CQ_T": 4,
         "T": 1
 	},
 	"symbolics": {
@@ -27,10 +27,12 @@
     },
     "optparams": {
     "optalgo" : "ordered",
-	"stop_iter" : 1,
+	"stop_iter" : 10,
     "order_resource" : ["H", "R", "C"],
     "non_resource" : ["LOG_CQ_T"],
     "mem_formula" : "H*R*C",
+    "hash_formula" : "H*R",
+    "regaccess_formula" : "H*R",
 	"temp" : 10,
 	"stepsize": {
 	    "H" : 1,

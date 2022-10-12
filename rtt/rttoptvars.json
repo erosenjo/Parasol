@@ -24,6 +24,8 @@
         "order_resource" : ["tables", "table_size"],
         "non_resource" : ["TS_EXPIRE_THRESHOLD"],
         "mem_formula" : "tables * table_size",
+        "hash_formula" : "tables",
+        "regaccess_formula" : "tables",
         "max_cost" : 1,
         "stepsize": {
             "tables": 2,

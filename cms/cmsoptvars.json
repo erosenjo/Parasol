@@ -17,8 +17,8 @@
     },
     "optparams": {
         "search" : "simple",
-        "order" : ["cols", "rows"],
-        "optalgo" : "simannealing",
+        "order_resource" : ["rows", "cols"],
+        "optalgo" : "ordered",
 	    "stop_time" : 8000,
 	    "temp" : 10,
         "maxcost" : 50000, 

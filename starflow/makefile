@@ -1,5 +1,10 @@
-.PHONY: interp compile assemble test
+.PHONY: opttest interp compile layout assemble test
 LUCID_DIR = /media/data/mh43/lucid
+OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
+
+# run optimization process (using layout, no traffic gen)
+opttest:
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --notrafficgen
 
 # run interpreter
 interp: 
@@ -8,6 +13,10 @@ interp:
 # compile Lucid to P4
 compile: 
 	$(LUCID_DIR)/dptc starflow.dpt build --symb starflow.symb --silent
+
+#dfg compile and layout
+layout:
+	$(LUCID_DIR)/bin/layout.py starflow.dpt --symb starflow.symb
 
 # compile P4 to tofino
 assemble:
