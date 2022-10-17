@@ -177,8 +177,7 @@ def layout(symbolics_opt, opt_info):
 
 def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     # if scipyalgo is true, then symolics_opt is np array, not dict
-    print("VARS")
-    print(symbolics_opt_vars)
+    print("VARS:", symbolics_opt_vars)
     if scipyalgo:
         symbolics_opt = {}
         sym_keys = list(syms_opt.keys())
@@ -186,6 +185,11 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
             symbolics_opt[sym_keys[v]] = int(symbolics_opt_vars[v])
     else:
         symbolics_opt = symbolics_opt_vars
+
+
+    # generate symbolic file
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
 
     '''
     # moving generation of symbolic file to compile_num_stages function
