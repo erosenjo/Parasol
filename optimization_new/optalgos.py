@@ -1,4 +1,4 @@
-import math, json, sys, copy, time, os
+import math, json, sys, copy, time, os, itertools
 from random import randint, random, getrandbits, choice
 from interp_sim import gen_cost, compile_num_stages, layout
 import numpy as np
@@ -10,6 +10,7 @@ from treelib import Node, Tree
 # CONSTANTS
 single_stg_mem = 143360 # max number of elements for 32-bit array
 single_stg_mem_log2 = 131072 # closest power of 2 for single_stg_mem (most apps require num elements to be power of 2)
+#single_stg_mem_log2 = 65536
 
 # helper funcs
 '''
@@ -693,7 +694,7 @@ def prune_layout(solutions, bounds_tree):
     return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
 
 # testing out ordered parameter search
-def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile):
+def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive):
     opt_start_time = time.time()
 
     # STEP 1: reduce parameter space by removing solutions that don't compile
@@ -707,9 +708,12 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile):
     for var in symbolics_opt:
         if var in opt_info["symbolicvals"]["bounds"]:
             symbolics_opt[var] = opt_info["symbolicvals"]["bounds"][var][0]
+    #symbolics_opt["eviction"] = True
     build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile)
 
     print("UPPER BOUND TIME:", time.time()-opt_start_time)    
+
+    ub_time = time.time()-opt_start_time
 
     # STEP 2: prune solutions found in step 1 by throwing out solutions that use less resources (memory, stgs) than others
     # iterate through each path in tree
@@ -739,7 +743,7 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile):
     #best_mem_stgs = [sol for sol in best_mem_sols if sol in best_stgs_sols]
     #print("OVERLAP SOLS (MEM+STGS)", len(best_mem_stgs))
 
-    exit()
+    #exit()
 
     # run interpreter on ones w/ most memory first, then maybe next highest???
     # STEP 3: run interpreter to get cost, optimize for non-resource parameters
@@ -771,110 +775,148 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile):
     testing_eval = []
     # start the interpreter loop
     interpreter_start_time = time.time()
-    # print out time it took to get search space
-    print("SEARCH TIME(s):", interpreter_start_time-opt_start_time)
-    while True:
-        print("ITERATION:", iterations)
-        # check iter/time conditions
-        if iters or iter_time:
-            if iterations >= opt_info["optparams"]["stop_iter"]:
-                break
-        if simtime or iter_time:
-            if (time.time()-interpreter_start_time) >= opt_info["optparams"]["stop_time"]:
-                break
-        curr_time = time.time()
-        # TIME TEST (save sols/costs we've evaled up to this point)
-        if timetest:
-            # 5 min (< 10)
-            if 300 <= (curr_time - interpreter_start_time) < 600:
-                with open('5min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('5min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 10 min (< 30)
-            if 600 <= (curr_time - interpreter_start_time) < 1800:
-                with open('10min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('10min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 30 min
-            if 1800 <= (curr_time - interpreter_start_time) < 2700:
-                with open('30min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('30min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 45 min
-            if 2700 <= (curr_time - interpreter_start_time) < 3600:
-                with open('45min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('45min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 60 min
-            if 3600 <= (curr_time - interpreter_start_time) < 5400:
-                with open('60min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('60min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 90 min
-            if 5400 <= (curr_time - interpreter_start_time) < 7200:
-                with open('90min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('90min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-            # 120  min (end)
-            if 7200 <= (curr_time - interpreter_start_time):
-                with open('120min_testing_sols_ordered.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('120min_testing_eval_ordered.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                break
 
-        # choose values to evaluate (randomly for now)
-        # if we're not doing the pruning stage, pick from all possible paths in the tree
-        if nopruning:
-            choose_random_resource(bounds_tree, symbolics_opt, solutions)
-        # if we are pruning, pick from list of sols w/ highest memory usage (TODO - other resources?)
-        else:
-            #choose_random_resource(bounds_tree, symbolics_opt, sols_by_mem[max(list(sols_by_mem.keys()))])
-            choose_random_resource(bounds_tree, symbolics_opt, best_mem_stgs)
-
-        # TODO: for now, randomly picking values for non resource params
+    if exhaustive:
+        # get all possible non_resource vals
+        nr_vals = []
         for nonresource in opt_info["optparams"]["non_resource"]:
-            symbolics_opt[nonresource] = choice(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]))
+            nr_range = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+            nr_vals.append(nr_range)
+        non_resource_sols = list(itertools.product(*nr_vals))
 
-        # NOTE: right now this rule stuff is very specific to conquest, and i don't think it appears anywhere else?
-        # this is just for cases where the symbolic value = some mathematic expression of other variables
-        for rulevar in opt_info["symbolicvals"]["rules"]:
-            rule = opt_info["symbolicvals"]["rules"][rulevar].split()
-            for v in range(len(rule)):
-                # if this is a variable name, replace it with the variable value so we can evaluate the expression
-                if rule[v] in opt_info["symbolicvals"]["symbolics"] or rule[v] in opt_info["symbolicvals"]["sizes"]:
-                    # we have to split into 2 cases here bc log variables won't be in symbolics_opt at this point
-                    # those get written when we gen the .symb file (when we call get_cost)
-                    if rule[v] in opt_info["symbolicvals"]["logs"]:
-                       rule[v] = str(int(math.log2(symbolics_opt[opt_info["symbolicvals"]["logs"][rule[v]]])))
-                    else:
-                        rule[v] = symbolics_opt[rule[v]]
-            symbolics_opt[rulevar] = eval(''.join(rule))
+        iterations=0
+        for sol_choice in solutions:
+            curr_iter = "evaling sol " + str(iterations) + " out of " + str(len(solutions)) 
+            print(curr_iter)
+            with open("progress.txt","w") as f:
+                f.write(curr_iter)
+            for sol in sol_choice:
+                node = bounds_tree.get_node(sol)
+                if node.tag=="root":
+                    continue
+                symbolics_opt[node.tag[0]] = node.tag[1]
+            # TODO:rule vars (not applicable for starflow)
+            # NOTE: this assumes that order of values is same as order on non_resource list in json
+            for nr_choice in non_resource_sols:
+                for nr_var in opt_info["optparams"]["non_resource"]:
+                    symbolics_opt[nr_var] = nr_choice[opt_info["optparams"]["non_resource"].index(nr_var)]
+                print("SYMBOLICS TO EVAL", symbolics_opt)
+                cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+                tested_sols.append(copy.deepcopy(symbolics_opt))
+
+                testing_sols.append(copy.deepcopy(symbolics_opt))
+                testing_eval.append(cost)
+                iterations += 1
+        best_sols = [{}]
+
+    else:
+        # print out time it took to get search space
+        print("SEARCH TIME(s):", interpreter_start_time-opt_start_time)
+        while True:
+            print("ITERATION:", iterations)
+            # check iter/time conditions
+            if iters or iter_time:
+                if iterations >= opt_info["optparams"]["stop_iter"]:
+                    break
+            if simtime or iter_time:
+                if (time.time()-interpreter_start_time) >= opt_info["optparams"]["stop_time"]:
+                    break
+            curr_time = time.time()
+            # TIME TEST (save sols/costs we've evaled up to this point)
+            if timetest:
+                # 5 min (< 10)
+                if 300 <= (curr_time - interpreter_start_time) < 600:
+                    with open('5min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('5min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 10 min (< 30)
+                if 600 <= (curr_time - interpreter_start_time) < 1800:
+                    with open('10min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('10min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 30 min
+                if 1800 <= (curr_time - interpreter_start_time) < 2700:
+                    with open('30min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('30min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 45 min
+                if 2700 <= (curr_time - interpreter_start_time) < 3600:
+                    with open('45min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('45min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 60 min
+                if 3600 <= (curr_time - interpreter_start_time) < 5400:
+                    with open('60min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('60min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 90 min
+                if 5400 <= (curr_time - interpreter_start_time) < 7200:
+                    with open('90min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('90min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                # 120  min (end)
+                if 7200 <= (curr_time - interpreter_start_time):
+                    with open('120min_testing_sols_ordered.pkl','wb') as f:
+                        pickle.dump(testing_sols,f)
+                    with open('120min_testing_eval_ordered.pkl','wb') as f:
+                        pickle.dump(testing_eval,f)
+                    break
+
+            '''
+            # choose values to evaluate (randomly for now)
+            # if we're not doing the pruning stage, pick from all possible paths in the tree
+            if nopruning:
+                choose_random_resource(bounds_tree, symbolics_opt, solutions)
+            # if we are pruning, pick from list of sols w/ highest memory usage (TODO - other resources?)
+            else:
+                #choose_random_resource(bounds_tree, symbolics_opt, sols_by_mem[max(list(sols_by_mem.keys()))])
+                choose_random_resource(bounds_tree, symbolics_opt, best_mem_stgs)
+
+            '''
+
+            # TODO: for now, randomly picking values for non resource params
+            for nonresource in opt_info["optparams"]["non_resource"]:
+                symbolics_opt[nonresource] = choice(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]))
+
+            # NOTE: right now this rule stuff is very specific to conquest, and i don't think it appears anywhere else?
+            # this is just for cases where the symbolic value = some mathematic expression of other variables
+            for rulevar in opt_info["symbolicvals"]["rules"]:
+                rule = opt_info["symbolicvals"]["rules"][rulevar].split()
+                for v in range(len(rule)):
+                    # if this is a variable name, replace it with the variable value so we can evaluate the expression
+                    if rule[v] in opt_info["symbolicvals"]["symbolics"] or rule[v] in opt_info["symbolicvals"]["sizes"]:
+                        # we have to split into 2 cases here bc log variables won't be in symbolics_opt at this point
+                        # those get written when we gen the .symb file (when we call get_cost)
+                        if rule[v] in opt_info["symbolicvals"]["logs"]:
+                           rule[v] = str(int(math.log2(symbolics_opt[opt_info["symbolicvals"]["logs"][rule[v]]])))
+                        else:
+                            rule[v] = symbolics_opt[rule[v]]
+                symbolics_opt[rulevar] = eval(''.join(rule))
 
 
-        print("SYMBOLICS TO EVAL", symbolics_opt)
-        cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+            print("SYMBOLICS TO EVAL", symbolics_opt)
+            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
 
-        tested_sols.append(copy.deepcopy(symbolics_opt))
+            tested_sols.append(copy.deepcopy(symbolics_opt))
 
-        testing_sols.append(copy.deepcopy(symbolics_opt))
-        testing_eval.append(cost)
-        # if new cost < best, replace best (if stgs <= tofino)
-        if cost < best_cost:
-            best_cost = cost
-            # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-            best_sols = [copy.deepcopy(symbolics_opt)]
-        elif cost == best_cost:
-            best_sols.append(copy.deepcopy(symbolics_opt))
+            testing_sols.append(copy.deepcopy(symbolics_opt))
+            testing_eval.append(cost)
+            # if new cost < best, replace best (if stgs <= tofino)
+            if cost < best_cost:
+                best_cost = cost
+                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+                best_sols = [copy.deepcopy(symbolics_opt)]
+            elif cost == best_cost:
+                best_sols.append(copy.deepcopy(symbolics_opt))
 
-        # incr iterations
-        iterations += 1
+            # incr iterations
+            iterations += 1
 
 
     with open('testing_sols_ordered.pkl','wb') as f:
@@ -883,6 +925,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile):
         pickle.dump(testing_eval,f)
 
 
+    interp_time = time.time()-interpreter_start_time
+    print("TOTAL INTERP TIME:", interp_time)
+    print("TOTAL UB TIME:", ub_time)
 
     return best_sols[0], best_cost
 

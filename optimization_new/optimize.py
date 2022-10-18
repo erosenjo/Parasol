@@ -40,6 +40,7 @@ def main():
     parser.add_argument("--notrafficgen", help="don't call gen_traffic, this is just for testing", action="store_true")
     parser.add_argument("--nopruning", help="don't do pruning phase of ordered search", action="store_true")
     parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
+    parser.add_argument("--exhaustive", help="test every solution that compiles w interpreter", action="store_true")
     args = parser.parse_args()
 
     '''
@@ -77,7 +78,7 @@ def main():
 
     # testing out ordered search
     elif opt_info["optparams"]["optalgo"] == "ordered":
-        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile)
+        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive)
 
     end_time = time.time()
     # write symb with final sol
