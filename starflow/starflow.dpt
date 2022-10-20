@@ -30,6 +30,8 @@ symbolic size log_l_slots;
 //size num_short = max_short_idx + 1; 
 symbolic size num_short;
 const int max_idx = size_to_int(num_short + num_long) - 1;
+const int max_stack = L_SLOTS - 1;
+
 
 /* 
 note: 
@@ -68,8 +70,10 @@ global Array.t<<32>> srcarr = Array.create(S_SLOTS);
 global Array.t<<32>> ctarr = Array.create(S_SLOTS);
 global Array.t<<32>> idxarr = Array.create(S_SLOTS);
 
+//global Array.t<<32>> stack_top_blk_id = Array.create(1);
 global Array.t<<32>> stack_top = Array.create(1);
 global Array.t<<32>> longblock_stack = Array.create(L_SLOTS);
+//global Array.t<<32>> longblock_stack = Array.create(131072);
 global Array.t<<32>> block_map = Array.create(L_SLOTS);
 
 global Array.t<<32>>[num_short] arr_short = [Array.create(S_SLOTS) for i < num_short];
@@ -83,6 +87,38 @@ memop write (int stored, int newval) {
 }
 memop incr (int stored, int incrval) { 
   return stored + incrval;
+}
+
+
+memop check_free_block (int lastval, int newval){
+  if (lastval==newval) {
+    return 0;
+  }
+  else {
+    return 1;
+  }
+}
+
+memop update_blk_id (int lastval, int newval) {
+  if (lastval==newval) {
+    return 0;
+  }
+  else {
+    return lastval;
+  }
+}
+
+memop set_blk_id (int lastval, int newval) {
+  return newval;
+}
+
+memop incr_stack_idx (int stored, int incrval) {
+  if (stored==max_stack) {
+      return max_stack;
+  }
+  else {
+    return stored+incrval;
+  }  
 }
 
 memop sub (int stored, int cur) {
@@ -194,12 +230,15 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
   // the first time a flow runs out of memory in the short array, 
   // try to get a slot in the long array.
   if (ct == size_to_int(num_short)) { 
+    //Array.set(stack_top_blk_id, 0, 0);
     int stack_idx = Array.update(stack_top, 0, read, 0, decr_sat, 1);
+    printf("GET LONG, REMAINING+1 (STACK_IDX): %d", stack_idx);
     //int stack_idx = Array.update(stack_top, 0, decr_sat, 1, decr_sat, 1);
     // if we got an index from the stack, then we have 
     // successfully allocated a slot in the long array.
     if (stack_idx!=0) {
       blk_id = Array.get(longblock_stack, stack_idx);
+      printf("GETTING BLOCK: %d", blk_id);
       Array.set(block_map, h2, blk_id);      
     }
   } else {
@@ -209,7 +248,6 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
     blk_id = Array.get(block_map, h2);
   }
   // index is the position in the full slot that we are writing to.
-  // if we didn't load a long slot, we need 
   // to adjust the index so that its within 
   // the bounds of the short slot (0, num_short)
   if (blk_id == 0) {
@@ -224,6 +262,7 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
     // then we recirculate to free the long array slot
     if (is_match != match_flag) {
     if (oldct != 0) {    // not a first pkt
+          printf("GEN FREE BLOCK: %d, H2: %d", blk_id, h2_align);
           generate free_block(blk_id, h2_align);
     }
     }
@@ -274,12 +313,20 @@ handle ip_in (int<<9>> igr_port, int src, int dst, int<<16>> len_short, int<<8>>
 // we leave slot at index 0 empty bc 0 tells us we have no more blocks left
 // (aka, the number of blocks we have is L_SLOTS - 1)
 handle free_block(int block_id, int<<16>> h2_align) {
+  printf("FREE BLOCK BLK_ID: %d", block_id);
   // byte-alignment
   int<<log_l_slots>> h2 = (int<<log_l_slots>>) h2_align;
   // get a pointer to an unused slot in the free stack.
+  // NOTE: updated memop, to try to get around race condition (mult free block triggers before recirc)
+  // this DOES NOT totally solve it (could give out block in between dup free block events)
+  //int incrval = Array.update(stack_top_blk_id, 0, check_free_block, block_id, set_blk_id, block_id);
+  //int stack_idx = Array.update(stack_top, 0, incr_stack_idx, incrval, incr_stack_idx, incrval);
   int stack_idx = Array.update(stack_top, 0, incr, 1, incr, 1);
   //int stack_idx = Array.update(stack_top, 0, read, 0, incr, 1);
   // write the block id to the unused slot. 
+  //printf("PRE LONGBLOCK STACK");
+  printf("NEW RELEASE LONG, REMAINING (STACK IDX): %d", stack_idx);
+  //printf("BLOCK ID %d", block_id);
   Array.set(longblock_stack, stack_idx, block_id);
   // we have to reset block map
   Array.set(block_map, h2,0);

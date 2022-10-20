@@ -53,8 +53,8 @@ class Opt:
     def init_iteration(self, symbs): # all sols that produce eviction ratio less than thresh are equally as good (not considering resources):
         info = {}
         info["switches"] = 1
-        info["max time"] = 9999999
-        info["default input gap"] = 100
+        info["max time"] = 99999999999
+        info["default input gap"] = 800
         info["random seed"] = 0
         info["python file"] = "starflow.py"
 
@@ -62,6 +62,7 @@ class Opt:
         for i in range(1,symbs["L_SLOTS"]):
             fb_events.append({"name":"free_block","args":[i,0]})
 
+        #info["events"] = fb_events
         info["events"] = fb_events+self.events
 
         with open('starflow.json','w') as f:
@@ -70,7 +71,7 @@ class Opt:
 
 #o = Opt("univ1_pt1.pcap")
 #o.gen_traffic()
-#o.init_iteration({})
-
+#s_o = {"max_short_idx": 1, "num_long": 1, "log_s_slots": 16, "log_l_slots": 16, "num_short": 8, "S_SLOTS": 65536,"L_SLOTS": 65536,"dummy_var": 3}
+#o.init_iteration(s_o)
 
 
