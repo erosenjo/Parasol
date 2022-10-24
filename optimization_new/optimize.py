@@ -41,7 +41,7 @@ def main():
     parser.add_argument("--nopruning", help="don't do pruning phase of ordered search", action="store_true")
     parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
     parser.add_argument("--exhaustive", help="test every solution that compiles w interpreter", action="store_true")
-    parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true"
+    parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true")
     args = parser.parse_args()
 
     '''
