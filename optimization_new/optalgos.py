@@ -10,7 +10,7 @@ from treelib import Node, Tree
 # CONSTANTS
 single_stg_mem = 143360 # max number of elements for 32-bit array
 single_stg_mem_log2 = 131072 # closest power of 2 for single_stg_mem (most apps require num elements to be power of 2)
-#single_stg_mem_log2 = 65536
+single_stg_mem_log2_pairarray = 65536
 
 # helper funcs
 '''
@@ -60,7 +60,23 @@ def closest_power(x):
     possible_results = math.floor(math.log2(x)), math.ceil(math.log2(x))
     return 2**min(possible_results, key= lambda z: abs(x-2**z))
 
-
+# if we have rule-based vars, set them with this function
+def set_rule_vars(opt_info, symbolics_opt):
+    for rulevar in opt_info["symbolicvals"]["rules"]:
+        rule = opt_info["symbolicvals"]["rules"][rulevar].split()
+        for v in range(len(rule)):
+            # if this is a variable name, replace it with the variable value so we can evaluate the expression
+            if rule[v] in opt_info["symbolicvals"]["symbolics"] or rule[v] in opt_info["symbolicvals"]["sizes"]:
+                # we have to split into 2 cases here bc log variables won't be in symbolics_opt at this point
+                # those get written when we gen the .symb file (when we call get_cost)
+                if rule[v] in opt_info["symbolicvals"]["logs"]:
+                    rule[v] = str(int(math.log2(symbolics_opt[opt_info["symbolicvals"]["logs"][rule[v]]])))
+                else:
+                    rule[v] = str(symbolics_opt[rule[v]])
+        print("BEFORE RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
+        symbolics_opt[rulevar] = eval(''.join(rule))
+        print("RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
+    return symbolics_opt
 
 # RANDOM OPTIMIZATION
 # randomly choose, given some var
@@ -72,6 +88,9 @@ def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
         if str(new_vars[structinfo["var"]]) in structinfo:
             exclude = True
     for var in symbolics_opt:
+        if var not in bounds:   # it's a rule-based var (or we forgot to add bounds)
+            new_vars[var] = 0
+            continue
         if structchoice and var==structinfo["var"]: # we've handled this above, don't do it again
             continue
         if exclude and var in structinfo[str(new_vars[structinfo["var"]])]: # exlucding this var for struct
@@ -84,20 +103,13 @@ def get_next_random(symbolics_opt, logs, bounds, structchoice, structinfo):
     return new_vars
 
 def random_opt(symbolics_opt, opt_info, o, timetest):
+    # start w/ randomly chosen values
+    symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {})
+    # set any rule-based vars
+    if "rules" in opt_info["symbolicvals"]:
+        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
+
     iterations = 0
-
-
-    # TODO: this is silly, but not sure a better way to do this rn
-    # using 0 bc these values don't matter, will get overwritten at some point
-    for var_group in opt_info["symbolicvals"]["ilp_vars"]:
-        opt_info["symbolicvals"]["symbolics"][var_group["int"]["name"]] = 0
-        opt_info["symbolicvals"]["sizes"][var_group["size"]["name"]] = 0
-
-    # solve ilp to get vals for other reg arrays
-    const_vars = opt_info["symbolicvals"]["const_vars"] 
-    ilp_sol = solve(opt_info["num_stgs"], opt_info["total_mem"], opt_info["hashes"], opt_info["symbolicvals"]["ilp_vars"], const_vars)
-    # add ilp result to symbolics
-    full_symbolics_opt = {**symbolics_opt, **ilp_sol} 
     # init best solution as starting, and best cost as inf
     best_sols = [copy.deepcopy(full_symbolics_opt)]
     best_cost = float("inf")
@@ -186,57 +198,32 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
                     pickle.dump(testing_eval,f)
                 break
 
-
-
         # get cost
-        cost = gen_cost(full_symbolics_opt,full_symbolics_opt,opt_info, o,False)
+        cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False)
 
-        testing_sols.append(copy.deepcopy(full_symbolics_opt))
+        # add sol to tested_sols to count it as already evaluated
+        # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
+        tested_sols.append(copy.deepcopy(symbolics_opt))
+
+        testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cost)
 
+        # if new cost < best, replace best (if stgs <= tofino)
+        if cost < best_cost:
+            best_cost = cost
+            # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
+            best_sols = [copy.deepcopy(symbolics_opt)]
+        elif cost == best_cost:
+            best_sols.append(copy.deepcopy(symbolics_opt))
 
-        if cost == -1:  # doesn't fit w/in stgs, not counting this as an iteration
-            print("TOO MANY STGS")
-            for var_group in opt_info["symbolicvals"]["ilp_vars"]:
-                var_group["size"]["ub"] = full_symbolics_opt[var_group["size"]["name"]] - 1
-                print(var_group["size"]["ub"])
-           
+        # get next values
+        symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
 
-        else: 
-            # add sol to tested_sols to count it as already evaluated
-            # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
-            # NOTE: ONLY adding randomly chosen symbolics to this, not ones from ilp
-            tested_sols.append(copy.deepcopy(symbolics_opt))
-
-
-            # if new cost < best, replace best (if stgs <= tofino)
-            if cost < best_cost:
-                best_cost = cost
-                # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-                best_sols = [copy.deepcopy(full_symbolics_opt)]
-            elif cost == best_cost:
-                best_sols.append(copy.deepcopy(full_symbolics_opt))
-
-            # get next values (only if this actually fit w/in stgs, otherwise try again w/ same vals)
-            symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
-
-            # update const_vars
-            for var_group in const_vars:
-                var_group["int"]["value"] = symbolics_opt[var_group["int"]["name"]]
-                var_group["size"]["value"] = symbolics_opt[var_group["size"]["name"]]
-
-        # solve ilp
-        ilp_sol = solve(opt_info["num_stgs"], opt_info["total_mem"], opt_info["hashes"], opt_info["symbolicvals"]["ilp_vars"], const_vars)
-        # update symbolics opt w ilp sol
-        full_symbolics_opt = {**symbolics_opt, **ilp_sol}
-        # incr iterations (only if this actually fit w/in stgs, otherwise doesn't count)
-        if cost != -1:
-            iterations += 1
-            # remove upper bound for ilp vars??? consequence of this is we'll have to run ilp A LOT more, but it's fast
-            # (also means we have to compile to p4 more often, which can be slow)
-            for var_group in opt_info["symbolicvals"]["ilp_vars"]:
-                if "ub" in var_group["size"]:
-                    del var_group["size"]["ub"]
+        # set any rule-based vars we might have
+        if "rules" in opt_info["symbolicvals"]:
+            symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
+        # incr iterations
+        iterations += 1
 
     # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
     #best_sol = prioritize(best_sols,opt_info)
@@ -444,7 +431,7 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
 # this returns dictionary of either:
 #   {sol_tested: stgs_required} (full compile)
 #   {sol_tested: {resource: required} } (layout)
-def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile):
+def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair):
     '''
     # if we have a lower bound for var_to_opt, use it
     # otherwise, it'll already be 1
@@ -488,10 +475,16 @@ def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile):
             if log2:
                 #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
                 resources[symbolics_opt[var_to_opt]] = resources_used
-                if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2:
-                    #return symbolics_opt[var_to_opt], best_stgs
-                    return symbolics_opt[var_to_opt], resources
-                symbolics_opt[var_to_opt] *= 2
+                # TODO: better sol for pair arrays
+                if pair:
+                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2_pairarray:
+                        return symbolics_opt[var_to_opt], resources
+                    symbolics_opt[var_to_opt] *= 2
+                else:
+                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2:
+                        #return symbolics_opt[var_to_opt], best_stgs
+                        return symbolics_opt[var_to_opt], resources
+                    symbolics_opt[var_to_opt] *= 2
             else:
                 #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
                 resources[symbolics_opt[var_to_opt]] = resources_used
@@ -694,7 +687,7 @@ def prune_layout(solutions, bounds_tree):
     return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
 
 # testing out ordered parameter search
-def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive):
+def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive, pair):
     opt_start_time = time.time()
 
     # STEP 1: reduce parameter space by removing solutions that don't compile
@@ -719,8 +712,6 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
     # iterate through each path in tree
     # need a formula for calculating total memory = x * y + j * k
     # once we calc total resources, remove solutions that are < max
-    # (NOTE: is there any case where < max is preffered?) (maybe keep a few that are the next closest?)
-    # TODO: sort by things other than memory --> hash units, reg accesses?
     solutions = bounds_tree.paths_to_leaves()
     if fullcompile:
         sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess = prune_fullcompile(solutions, opt_info, bounds_tree)
@@ -784,7 +775,7 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
             nr_vals.append(nr_range)
         non_resource_sols = list(itertools.product(*nr_vals))
 
-        iterations=0
+        iterations=1
         for sol_choice in solutions:
             curr_iter = "evaling sol " + str(iterations) + " out of " + str(len(solutions)) 
             print(curr_iter)
@@ -795,11 +786,13 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                 if node.tag=="root":
                     continue
                 symbolics_opt[node.tag[0]] = node.tag[1]
-            # TODO:rule vars (not applicable for starflow)
-            # NOTE: this assumes that order of values is same as order on non_resource list in json
+            # NOTE: this assumes that order of values generated as non_resource_sols is same as order on non_resource list in json
             for nr_choice in non_resource_sols:
                 for nr_var in opt_info["optparams"]["non_resource"]:
                     symbolics_opt[nr_var] = nr_choice[opt_info["optparams"]["non_resource"].index(nr_var)]
+                # once we choose all symbolics, set any rule-based symbolics
+                if "rules" in opt_info["symbolicvals"]:
+                    symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
                 print("SYMBOLICS TO EVAL", symbolics_opt)
                 cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
                 tested_sols.append(copy.deepcopy(symbolics_opt))

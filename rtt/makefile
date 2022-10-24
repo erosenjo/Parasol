@@ -4,7 +4,10 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --pair
+
+exhaustive:
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --nopruning --exhaustive --pair
 
 # run interpreter
 interp: 
