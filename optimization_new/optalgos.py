@@ -199,7 +199,7 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
                 break
 
         # get cost
-        cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False)
+        cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "random")
 
         # add sol to tested_sols to count it as already evaluated
         # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
@@ -216,8 +216,9 @@ def random_opt(symbolics_opt, opt_info, o, timetest):
         elif cost == best_cost:
             best_sols.append(copy.deepcopy(symbolics_opt))
 
-        # get next values
-        symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
+        # get next values, but don't repeat one we've already tried
+        while symbolics_opt in tested_sols:
+            symbolics_opt = get_next_random(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo)
 
         # set any rule-based vars we might have
         if "rules" in opt_info["symbolicvals"]:
@@ -259,7 +260,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest):
 
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
-    best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False)
+    best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
 
     # current working solution
     curr, curr_cost = copy.deepcopy(symbolics_opt), best_cost
@@ -309,7 +310,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest):
 
 
         # evaluate candidate point
-        candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+        candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
 
         # check for new best solution
         if candidate_cost < best_cost:
@@ -400,7 +401,7 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
                 symbolics_opt[sv] = v
 
             # get cost
-            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "exhaustive")
 
             # if new cost < best, replace best (if stgs <= tofino)
             if cost < best_cost:
@@ -794,7 +795,7 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                 if "rules" in opt_info["symbolicvals"]:
                     symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
                 print("SYMBOLICS TO EVAL", symbolics_opt)
-                cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+                cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
                 tested_sols.append(copy.deepcopy(symbolics_opt))
 
                 testing_sols.append(copy.deepcopy(symbolics_opt))
@@ -894,7 +895,7 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 
 
             print("SYMBOLICS TO EVAL", symbolics_opt)
-            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False)
+            cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
 
             tested_sols.append(copy.deepcopy(symbolics_opt))
 

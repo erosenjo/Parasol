@@ -175,7 +175,7 @@ def layout(symbolics_opt, opt_info):
     return resources
     
 
-def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
+def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
     # if scipyalgo is true, then symolics_opt is np array, not dict
     print("VARS:", symbolics_opt_vars)
     if scipyalgo:
@@ -198,7 +198,12 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo):
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
     '''
 
-    # compile to p4 and check if stgs <= tofino --> what to return if it takes too many stgs/doesn't compile? inf cost? boolean?
+    # compile to p4 and check if stgs <= tofino
+    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
+    if searchtype != "ordered":
+        res = layout(symbolics_opt, opt_info)
+        if res["stages"] > 12:  # we won't fit on the switch
+            return opt_info["optparams"]["maxcost"]
     '''
     if symbolics_opt["eviction"]==True:
         cmd = ["../../dptc", "noextern_caching_cms.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
