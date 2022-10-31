@@ -42,6 +42,8 @@ def main():
     parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
     parser.add_argument("--exhaustive", help="test every solution that compiles w interpreter", action="store_true")
     parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true")
+    parser.add_argument("--preprocessingonly", help="only do preprocessing, store sols in preprocessed.pkl", action="store_true")
+    parser.add_argument("--shortcut", help="don't do preprocessing, load already preprocessed sols from preprocessed.pkl", action="store_true")
     args = parser.parse_args()
 
     '''
@@ -79,7 +81,12 @@ def main():
 
     # testing out ordered search
     elif opt_info["optparams"]["optalgo"] == "ordered":
-        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair)
+        best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut)
+
+
+    elif opt_info["optparams"]["optalgo"] == "neldermead":
+        best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
+
 
     end_time = time.time()
     # write symb with final sol
