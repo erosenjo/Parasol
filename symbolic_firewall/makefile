@@ -17,6 +17,13 @@ lucid:
 opttest: 
 	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen
 
+exhaustive:
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --nopruning --exhaustive
+
+# run p4all optimizer, time test
+optimize_timetest:
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --timetest
+
 # run interpreter
 interp: 
 	$(LUCID_DIR)/dpt $(SOURCE).dpt --symb $(SOURCE).symb --suppress-final-state

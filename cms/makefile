@@ -4,7 +4,14 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly
+
+exhaustive:
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive
+
+# run p4all optimizer, time test
+optimize_timetest:
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --timetest --nopruning --shortcut
 
 # run interpreter
 interp: 
@@ -12,7 +19,7 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb --silent
+	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb 
 
 #dfg compile and layout
 layout:

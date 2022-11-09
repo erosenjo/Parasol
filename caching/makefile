@@ -4,7 +4,7 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --preprocessingonly
 
 # run p4all optimizer, time test
 optimize_timetest:

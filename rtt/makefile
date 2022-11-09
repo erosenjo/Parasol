@@ -9,6 +9,10 @@ opttest:
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py rttoptvars.json --nopruning --exhaustive --pair
 
+# run p4all optimizer, time test
+optimize_timetest:
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --timetest --nopruning
+
 # run interpreter
 interp: 
 	$(LUCID_DIR)/dpt --suppress-final-state rtt.dpt --spec rtt.json

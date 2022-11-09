@@ -6,6 +6,13 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 opttest:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen
 
+exhaustive:
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --nopruning --exhaustive --shortcut
+
+# run p4all optimizer, time test
+optimize_timetest:
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --timetest --nopruning --shortcut
+
 # run interpreter
 interp: 
 	$(LUCID_DIR)/dpt --suppress-final-state conquest.dpt

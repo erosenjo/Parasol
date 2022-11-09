@@ -151,6 +151,10 @@ def random_opt(symbolics_opt, opt_info, o, timetest,
     else:
         symbolics_opt,_ = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
 
+    starting = copy.deepcopy(symbolics_opt)
+    num_sols_time = {}
+    time_cost = {}
+
     iterations = 0
     # init best solution as starting, and best cost as inf
     best_sols = [copy.deepcopy(symbolics_opt)]
@@ -202,42 +206,56 @@ def random_opt(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["5min"] = len(testing_sols)
+                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["10min"] = len(testing_sols)
+                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["30min"] = len(testing_sols)
+                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["45min"] = len(testing_sols)
+                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["60min"] = len(testing_sols)
+                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["90min"] = len(testing_sols)
+                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_rand.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_rand.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["120min"] = len(testing_sols)
+                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
         # get cost
@@ -283,9 +301,12 @@ def random_opt(symbolics_opt, opt_info, o, timetest,
         pickle.dump(testing_sols,f)
     with open('final_testing_eval_rand.pkl','wb') as f:
         pickle.dump(testing_eval,f)
+    
+    num_sols_time["final"] = len(testing_sols)
+    time_cost["final"] = copy.deepcopy(testing_eval)
 
     # return the first solution in list of acceptable sols
-    return best_sols[0], best_cost
+    return best_sols[0], best_cost, time_cost, num_sols_time, starting
 
 # NOTE: this is only for non-preprocessing
 def gen_next_simannealing_nopreprocessing(structchoice, symbolics_opt, structinfo, curr, step_size, bounds, logvars, opt_info):
@@ -434,7 +455,12 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
     else:
         # set resource vars
-        symbolics_opt, candidate_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions)
+        symbolics_opt, candidate_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
+
+    starting = copy.deepcopy(symbolics_opt)
+    num_sols_time = {}
+    time_cost = {}
+
 
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
@@ -475,42 +501,56 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["5min"] = len(testing_sols)
+                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["10min"] = len(testing_sols)
+                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["30min"] = len(testing_sols)
+                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["45min"] = len(testing_sols)
+                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["60min"] = len(testing_sols)
+                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["90min"] = len(testing_sols)
+                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["120min"] = len(testing_sols)
+                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
@@ -519,11 +559,11 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             break
 
         # TODO: should we test repeated sols????
-        while symbolics_opt in tested_sols: # don't bother with repeated sols
-            if not solutions:
-                symbolics_opt = gen_next_simannealing_nopreprocessing(structchoice, symbolics_opt, structinfo, curr, step_size, bounds, logvars, opt_info)
-            else:
-                symbolics_opt, candidate_index = gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr, curr_index, bounds_tree)
+        #while symbolics_opt in tested_sols: # don't bother with repeated sols
+        if not solutions:
+            symbolics_opt = gen_next_simannealing_nopreprocessing(structchoice, symbolics_opt, structinfo, curr, step_size, bounds, logvars, opt_info)
+        else:
+            symbolics_opt, candidate_index = gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr, curr_index, bounds_tree)
         # evaluate candidate point
         if not solutions:
             candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
@@ -569,8 +609,12 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_sa.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
+    num_sols_time["final"] = len(testing_sols)
+    time_cost["final"] = copy.deepcopy(testing_eval)
+
+
     # return first sol in list of sols
-    return best_sols[0], best_cost
+    return best_sols[0], best_cost, time_cost, num_sols_time, starting
 
 '''
 # BASIN HOPPING (with scipy, like sim annealing)
@@ -935,7 +979,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         # if caching, just set to true (cms) and in theory do precision in parallel
         if opt_info["lucidfile"] == "caching.dpt":
             print("CACHING")
-            symbolics_opt["eviction"] = True
+            symbolics_opt["eviction"] = False
+            symbolics_opt["rows"] = 2
+            symbolics_opt["cols"] = 1024
         build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)    
@@ -1012,13 +1058,19 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
     # run the interpreter!
     #print("SYMBOLICS BEFORE:", symbolics_opt)
 
-    # TODO: change time test to do overall time, not just interpreter??
-
     if exhaustive:  # evaluate all compiling solutions w/ interpreter
         iterations = 1
         tested_sols = []
         testing_sols = []
         testing_eval = []
+        if opt_info["optparams"]["struct"] == "cms":
+            symbolics_opt["eviction"] = True
+        elif opt_info["optparams"]["struct"] == "precision":
+            symbolics_opt["eviction"] = False
+            symbolics_opt["rows"] = 1
+            symbolics_opt["cols"] = 128
+            symbolics_opt["expire_thresh"] = 2
+            symbolics_opt["THRESH"] = 2
         # get all possible non_resource vals
         nr_vals = []
         for nonresource in opt_info["optparams"]["non_resource"]:
@@ -1084,7 +1136,7 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 
     interp_time = time.time()-interpreter_start_time
     print("TOTAL INTERP TIME:", interp_time)
-    print("TOTAL UB TIME:", ub_time)
+    #print("TOTAL UB TIME:", ub_time)
 
     return best_sols[0], best_cost
 
@@ -1133,7 +1185,7 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
     Reference: https://en.wikipedia.org/wiki/Nelder%E2%80%93Mead_method
 '''
 def nelder_mead(symbolics_opt, opt_info, o, timetest, 
-                no_improve_thr=10e-6, no_improv_break=10,
+                no_improve_thr=10e-6, no_improv_break=50,
                 alpha=1., gamma=2., rho=-0.5, sigma=0.5,
                 solutions=[], tree=None): 
     '''
@@ -1179,6 +1231,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         # set resource vars
         symbolics_opt, candidate_index = gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info)
 
+    starting = copy.deepcopy(symbolics_opt)
+    num_sols_time = {}
+    time_cost = {}
+
     # create starting numpy array and index_dict (index: var_name)
     # also create step and bounds arrays
     # step: look-around radius in initial step (1 val for each dimension)
@@ -1209,9 +1265,9 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         for x_val in opt_info["optparams"]["non_resource"]:
             x_start[index] = symbolics_opt[x_val]
             index_dict[index] = x_val
-            step[index] = opt_info["optparams"]["stepsize"][var]
-            bounds[index][0] = opt_info["symbolicvals"]["bounds"][var][0]
-            bounds[index][1] = opt_info["symbolicvals"]["bounds"][var][1]
+            step[index] = opt_info["optparams"]["stepsize"][x_val]
+            bounds[index][0] = opt_info["symbolicvals"]["bounds"][x_val][0]
+            bounds[index][1] = opt_info["symbolicvals"]["bounds"][x_val][1]
             index += 1
         x_start[index] = candidate_index
         index_dict[index] = "candidate_index"
@@ -1283,42 +1339,56 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["5min"] = len(testing_sols)
+                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["10min"] = len(testing_sols)
+                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["30min"] = len(testing_sols)
+                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["45min"] = len(testing_sols)
+                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["60min"] = len(testing_sols)
+                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["90min"] = len(testing_sols)
+                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
+                num_sols_time["120min"] = len(testing_sols)
+                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
@@ -1475,10 +1545,27 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_nm.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    return best_sol, res[0][1]
+    num_sols_time["final"] = len(testing_sols)
+    time_cost["final"] = copy.deepcopy(testing_eval)
+
+    return best_sol, res[0][1], time_cost, num_sols_time, starting
 
     
 # bayesian optimization
+# step 1: create surrogate function, using regression predictive modeling
+#   try gaussian process, but maybe there's something better?
+#   use GaussianProcessRegressor scikit, input are sample x vals and their cost/score
+#   can try different kernel functions w/ regressor, default is radial basis function
+#   can update model by calling fit(x, y)
+#   use model by calling predict(X)
+#   surrogate used to test range of candidate samples in domain
+# step 2: search strategy and acquisition function
+#   search strat used to navigate doman in response to surrogate func
+#   acquisition used to interpret and score result of surrogate
+#   search can be simple random, BFGS is popular though
+#   choose candidate sol, eval with acquisition, then max acquisition
+#   acq func decides whether sol is worth evaling w real obj func
+#   many types of acq funcs (Probability of Improvement is simplest)
 
 
 

@@ -6,6 +6,9 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 opttest:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen
 
+exhaustive:
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --exhaustive
+
 # run interpreter
 interp: 
 	$(LUCID_DIR)/dpt --suppress-final-state precision.dpt --spec precision.json
