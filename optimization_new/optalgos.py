@@ -2,10 +2,14 @@ import math, json, sys, copy, time, os, itertools
 from random import randint, random, getrandbits, choice
 from interp_sim import gen_cost, compile_num_stages, layout
 import numpy as np
-from scipy.optimize import basinhopping
+#from scipy.optimize import basinhopping
 import pickle
 #from search_ilp import solve
 from treelib import Node, Tree
+from sklearn.gaussian_process import GaussianProcessRegressor
+from warnings import catch_warnings
+from warnings import simplefilter
+from scipy.stats import norm
 
 # CONSTANTS
 single_stg_mem = 143360 # max number of elements for 32-bit array
@@ -1063,14 +1067,15 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         tested_sols = []
         testing_sols = []
         testing_eval = []
-        if opt_info["optparams"]["struct"] == "cms":
-            symbolics_opt["eviction"] = True
-        elif opt_info["optparams"]["struct"] == "precision":
-            symbolics_opt["eviction"] = False
-            symbolics_opt["rows"] = 1
-            symbolics_opt["cols"] = 128
-            symbolics_opt["expire_thresh"] = 2
-            symbolics_opt["THRESH"] = 2
+        if "struct" in opt_info["optparams"]:
+            if opt_info["optparams"]["struct"] == "cms":
+                symbolics_opt["eviction"] = True
+            elif opt_info["optparams"]["struct"] == "precision":
+                symbolics_opt["eviction"] = False
+                symbolics_opt["rows"] = 1
+                symbolics_opt["cols"] = 128
+                symbolics_opt["expire_thresh"] = 2
+                symbolics_opt["THRESH"] = 2
         # get all possible non_resource vals
         nr_vals = []
         for nonresource in opt_info["optparams"]["non_resource"]:
@@ -1133,6 +1138,11 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
             else:
                 return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=pruned_sols, tree=bounds_tree)
 
+        elif strat=="bayesian":
+            if nopruning:
+                return bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree)
+            else:
+                return bayesian(symbolics_opt, opt_info, o, pruned_sols, bounds_tree)
 
     interp_time = time.time()-interpreter_start_time
     print("TOTAL INTERP TIME:", interp_time)
@@ -1566,10 +1576,249 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 #   choose candidate sol, eval with acquisition, then max acquisition
 #   acq func decides whether sol is worth evaling w real obj func
 #   many types of acq funcs (Probability of Improvement is simplest)
+def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
+    # step 0: sample domain and get cost (to build surrogate model)
+    # compute the total number of solutions we have
+    # get total number of solutions, so we know if we've gone through them all
+    # TODO: get this to work with non preprocessed
+    # TODO: simplify this, only need to count length of all_solutions_symbolics to get total_sols
+    total_sols = 1
+    all_solutions_symbolics = []
+    if not solutions:
+        for bounds_var in opt_info["symbolicvals"]["bounds"]:
+            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
+            if bounds_var in opt_info["symbolicvals"]["logs"].values():
+                vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
+                total_sols *= vals
+                continue
+            vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+            total_sols *= vals
+    else:   # we've preprocessed, used those solutions to calc total
+        # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
+        for sol_choice in solutions:
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+        for nonresource in opt_info["optparams"]["non_resource"]:
+                total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                new_sols = []
+                for sol_choice in all_solutions_symbolics:
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    for v in vals:
+                        # update w/ new value
+                        sol_choice[nonresource] = v
+                        # append to new solution list
+                        new_sols.append(copy.deepcopy(sol_choice))
+
+                all_solutions_symbolics = new_sols
+            
+        total_sols *= len(solutions)
+
+    print(all_solutions_symbolics)
+    exit()
+
+    print("TOTAL_SOLS", total_sols)
+
+    # sample x% of solutions
+    # TODO: do this for non preprocessed
+    sample_size = int(0.2*total_sols)
+    print("SAMPLE SIZE", sample_size)
+    sampled_sols = []
+    sample_xvals = []
+
+    '''
+    # randomly sample % of solutions
+    test_index = None
+    test_cost = None
+    while len(sampled_sols) < sample_size:
+        if not solutions:
+            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
+            xvals = []
+        else:
+            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
+            if not test_index:
+                test_index = [copy.deepcopy(symbolics_opt),sample_index]
+            xvals = [sample_index]
+            #for resource in opt_info["optparams"]["order_resource"]:
+            #    xvals.append(symbolics_opt[resource])
+            for nonresource in opt_info["optparams"]["non_resource"]:
+                xvals.append(symbolics_opt[nonresource])       
+ 
+        # don't allow repeat samples
+        if symbolics_opt in sampled_sols:
+            #print("REPEAT")
+            continue
+        sampled_sols.append(copy.deepcopy(symbolics_opt))
+        #print("ADDED", symbolics_opt)
+        sample_xvals.append(xvals)
+    '''
+    # grid(ish) sampling
+    # instead of random, sample every total_samples/sample_size samples
+    # TODO: update this to work with non resource vals (enumerate all solutions, with non resource)
+    if solutions:
+        sample_xvals = [[x] for x in range(0, len(all_solutions_symbolics), int(total_sols/sample_size))]
+        for xval in sample_xvals:
+            sampled_sols.append(all_solutions_symbolics[xval[0]])
+
+    # convert to numpy array, to use w/ scikit
+    np_xvals = np.array(sample_xvals)
+    #print(sample_xvals)
+    #print(np_xvals) 
+    #print(np_xvals.shape)
+    #exit()
+
+    # step 1: create surrogate function
+    # step 1.1: get cost for each sampled value
+    sample_costs = []
+    for sample in sampled_sols:
+        if not solutions:
+            score = gen_cost(sample, sample, opt_info, o, False, "bayesian")
+        else:
+            score = gen_cost(sample, sample, opt_info, o, False, "ordered")
+        sample_costs.append(score)
+        '''
+        if not test_cost:
+            test_cost = score
+        '''
+
+    np_yvals = np.array(sample_costs)
+
+    # step 1.2: define the model (gaussian process regression)
+    # TODO: try something other than gp regressor model????
+    model = GaussianProcessRegressor()
+    # step 1.3: fit the model (given sampled values)  
+    model.fit(np_xvals, np_yvals)
+ 
+    # step 2: optimize acquisition function
+    # step 2.1: choose points in domain (via some search strategy)
+    # TODO: more sophisticated search
+    # try all of them????? bc we have a discrete domain space
+    # TODO: do for non preprocessed
+    # use index in sol list, not var value
+    '''
+    acq_xsamples = []
+    acq_sample_size = int(0.5*total_sols) 
+    while len(acq_xsamples) < acq_sample_size:
+        if not solutions:
+            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
+            xvals = []
+        else:
+            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
+            xvals = [sample_index]
+            for nonresource in opt_info["optparams"]["non_resource"]:
+                xvals.append(symbolics_opt[nonresource])
+
+        # don't allow repeat samples
+        if xvals in acq_xsamples:
+            #print("REPEAT")
+            continue
+        #print("ADDED", symbolics_opt)
+        acq_xsamples.append(xvals)
+
+    np_acq_xvals = np.array(acq_xsamples)
+    '''
+
+    # use var values directly, not index in sol list
+    acq_xsamples = []
+    acq_samples_symbolics = []
+    if solutions:
+        for sol in solutions:
+            symbolics_opt = set_symbolics_from_tree_solution(sol, symbolics_opt, bounds_tree) 
+            xvals = [solutions.index(sol)]
+            '''
+            for resource in opt_info["optparams"]["order_resource"]:
+                xvals.append(symbolics_opt[resource])
+            '''
+            for nonresource in opt_info["optparams"]["non_resource"]:
+                xvals.append(symbolics_opt[nonresource])
+
+            acq_xsamples.append(xvals)
+            acq_samples_symbolics.append(copy.deepcopy(symbolics_opt))
+    #print("ACQ SAMPLES", acq_xsamples)
+
+    np_acq_xvals = np.array(acq_xsamples)
+
+    # step 2.2: eval chosen points w/ surrogate
+    #yhat, _ = surrogate(model, np_xvals)
+    yhat = None
+    # catch any warning generated when making a prediction
+    with catch_warnings():
+        # ignore generated warnings
+        simplefilter("ignore")
+        yhat, _ = model.predict(np_xvals, return_std=True)
+    best = min(yhat)
+    print("BEST", best)
+    
+    # calculate mean and stdev via surrogate function
+    #mu, std = surrogate(model, np_acq_xvals)
+    mu = None
+    std = None
+    with catch_warnings():
+        # ignore generated warnings
+        simplefilter("ignore")
+        mu, std = model.predict(np_acq_xvals, return_std=True)
+    #mu = mu[:, 0]
+    # calculate the probability of improvement
+    # TODO: try different probablistic acquisition functions? (or just surrogate directly)
+    probs = norm.cdf((mu - best) / (std+1E-9))
+    ix_prob = np.argmin(probs)
+    ix = np.argmin(mu)
+
+    print("MU MIN VALUE")
+    print("MU VALUE", mu[ix])
+
+    # dump mu and sampled values so we can analyze later
+    with open('samplesols.pkl','wb') as f:
+        pickle.dump(acq_samples_symbolics, f)
+    with open('mu.pkl','wb') as f:
+        pickle.dump(list(mu), f)
+    
+
+    # step 2.3: return best point
+    print(np_acq_xvals[ix])
+    sol_choice = solutions[np_acq_xvals[ix, 0]]
+    # ARGMAX best values: 87,37
+    # ARGMIN best value: 151 (9 rows, 65536 cols) 
+    for sol in sol_choice:
+        node = bounds_tree.get_node(sol)
+        if node.tag=="root":
+            continue
+        print("var:", node.tag[0], "value:", node.tag[1])
+
+    print("PROB MIN VALUE")
+    print("PROB MU VALUE", mu[ix_prob])
+    print(np_acq_xvals[ix_prob])
+    sol_choice = solutions[np_acq_xvals[ix_prob, 0]]
+    # ARGMAX best values: 87,37
+    # ARGMIN best value: 151 (9 rows, 65536 cols) 
+    for sol in sol_choice:
+        node = bounds_tree.get_node(sol)
+        if node.tag=="root":
+            continue
+        print("var:", node.tag[0], "value:", node.tag[1])
 
 
+    '''
+    print("ARGMIN")
+    print(np_acq_xvals[ix])
 
+    print("MU")
+    ix = np.argmin(mu)
+    print(np_acq_xvals[ix])
+    print("MU VALUE", mu[ix])
+    print(mu)
 
+    print("ACQ VALS")
+    print(np_acq_xvals)
+    '''
+
+    '''
+    print("PREDICT SOL", np_acq_xvals[test_index[1]])
+    print("PREDICT COST", mu[test_index[1]])
+    print("TEST SOL", test_index)
+    print("TEST COST", test_cost)
+    '''
+
+    print("SAMPLED SOLS")
+    print(sampled_sols)
 
 
 
