@@ -363,8 +363,9 @@ def gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr,
     # take a step for resource-related vars
     # the step corresponds to what index in solutions we're using
     # presumably, solutions that are close in solutions list are more similar
-    # step size of 1 by default, round to nearest int
-    sol_index = round(curr_index + np.random.randn() * 1)
+    # TODO: how to determine step size for solutions list index??
+    # ^ by default, step size is len of solutions list
+    sol_index = round(curr_index + np.random.randn() * len(solutions))
     if sol_index < 0:
         sol_index = 0
     elif sol_index >= len(solutions):
@@ -1196,7 +1197,7 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
 '''
 def nelder_mead(symbolics_opt, opt_info, o, timetest, 
                 no_improve_thr=10e-6, no_improv_break=50,
-                alpha=1., gamma=2., rho=-0.5, sigma=0.5,
+                alpha=10., gamma=20., rho=-0.5, sigma=0.5,
                 solutions=[], tree=None): 
     '''
         @param symbolics_opt (dict): dict of symbolics and their values (or index in preprocessed list), used to gen cost
@@ -1292,6 +1293,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     if not solutions:
         prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
     else:
+        print("EVALED SOL", symbolics_opt)
         prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
     no_improv = 0
     res = [[x_start, prev_best]]
@@ -1312,6 +1314,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         if not solutions:
             score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
+            print("EVALED SOL", symbolics_opt)
             score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(score)
@@ -1458,6 +1461,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         if not solutions:
             rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
+            print("EVALED SOL AFTER REFLECTION", symbolics_opt)
             rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(rscore)
@@ -1485,6 +1489,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             if not solutions:
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
+                print("EVALED SOL AFTER EXPANSION", symbolics_opt)
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(escore)
@@ -1514,6 +1519,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         if not solutions:
             cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
+            print("EVALED SOL AFTER CONTRACTION", symbolics_opt)
             cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordererd")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cscore)
@@ -1542,6 +1548,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             if not solutions:
                 score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
+                print("EVALED SOL AFTER REDUCTION", symbolics_opt)
                 score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(score)
@@ -1577,6 +1584,16 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 #   acq func decides whether sol is worth evaling w real obj func
 #   many types of acq funcs (Probability of Improvement is simplest)
 def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
+    iters = False
+    simtime = False
+    iter_time = False
+    if "stop_iter" in opt_info["optparams"]:
+        iters = True
+    if "stop_time" in opt_info["optparams"]:
+        simtime = True
+    if iters and simtime:
+        iter_time = True
+
     # step 0: sample domain and get cost (to build surrogate model)
     # compute the total number of solutions we have
     # get total number of solutions, so we know if we've gone through them all
@@ -1598,10 +1615,13 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
         for sol_choice in solutions:
             all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
         for nonresource in opt_info["optparams"]["non_resource"]:
-                total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
                 new_sols = []
                 for sol_choice in all_solutions_symbolics:
-                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
                     for v in vals:
                         # update w/ new value
                         sol_choice[nonresource] = v
@@ -1612,17 +1632,18 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
             
         total_sols *= len(solutions)
 
-    print(all_solutions_symbolics)
-    exit()
+    #print(all_solutions_symbolics)
+    #exit()
 
     print("TOTAL_SOLS", total_sols)
 
     # sample x% of solutions
     # TODO: do this for non preprocessed
-    sample_size = int(0.2*total_sols)
+    sample_size = int(0.01*total_sols)
     print("SAMPLE SIZE", sample_size)
     sampled_sols = []
     sample_xvals = []
+
 
     '''
     # randomly sample % of solutions
@@ -1652,18 +1673,26 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
     '''
     # grid(ish) sampling
     # instead of random, sample every total_samples/sample_size samples
-    # TODO: update this to work with non resource vals (enumerate all solutions, with non resource)
     if solutions:
         sample_xvals = [[x] for x in range(0, len(all_solutions_symbolics), int(total_sols/sample_size))]
         for xval in sample_xvals:
             sampled_sols.append(all_solutions_symbolics[xval[0]])
 
+
+    # save initial sampled sols
+    with open('init_samplesols.pkl','wb') as f:
+        pickle.dump(sampled_sols,f)
+
     # convert to numpy array, to use w/ scikit
     np_xvals = np.array(sample_xvals)
-    #print(sample_xvals)
-    #print(np_xvals) 
+    #np.append(np_xvals, np.array([39])) 
+    #print(np_xvals)
     #print(np_xvals.shape)
     #exit()
+
+
+    # we're including sample time in overall time
+    start_time = time.time()
 
     # step 1: create surrogate function
     # step 1.1: get cost for each sampled value
@@ -1689,10 +1718,10 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
  
     # step 2: optimize acquisition function
     # step 2.1: choose points in domain (via some search strategy)
-    # TODO: more sophisticated search
-    # try all of them????? bc we have a discrete domain space
     # TODO: do for non preprocessed
     # use index in sol list, not var value
+    # pick min value, eval with gen_cost, refit model w/ actual, then repeat
+    # keep track of current min
     '''
     acq_xsamples = []
     acq_sample_size = int(0.5*total_sols) 
@@ -1719,70 +1748,181 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
     # use var values directly, not index in sol list
     acq_xsamples = []
     acq_samples_symbolics = []
+    
+    '''
     if solutions:
         for sol in solutions:
             symbolics_opt = set_symbolics_from_tree_solution(sol, symbolics_opt, bounds_tree) 
             xvals = [solutions.index(sol)]
-            '''
-            for resource in opt_info["optparams"]["order_resource"]:
-                xvals.append(symbolics_opt[resource])
-            '''
-            for nonresource in opt_info["optparams"]["non_resource"]:
-                xvals.append(symbolics_opt[nonresource])
+            #for resource in opt_info["optparams"]["order_resource"]:
+            #    xvals.append(symbolics_opt[resource])
+            #for nonresource in opt_info["optparams"]["non_resource"]:
+            #    xvals.append(symbolics_opt[nonresource])
 
             acq_xsamples.append(xvals)
-            acq_samples_symbolics.append(copy.deepcopy(symbolics_opt))
+            #acq_samples_symbolics.append(copy.deepcopy(symbolics_opt))
+    '''
     #print("ACQ SAMPLES", acq_xsamples)
+
+    acq_xsamples = [[x] for x in range(len(all_solutions_symbolics))]
+    acq_samples_symbolics = all_solutions_symbolics
 
     np_acq_xvals = np.array(acq_xsamples)
 
-    # step 2.2: eval chosen points w/ surrogate
-    #yhat, _ = surrogate(model, np_xvals)
-    yhat = None
-    # catch any warning generated when making a prediction
-    with catch_warnings():
-        # ignore generated warnings
-        simplefilter("ignore")
-        yhat, _ = model.predict(np_xvals, return_std=True)
-    best = min(yhat)
-    print("BEST", best)
+    # TODO: repeat this next part
+     
+    mu_vals = []
+    best_sols = []
+    best_mu = []
+    actual_eval = []
+
+    iterations = 0
+    while True:
+        # check iter/time conditions
+        if iters or iter_time:
+            if iterations >= opt_info["optparams"]["stop_iter"]:
+                break
+        if simtime or iter_time:
+            if (time.time()-start_time) >= opt_info["optparams"]["stop_time"]:
+                break
+
+        curr_time = time.time()
+        # TIME TEST (save sols/costs we've evaled up to this point)
+        if timetest:
+            # 5 min (< 10)
+            if 300 <= (curr_time - start_time) < 600:
+                with open('5min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('5min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["5min"] = len(best_sols)
+                time_cost["5min"] = copy.deepcopy(actual_eval)
+            # 10 min (< 30)
+            if 600 <= (curr_time - start_time) < 1800:
+                with open('10min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('10min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["10min"] = len(best_sols)
+                time_cost["10min"] = copy.deepcopy(actual_eval)
+            # 30 min
+            if 1800 <= (curr_time - start_time) < 2700:
+                with open('30min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('30min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["30min"] = len(best_sols)
+                time_cost["30min"] = copy.deepcopy(actual_eval)
+            # 45 min
+            if 2700 <= (curr_time - start_time) < 3600:
+                with open('45min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('45min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["45min"] = len(best_sols)
+                time_cost["45min"] = copy.deepcopy(actual_eval)
+            # 60 min
+            if 3600 <= (curr_time - start_time) < 5400:
+                with open('60min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('60min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["60min"] = len(best_sols)
+                time_cost["60min"] = copy.deepcopy(actual_eval)
+            # 90 min
+            if 5400 <= (curr_time - start_time) < 7200:
+                with open('90min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('90min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["90min"] = len(best_sols)
+                time_cost["90min"] = copy.deepcopy(actual_eval)
+            # 120  min (end)
+            if 7200 <= (curr_time - start_time):
+                with open('120min_best_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(best_sols,f)
+                with open('120min_actual_eval_bayesian.pkl','wb') as f:
+                    pickle.dump(actual_eval,f)
+                num_sols_time["120min"] = len(best_sols)
+                time_cost["120min"] = copy.deepcopy(actual_eval)
+                break
+
+
+        # step 2.2: eval chosen points w/ surrogate
+        #yhat, _ = surrogate(model, np_xvals)
+        yhat = None
+        # catch any warning generated when making a prediction
+        with catch_warnings():
+            # ignore generated warnings
+            simplefilter("ignore")
+            yhat, _ = model.predict(np_xvals, return_std=True)
+        best = min(yhat)
+        print("BEST", best)
     
-    # calculate mean and stdev via surrogate function
-    #mu, std = surrogate(model, np_acq_xvals)
-    mu = None
-    std = None
-    with catch_warnings():
-        # ignore generated warnings
-        simplefilter("ignore")
-        mu, std = model.predict(np_acq_xvals, return_std=True)
-    #mu = mu[:, 0]
-    # calculate the probability of improvement
-    # TODO: try different probablistic acquisition functions? (or just surrogate directly)
-    probs = norm.cdf((mu - best) / (std+1E-9))
-    ix_prob = np.argmin(probs)
-    ix = np.argmin(mu)
+        # calculate mean and stdev via surrogate function
+        #mu, std = surrogate(model, np_acq_xvals)
+        mu = None
+        std = None
+        with catch_warnings():
+            # ignore generated warnings
+            simplefilter("ignore")
+            mu, std = model.predict(np_acq_xvals, return_std=True)
+        #mu = mu[:, 0]
+        # calculate the probability of improvement
+        # TODO: try different probablistic acquisition functions? (or just surrogate directly)
+        probs = norm.cdf((mu - best) / (std+1E-9))
+        ix_prob = np.argmin(probs)
+        ix = np.argmin(mu)
 
-    print("MU MIN VALUE")
-    print("MU VALUE", mu[ix])
+        print("MU MIN VALUE")
+        print("MU VALUE", mu[ix])
+        best_mu.append(mu[ix])
 
-    # dump mu and sampled values so we can analyze later
-    with open('samplesols.pkl','wb') as f:
-        pickle.dump(acq_samples_symbolics, f)
-    with open('mu.pkl','wb') as f:
-        pickle.dump(list(mu), f)
+        # save mu and best values so we can analyze later
+        mu_vals.append(list(mu))
     
 
-    # step 2.3: return best point
-    print(np_acq_xvals[ix])
-    sol_choice = solutions[np_acq_xvals[ix, 0]]
-    # ARGMAX best values: 87,37
-    # ARGMIN best value: 151 (9 rows, 65536 cols) 
-    for sol in sol_choice:
-        node = bounds_tree.get_node(sol)
-        if node.tag=="root":
-            continue
-        print("var:", node.tag[0], "value:", node.tag[1])
+        # step 2.3: return best point
+        print(np_acq_xvals[ix])
+        #sol_choice = solutions[np_acq_xvals[ix, 0]]
+        sol_choice = all_solutions_symbolics[np_acq_xvals[ix,0]]
+        # ARGMAX best values: 87,37
+        # ARGMIN best value: 151 (9 rows, 65536 cols) 
+        '''
+        for sol in sol_choice:
+            node = bounds_tree.get_node(sol)
+            if node.tag=="root":
+                continue
+            print("var:", node.tag[0], "value:", node.tag[1])
+        '''
+        print("BEST", sol_choice)
+        # eval best choice, fit model w/ new value
+        #symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)
+        best_sols.append(copy.deepcopy(sol_choice))
+        if not solutions:
+            score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "bayesian")
+        else:
+            score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "ordered")
+        print("ACTUAL VALUE:", score)
+        actual_eval.append(score)
 
+        # udpate w/ new value (np_acq_xvals[ix], score)
+        # check if we've already evaluated this one (if not, add)
+        print(sol_choice)
+        if sol_choice not in sampled_sols:
+            # add the new solution
+            sampled_sols.append(copy.deepcopy(sol_choice))
+            sample_xvals.append([np_acq_xvals[ix,0]])
+            np_xvals = np.array(sample_xvals)
+            # add the new score
+            sample_costs.append(score)
+            np_yvals = np.array(sample_costs)
+            # refit the model
+            model.fit(np_xvals, np_yvals) 
+
+        iterations += 1
+
+    '''
     print("PROB MIN VALUE")
     print("PROB MU VALUE", mu[ix_prob])
     print(np_acq_xvals[ix_prob])
@@ -1794,7 +1934,7 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
         if node.tag=="root":
             continue
         print("var:", node.tag[0], "value:", node.tag[1])
-
+    '''
 
     '''
     print("ARGMIN")
@@ -1817,8 +1957,19 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
     print("TEST COST", test_cost)
     '''
 
-    print("SAMPLED SOLS")
-    print(sampled_sols)
+    with open('mu.pkl','wb') as f:
+        pickle.dump(mu_vals, f)
+
+    with open('best_eval','wb') as f:
+        pickle.dump(best_mu, f)
+
+    with open('actual_eval','wb') as f:
+        pickle.dump(actual_eval,f)
+
+    with open('best_sols','wb') as f:
+        pickle.dump(best_sols,f)
+
+    print("TIME", time.time()-start_time)
 
 
 
