@@ -24,7 +24,7 @@ def log_pkthop(hop,pktlen):
         pkthopcounts[hop] = pktlen
     else:
         pkthopcounts[hop] += pktlen
-    if pktcounter[0] > 9991:
+    if pktcounter[0] > 499999:
         with open('pkthops.pkl','wb') as f:
             pickle.dump(pkthopcounts, f)
 

@@ -16,15 +16,21 @@ def log_count(srca,dsta,sport,dport,c):
     else:
         counts[fid] = c
 
-
+    #print("PACKET COUNT", pkt_counter[0])
     #with open('test.pkl','wb') as f:
     #    pickle.dump(pkt_counter,f)
 
     # ok this is ridiculous we simply cannot write after every pkt
     # gonna try after last pkt?
     # TODO: this feels like cheating a little, can we have a better way of know when we've reached the end?
-    if pkt_counter[0] > 665590:
+    '''
+    if pkt_counter[0] > 976545:
         with open('counts.pkl','wb') as f:
             pickle.dump(counts,f)    
+    '''
 
+
+def write_to_file():
+    with open('counts.pkl','wb') as f:
+        pickle.dump(counts,f)
 

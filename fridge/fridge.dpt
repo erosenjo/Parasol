@@ -67,6 +67,7 @@ memop getdiff(int memval, int newval) {
 
 /* Externs */
 extern log_rttsample(int rtt, int insrtdiff, int eprob, int fsize);
+extern write_to_file();
 
 // compute eack for syn cases
 fun int precompute_eack(int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no) {
@@ -186,6 +187,11 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
     // p4 prototype sends pkt back to sender
 
     // in egress, p4 prototype maintains tally histogram
+
+    // we only want to write extern results to file at the end, otherwise it makes interpreter VERY slow
+    if (timestamp==345002842034) {
+        write_to_file();
+    }
 
 }
 

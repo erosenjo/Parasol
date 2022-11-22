@@ -22,6 +22,7 @@ def log_rttsample(rtt, insrtdiff, entry_prob, array_size):
     else:
         rtt_correction[rtt] = correction_factor
 
+    '''
     with open('numsamples.pkl','wb') as f:
         pickle.dump(samples[0],f)
     with open('insertdiffs.pkl','wb') as f:
@@ -29,4 +30,17 @@ def log_rttsample(rtt, insrtdiff, entry_prob, array_size):
 
     with open('rtt_correction.pkl','wb') as f:
         pickle.dump(rtt_correction,f)
+    '''
+
+
+def write_to_file():
+    with open('numsamples.pkl','wb') as f:
+        pickle.dump(samples[0],f)
+    with open('insertdiffs.pkl','wb') as f:
+        pickle.dump(insert_measure,f)
+
+    with open('rtt_correction.pkl','wb') as f:
+        pickle.dump(rtt_correction,f)
+
+
 

@@ -144,14 +144,15 @@ memop compute_min(int memval, int minval) {
 /* externs */
 extern log_miss_cms(int key);
 extern log_hit_cms(int key);
+extern write_to_file_cms();
 
 module Cmscache : {
     global type t<<'logent, 'tab, 'logcols, 'rows>>;
     constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes);
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes);
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) [start <= ca; end ca];
+    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) [start <= ca; end ca];
 
 
 } {
@@ -172,15 +173,16 @@ module Cmscache : {
 
 
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes);
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes);
 
-    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) {
+    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) {
+        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-                Array.set(ca#arrs[i]#times,mht_idxes[i],timestamp);
+                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
             }
@@ -190,31 +192,32 @@ module Cmscache : {
 
 
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) {
+    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) {
 
         int<<1>> matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
-	int max_int = 0xffffffff;
+	    int max_int = 0xffffffff;
 
+        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
 
         for (i < 'tab) {
             // init match vars, for each fid entry
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,timestamp);
+            int expire = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
 
             if (match_1==1) {   // else if match, incr counter
                 matched = 1;
-		c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read_complex,min_val, max_int, 0);
+        		c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read_complex,min_val, max_int, 0);
                 //c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
                 // cache hit, log it
                 //log_hit_cms(key);
             }
             else {  // else grab counter value
-		c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+		        c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
                 //c_or_maxint = Array.getm(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val);
             }
 
@@ -228,6 +231,38 @@ module Cmscache : {
                     min_val = c_or_maxint;
                 }
             }
+        }
+
+
+        // small skew
+        if (timestamp==437077123) {
+            printf("TEST cms small skew");
+            write_to_file_cms();
+        }
+        // small not skew
+        if (timestamp==391828504) {
+            printf("TEST cms small not skew");
+            write_to_file_cms();
+        }
+        // med skew
+        if (timestamp==425130809394) {
+            printf("TEST cms med skew");
+            write_to_file_cms();
+        }
+        // med not skew
+        if (timestamp==424775654977) {
+            printf("TEST cms med not skew");
+            write_to_file_cms();
+        }
+        // large skew
+        if (timestamp==33998624356176) {
+            printf("TEST cms large skew");
+            write_to_file_cms();
+        }
+        // large not skew
+        if (timestamp==34000348275189) {
+            printf("TEST cms large not skew");
+            write_to_file_cms();
         }
 
         /* cms */
@@ -244,15 +279,16 @@ module Cmscache : {
 
 
 	    if (min_val==0) { // cache slot was empty
-		generate add_val(ca,key,1,min_stg_to_set,key,timestamp, 0);
+		    generate add_val(ca,key,1,min_stg_to_set,key,timestamp, 0);
 	    } else {
-		if (min < THRESH) {
-			return;
-		} else {
-			generate add_val(ca,key,1,min_stg_to_set,key, timestamp, 0);
-		}
+		    if (min < THRESH) {
+			    return;
+		    } else {
+			    generate add_val(ca,key,1,min_stg_to_set,key, timestamp, 0);
+		    }
 	    }
-
+       
+ 
 /*
 
             // if cms count > thresh, let's insert
@@ -282,14 +318,15 @@ module Cmscache : {
 /* externs */
 extern log_miss(int key);
 extern log_hit(int key);
+extern write_to_file_precision();
 
 module Precisioncache : {
     global type t<<'logent, 'tab, 'logcols, 'rows>>;
     constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes);
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes);
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) [start <= ca; end ca];
+    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) [start <= ca; end ca];
    
 } {
 
@@ -307,15 +344,16 @@ module Precisioncache : {
         dummy_var2 = 0;
     };
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes);
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes);
 
-    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) {
+    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) {
+        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-		        Array.set(ca#arrs[i]#times,mht_idxes[i],timestamp);
+		        Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
             }
@@ -325,21 +363,22 @@ module Precisioncache : {
 
 
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int timestamp, int<<7>> dummy_bytes) {
+    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int<<1>> insert, int min_stg, int cacheval, int<<48>> timestamp, int<<7>> dummy_bytes) {
 
         int<<1>> matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
-	int max_int = 0xffffffff;
+    	int max_int = 0xffffffff;
 
+        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
 
 
         for (i < 'tab) {
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire2 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,timestamp);
+            int expire2 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
 
             if (match_1==1) {   // else if match, incr counter
                     c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
@@ -1543,6 +1582,31 @@ module Precisioncache : {
 
         }
         else { return; }  // not adding to cache, forward pkt
+
+        // small skew
+        if (timestamp==437077123) {
+            write_to_file_precision();
+        }
+        // small not skew
+        if (timestamp==391828504) {
+            write_to_file_precision();
+        }
+        // med skew
+        if (timestamp==425130809394) {
+            write_to_file_precision();
+        }
+        // med not skew
+        if (timestamp==424775654977) {
+            write_to_file_precision();
+        }
+        // large skew
+        if (timestamp==33998624356176) {
+            write_to_file_precision();
+        }
+        // large not skew
+        if (timestamp==34000348275189) {
+            write_to_file_precision();
+        }
 
     }
 

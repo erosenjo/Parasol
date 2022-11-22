@@ -46,6 +46,7 @@ extern log_collision();
 extern log_timeout(bool timeout);
 extern log_rttsample(int sample);
 extern log_test(int ack,int sample);
+extern write_to_file();
 
 /* Memops */
 // memval1 is signature, memval2 is timestamp
@@ -192,7 +193,9 @@ else {
         generate tcp_out(1, rtt, 0);
     }
 
-
+    if (timestamp == 345002842034) {
+        write_to_file();
+    }
     // return computed RTT, to send to controller or do whatever
     //generate tcp_out(pkt_type, rtt, 0);
 }
