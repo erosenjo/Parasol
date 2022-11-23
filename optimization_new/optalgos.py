@@ -1075,12 +1075,14 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                 symbolics_opt["eviction"] = False
                 symbolics_opt["rows"] = 1
                 symbolics_opt["cols"] = 128
-                symbolics_opt["expire_thresh"] = 2
+                #symbolics_opt["expire_thresh"] = 2
                 symbolics_opt["THRESH"] = 2
         # get all possible non_resource vals
         nr_vals = []
         for nonresource in opt_info["optparams"]["non_resource"]:
-            nr_range = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+            nr_range = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+            if opt_info["symbolicvals"]["bounds"][nonresource][1] not in nr_range:
+                nr_range.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
             nr_vals.append(nr_range)
         non_resource_sols = list(itertools.product(*nr_vals))
 
@@ -1141,9 +1143,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 
         elif strat=="bayesian":
             if nopruning:
-                return bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree)
+                return bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree)
             else:
-                return bayesian(symbolics_opt, opt_info, o, pruned_sols, bounds_tree)
+                return bayesian(symbolics_opt, opt_info, o, timetest, pruned_sols, bounds_tree)
 
     interp_time = time.time()-interpreter_start_time
     print("TOTAL INTERP TIME:", interp_time)
@@ -1197,7 +1199,7 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
 '''
 def nelder_mead(symbolics_opt, opt_info, o, timetest, 
                 no_improve_thr=10e-6, no_improv_break=50,
-                alpha=10., gamma=20., rho=-0.5, sigma=0.5,
+                alpha=100., gamma=200., rho=-0.5, sigma=0.5,
                 solutions=[], tree=None): 
     '''
         @param symbolics_opt (dict): dict of symbolics and their values (or index in preprocessed list), used to gen cost
@@ -1520,7 +1522,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
             print("EVALED SOL AFTER CONTRACTION", symbolics_opt)
-            cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordererd")
+            cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cscore)
         if cscore < res[-1][1]:
@@ -1583,7 +1585,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 #   choose candidate sol, eval with acquisition, then max acquisition
 #   acq func decides whether sol is worth evaling w real obj func
 #   many types of acq funcs (Probability of Improvement is simplest)
-def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
+def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     iters = False
     simtime = False
     iter_time = False
@@ -1776,6 +1778,9 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
     best_mu = []
     actual_eval = []
 
+    num_sols_time = {}
+    time_cost = {}
+
     iterations = 0
     while True:
         # check iter/time conditions
@@ -1960,16 +1965,27 @@ def bayesian(symbolics_opt, opt_info, o, solutions, bounds_tree):
     with open('mu.pkl','wb') as f:
         pickle.dump(mu_vals, f)
 
-    with open('best_eval','wb') as f:
+    with open('final_best_eval.pkl','wb') as f:
         pickle.dump(best_mu, f)
 
-    with open('actual_eval','wb') as f:
+    with open('final_actual_eval.pkl','wb') as f:
         pickle.dump(actual_eval,f)
 
-    with open('best_sols','wb') as f:
+    with open('final_best_sols.pkl','wb') as f:
         pickle.dump(best_sols,f)
 
+    with open('final_testing_sols.pkl','wb') as f:
+        pickle.dump(sampled_sols, f)
+
+    with open('final_testing_eval.pkl','wb') as f:
+        pickle.dump(sample_costs, f)
+
+    best_eval = min(sample_costs)
+    best_index = sample_costs.index(best_eval)
+
     print("TIME", time.time()-start_time)
+    print("BEST SOL:", sampled_sols[best_index])
+    print("BEST EVAL:", best_eval)
 
 
 

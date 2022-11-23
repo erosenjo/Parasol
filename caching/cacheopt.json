@@ -1,31 +1,30 @@
 {
     "symbolicvals" : {
-    "sizes": {
-        "logentries": 8,
-        "tables": 3,
-        "logcols": 7,
-        "rows": 2
-    },
-    "symbolics": {
-        "entries": 256,
-        "cols": 128,
-        "eviction": true,
-        "expire_thresh": 50000000,
-	"THRESH" : 50
-
-    },
-    "logs" : {
-        "logentries": "entries",
-        "logcols" : "cols"
-    },
-    "bounds" : {
-        "tables" : [1,12],
-        "entries" : [32, 131072],
-        "rows" : [1,12],
-        "cols" : [32, 131072],
-        "expire_thresh": [30000000,50000000],
-	"THRESH" : [1, 60]
-    }
+        "sizes": {
+            "logentries": 8,
+            "tables": 3,
+            "logcols": 7,
+            "rows": 2
+        },
+        "symbolics": {
+            "entries": 256,
+            "cols": 128,
+            "eviction": true,
+            "expire_thresh": 50000000,
+        	"THRESH" : 50
+        },
+        "logs" : {
+            "logentries": "entries",
+            "logcols" : "cols"
+        },
+        "bounds" : {
+            "tables" : [1,12],
+            "entries" : [32, 131072],
+            "rows" : [1,12],
+            "cols" : [32, 131072],
+            "expire_thresh": [5000000,50000000],
+    	"THRESH" : [1, 60]
+        }
     },
     "structchoice": {
         "var": "eviction",
@@ -33,9 +32,11 @@
     },
     "optparams": {
         "optalgo" : "ordered",
+        "strat" : "exhaustive",
         "stop_time" : 8000,
-        "order_resource" : ["tables", "rows", "entries", "cols"],
-        "non_resource" : ["eviction", "expire_thresh", "THRESH"],
+        "struct" : "precision",
+        "order_resource" : ["tables", "entries"],
+        "non_resource" : ["expire_thresh"],
         "mem_formula" : "(tables*entries) + (rows*cols)",
         "hash_formula" : "tables + rows",
         "regaccess_formula" : "tables + rows",
@@ -45,8 +46,8 @@
             "entries": 100,
             "cols" : 5000,
             "rows" : 2,
-            "expire_thresh": 10000000,
-	    "THRESH": 10
+            "expire_thresh": 5000000,
+	        "THRESH": 10
         }
     },
     "symfile" : "caching.symb",
@@ -54,5 +55,4 @@
     "outputfiles" : ["misses.pkl"],
     "optmodule" : "cacheopt",
     "trafficpcap" : ""
-
 }

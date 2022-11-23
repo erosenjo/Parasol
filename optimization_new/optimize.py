@@ -87,7 +87,7 @@ def main():
         num_sols_time = []
         starting_sols = []
         #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut)
-        for i in range(10): # repeat 10 times
+        for i in range(1): # repeat once times
             best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut)
             best_costs.append(best_cost)
             best_sols.append(best_sol)
@@ -101,7 +101,7 @@ def main():
         results["time_costs"] = time_costs
         results["num_sols_time"] = num_sols_time
         results["starting_sols"] = starting_sols
-        with open("10iter_results.pkl",'wb') as f:
+        with open("1iter_results.pkl",'wb') as f:
             pickle.dump(results, f)
 
     elif opt_info["optparams"]["optalgo"] == "neldermead":
