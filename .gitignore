@@ -8,6 +8,7 @@
 *.pkl
 *.txt
 *.symb
+*.layout.json
 
 __pycache__/
 *.py[cod]

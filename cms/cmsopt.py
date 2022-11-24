@@ -34,14 +34,18 @@ class Opt:
         infopkts = []
         info = {}
         info["switches"] = 1
-        info["max time"] = 9999999
+        info["max time"] = 999999999
         info["default input gap"] = 1
         info["random seed"] = 0
         info["python file"] = "cms_sym.py"
         events = []
+        pktcounter = 0
         with PcapReader(self.pkts) as pcap_reader:
             for pkt in pcap_reader:
                 if not (pkt.haslayer(IP)):
+                    continue
+                pktcounter += 1
+                if pktcounter < 1000000:    # get a different part of the trace to test our solution
                     continue
                 src_int = int(hexadecimal(pkt[IP].src),0)
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
@@ -63,8 +67,14 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].src),0))
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
-                if len(events) >= 500000:
+                # 500000 events for training, 1000000 for testing
+                #if len(events) >= 500000:
+                if len(events) >= 1000000:
                     break
+
+        # update last dummy byte, this helps us identify the last pkt
+        # (we call different extern on last pkt to write counts to file)
+        events[-1]["args"][-1] = 1
 
 
         print("PACKETS:",len(events))
@@ -74,8 +84,8 @@ class Opt:
         testinfo["model-output"]=[]
 
 
-        with open('cms_sym_test.json','w') as f:
-            json.dump(testinfo,f,indent=4)
+        #with open('cms_sym_test.json','w') as f:
+        #    json.dump(testinfo,f,indent=4)
 
         info["events"] = events
         with open('cms_sym.json', 'w') as f:
@@ -105,9 +115,17 @@ class Opt:
     def init_iteration(self, symbs):
         pass
 
+'''
+o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+o.gen_traffic()
+cmd = ["make", "interp"]
+ret = subprocess.run(cmd)
+
+measurement = []
+outfiles = ["test.pkl"]
+for out in outfiles:
+    measurement.append(pickle.load(open(out,"rb")))
+o.calc_cost(measurement)
+'''
 
 
-#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
-#o.gen_traffic()
-#m = [pickle.load(open('test.txt','rb'))]
-#o.calc_cost(m)

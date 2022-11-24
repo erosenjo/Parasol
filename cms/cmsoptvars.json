@@ -10,20 +10,21 @@
 	    "logs" : {
 	        "logcols" : "cols"
 	    },
-            "bounds" : {
-	        "rows" : [1,10],
-	        "cols" : [2, 65536]
+        "bounds" : {
+	        "rows" : [1,11],
+	        "cols" : [32, 131072]
 	    }
     },
     "optparams": {
-        "search" : "simple",
         "order_resource" : ["rows", "cols"],
+        "non_resource" : [],
         "optalgo" : "ordered",
-	    "stop_time" : 8000,
+        "strategy" : "bayesian",
+	    "stop_time" : 300,
 	    "temp" : 10,
         "maxcost" : 50000, 
 	    "stepsize": {
-	        "cols" : 3000,
+	        "cols" : 5000,
 	        "rows" : 1
 	    }
     },
