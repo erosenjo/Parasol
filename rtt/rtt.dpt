@@ -37,7 +37,7 @@ const int TS_LEGITIMATE_THRESHOLD = 2000000000; // 2000*1000*1000
 global PairArray.t<<32>>[tables] pkt_tables = [PairArray.create(table_size) for i<tables];
 
 /* Events */
-entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp);
+entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp);
 exit event tcp_out(int<<1>> pkt_type, int rtt, int<<7>> dummy_bytes);
 exit event dropped();
 
@@ -114,7 +114,7 @@ fun int precompute_eack(int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int s
 }
 
 
-handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp) {
     // decide if syn or ack
     int<<2>> pkt_type = 0;	// true is syn, false is ack
     // precompute eack for syn case to reduce the number of hash units used.
@@ -151,14 +151,14 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
 
         int rtt = 0;
         // for loop
-
+        int short_time = timestamp[31:0];
 
          for (i < tables) {
             if (rtt==0) {
                 //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
                 //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no);
             
-                rtt = PairArray.update(pkt_tables[i], idxes[i], read, pkt_signature, timestamp, 0);
+                rtt = PairArray.update(pkt_tables[i], idxes[i], read, pkt_signature, short_time, 0);
             
             }
         }
@@ -167,9 +167,9 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
             //rtt = timestamp-rtt;
             //printf("MATCH!!");
             //log_test(ack_no,timestamp-rtt);
-            log_rttsample(timestamp-rtt);
+            log_rttsample(short_time-rtt);
         }
-        generate tcp_out(0, timestamp-rtt, 0);
+        generate tcp_out(0, short_time-rtt, 0);
 
     } 
 else {
@@ -183,9 +183,10 @@ else {
         int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, syn_eack) for i < tables];
 
         int rtt = 0;
+        int short_time = timestamp[31:0];
         for (i < tables) {
             if (rtt==0) {
-                rtt = PairArray.update(pkt_tables[i], idxes[i], insert, pkt_signature, timestamp, 0);
+                rtt = PairArray.update(pkt_tables[i], idxes[i], insert, pkt_signature, short_time, 0);
             }
         }
         //        if (rtt==0) { log_collision(); }
@@ -193,7 +194,10 @@ else {
         generate tcp_out(1, rtt, 0);
     }
 
+    // training, univ1_pt1
     if (timestamp == 345002842034) {
+    // testing, univ1_pt8
+    //if (timestamp == 233286941007) {
         write_to_file();
     }
     // return computed RTT, to send to controller or do whatever
