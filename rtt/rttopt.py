@@ -33,7 +33,10 @@ class Opt:
         info["random seed"] = 0
         info["python file"] = "rtt.py"
         events = []
+        # univ1_pt1 start time
         starttime = 1261067164.398500 # placeholder until figure out timestamps
+        # univ1_pt8 start time
+        #starttime = 1261069030.761055
         syns = {}
         gt = []
 
@@ -191,6 +194,7 @@ class Opt:
                 '''
 
 
+                # 1000000 pkts for training, full trace for testing
                 if len(events) > 1000000:
                     break
 
@@ -398,9 +402,8 @@ class Opt:
 # ecdf = ECDF([measurement])
 
 '''
-o = Opt("univ1_pt1.pcap")
+o = Opt("univ1_pt8.pcap")
 o.gen_traffic()
-
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
 

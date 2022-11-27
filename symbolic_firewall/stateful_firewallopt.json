@@ -21,17 +21,19 @@
     },
     "optparams": {
         "optalgo" : "ordered",
+        "strategy" : "bayesian",
         "stop_time" : 8000,
         "order_resource" : ["stages", "entries"],
         "non_resource" : ["interscan_delay", "timeout"],
         "mem_formula" : "stages * entries",
         "hash_formula" : "stages+1",
         "regaccess_formula" : "3*stages+1",
-        "temp" : 10,
+        "temp" : 1000,
+        "maxcost" : 10000,
         "stepsize": {
             "stages": 1,
 	        "entries": 512,
-            "timeout": 100000000,
+            "timeout": 50000000,
             "interscan_delay": 100000000
         }
     },

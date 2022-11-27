@@ -1,23 +1,23 @@
 {
     "symbolicvals" : {
-    "sizes": {
-        "logentries": 8,
-        "tables": 3
-    },
-    "symbolics": {
-        "entries": 8192
-
-    },
-    "logs" : {
-        "logentries": "entries"
-    },
-    "bounds" : {
-        "tables" : [1,12],
-        "entries" : [32, 131072]
-    }
+        "sizes": {
+            "logentries": 8,
+            "tables": 3
+        },
+        "symbolics": {
+            "entries": 8192
+        },
+        "logs" : {
+            "logentries": "entries"
+        },
+        "bounds" : {
+            "tables" : [1,12],
+            "entries" : [32, 131072]
+        }
     },
     "optparams": {
         "optalgo" : "ordered",
+        "strategy" : "bayesian",
         "stop_time" : 8000,
         "order_resource" : ["tables", "entries"],
         "non_resource" : [],

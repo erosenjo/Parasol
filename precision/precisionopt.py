@@ -29,7 +29,7 @@ class Opt:
     def gen_traffic(self):
         info = {}
         info["switches"] = 1
-        info["max time"] = 9999999
+        info["max time"] = 999999999
         info["default input gap"] = 10
         info["random seed"] = 0
         info["python file"] = "precision.py"

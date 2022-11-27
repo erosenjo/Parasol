@@ -1,7 +1,7 @@
 # (user-provided) class containing functions necessary for optimization:
 #   gen traffic (as json), init function called each time we run interp iteration
 
-import json
+import json, pickle
 from scapy.all import *
 
 # helpers
@@ -28,16 +28,21 @@ class Opt:
     def gen_traffic(self):
         info = {}
         info["switches"] = 1
-        info["max time"] = 9999999
+        info["max time"] = 999999999
         info["default input gap"] = 1
         info["random seed"] = 0
         info["python file"] = "hash.py"
         events = []
+        pkt_counter = 0
         with PcapReader(self.pkts) as pcap_reader:
             for pkt in pcap_reader:
                 if not (pkt.haslayer(IP)):
                     continue
                 if not (pkt.haslayer(TCP)):
+                    continue
+                pkt_counter += 1
+                # for training, use pkts 1000000-2000000
+                if pkt_counter < 1000000:
                     continue
                 src_int = int(hexadecimal(pkt[IP].src),0)
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
@@ -51,7 +56,11 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].src),0))
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
-                if len(events) > 100000:
+
+                # first 100000 events for training
+                # 1000000 events for testing
+                #if len(events) > 100000:
+                if len(events) > 1000000:
                     break
 
 
@@ -65,6 +74,7 @@ class Opt:
     def calc_cost(self,measure):
         m = measure[0]  
         
+        print("COLLISION RATE", m/self.ground_truth)
         return m/self.ground_truth
 
     # called before every interp run
@@ -73,7 +83,14 @@ class Opt:
 
 
 
-#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
-#o.gen_traffic()
+o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+o.gen_traffic()
 
+cmd = ["make", "interp"]
+ret = subprocess.run(cmd)
 
+measurement = []
+outfiles = ["colls.pkl"]
+for out in outfiles:
+    measurement.append(pickle.load(open(out,"rb")))
+o.calc_cost(measurement)

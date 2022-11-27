@@ -13,12 +13,13 @@
 	},
 	"bounds" : {
 	    "tables" : [1, 12],
-	    "table_size" : [32, 65536],
+	    "table_size" : [32, 131072],
 	    "TS_EXPIRE_THRESHOLD" : [10000000, 100000000]
         }
     },
     "optparams": {
         "optalgo" : "ordered",
+        "strategy" : "bayesian",
         "stop_time" : 8000,
         "temp" : 10,
         "order_resource" : ["tables", "table_size"],
@@ -26,10 +27,10 @@
         "mem_formula" : "tables * table_size",
         "hash_formula" : "tables",
         "regaccess_formula" : "tables",
-        "max_cost" : 1,
+        "maxcost" : 1,
         "stepsize": {
             "tables": 2,
-            "tabl_size": 8000,
+            "table_size": 8000,
             "TS_EXPIRE_THRESHOLD": 20000000
         }
     },

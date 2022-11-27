@@ -12,14 +12,16 @@
     },
     "bounds" : {
         "ENTRY_PROB_LOG2": [1,15],
-	    "fridge_size" : [64, 65536]
+	    "fridge_size" : [32, 131072]
     }
     },
     "optparams": {
-        "optalgo" : "exhaustive",
-        "stop_iter" : 20,
-        "temp" : 10,
-        "maxcost" : 10,
+        "optalgo" : "ordered",
+        "strategy" : "bayesian",
+        "stop_time" : 8000,
+        "order_resource": ["fridge_size"],
+        "non_resource" : ["ENTRY_PROB_LOG2"],
+        "temp" : 1000,
         "stepsize": {
             "ENTRY_PROB_LOG2": 1,
 	        "fridge_size": 100

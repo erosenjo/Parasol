@@ -27,18 +27,20 @@
     },
     "optparams": {
     "optalgo" : "ordered",
-	"stop_iter" : 10,
+    "strategy" : "bayesian",
+	"stop_time" : 8000,
     "order_resource" : ["H", "R", "C"],
     "non_resource" : ["LOG_CQ_T"],
     "mem_formula" : "H*R*C",
     "hash_formula" : "H*R",
     "regaccess_formula" : "H*R",
-	"temp" : 10,
+	"temp" : 1000,
+    "maxcost" : 1,
 	"stepsize": {
 	    "H" : 1,
 	    "C" : 20,
         "R" :1,
-        "LOG_CQ_T": 5,
+        "LOG_CQ_T": 1,
         "T" : 1
 	}
     },

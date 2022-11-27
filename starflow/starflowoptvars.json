@@ -28,19 +28,20 @@
     },
     "optparams": {
     "optalgo" : "ordered",
+    "strategy": "bayesian",
+    "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],
     "mem_formula" : "(num_short*S_SLOTS)+(num_long*L_SLOTS)",
     "hash_formula" : "num_short + num_long",
     "regaccess_formula" : "num_short + num_long",
     "stop_time" : 8000,
-    "temp" : 10,
-    "maxcost" : 100,
+    "temp" : 1000,
     "stepsize": {
-       "max_short_idx" : 1,
-       "num_long" : 1,
-       "S_SLOTS" : 1000,
-       "L_SLOTS" : 200
+       "max_short_idx" : 3,
+       "num_long" : 3,
+       "S_SLOTS" : 5000,
+       "L_SLOTS" : 5000
     }
     },
     "symfile" : "starflow.symb",

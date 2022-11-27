@@ -321,7 +321,8 @@ handle free_block(int block_id, int<<16>> h2_align) {
   // this DOES NOT totally solve it (could give out block in between dup free block events)
   //int incrval = Array.update(stack_top_blk_id, 0, check_free_block, block_id, set_blk_id, block_id);
   //int stack_idx = Array.update(stack_top, 0, incr_stack_idx, incrval, incr_stack_idx, incrval);
-  int stack_idx = Array.update(stack_top, 0, incr, 1, incr, 1);
+  //int stack_idx = Array.update(stack_top, 0, incr, 1, incr, 1);
+  int stack_idx = Array.update(stack_top, 0, incr_stack_idx, 1, incr_stack_idx, 1);
   //int stack_idx = Array.update(stack_top, 0, read, 0, incr, 1);
   // write the block id to the unused slot. 
   //printf("PRE LONGBLOCK STACK");

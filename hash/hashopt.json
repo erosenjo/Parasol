@@ -1,28 +1,31 @@
 {
     "symbolicvals" : {
-	"sizes": {
+    	"sizes": {
             "log_size": 10,
-	    "tables": 1
-	},
-	"symbolics": {
-	    "table_size": 1024
-	},
-	"logs" : {
-	    "log_size" : "table_size"
-	},
+	        "tables": 1
+	    },
+	    "symbolics": {
+	        "table_size": 1024
+    	},
+	    "logs" : {
+	        "log_size" : "table_size"
+    	},
         "bounds" : {
-	    "tables" : [1,5],
-	    "table_size" : [256, 8192]
-	}
+	        "tables" : [1,20],
+	        "table_size" : [32, 131072]
+	    }
     },
     "optparams": {
-        "optalgo" : "random",
-	"stop_iter" : 30,
-	"temp" : 10,
-	"stepsize": {
-	    "table_size" : 1500,
-	    "tables" : 2
-	}
+        "order_resource" : ["tables", "table_size"],
+        "non_resource" : [],
+        "optalgo" : "ordered",
+        "strategy" : "exhaustive",
+	    "stop_time" : 8000,
+    	"temp" : 10,
+	    "stepsize": {
+	        "table_size" : 1500,
+    	    "tables" : 2
+	    }
     },
     "symfile" : "hash.symb",
     "lucidfile" : "hash.dpt",
