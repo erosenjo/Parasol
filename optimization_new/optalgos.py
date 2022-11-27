@@ -10,6 +10,9 @@ from sklearn.gaussian_process import GaussianProcessRegressor
 from warnings import catch_warnings
 from warnings import simplefilter
 from scipy.stats import norm
+from sklearn.gaussian_process import GaussianProcessRegressor, kernels
+from sklearn.linear_model import Ridge, LinearRegression
+from sklearn.kernel_ridge import KernelRidge
 
 # CONSTANTS
 single_stg_mem = 143360 # max number of elements for 32-bit array
@@ -371,6 +374,9 @@ def gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr,
     elif sol_index >= len(solutions):
         sol_index = len(solutions) - 1
     sol_choice = solutions[sol_index]
+
+    '''
+    # OLD, treating non resource separate
     symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree)
 
     # take a step for non-resource vars
@@ -390,6 +396,7 @@ def gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr,
             symbolics_opt[nr_var] = closest_power(symbolics_opt[nr_var])
         else:   # doesn't have to be power of 2, just round to nearest int
             symbolics_opt[nr_var] = round(symbolics_opt[nr_var])
+    '''
 
     # set any rule-based vars
     if "rules" in opt_info["symbolicvals"]:
@@ -432,6 +439,8 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         structchoice = True
         structinfo = opt_info["structchoice"]
 
+    '''
+    # OLD, treating non-resource vars separate from resource sol index
     # get total number of solutions, so we know if we've gone through them all
     total_sols = 1
     if not solutions:
@@ -449,6 +458,43 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         total_sols *= len(solutions)
 
     print("TOTAL_SOLS", total_sols)
+    '''
+
+    # NEW, enumerating all solutions, optimizing ONLY index value
+    #   (aka treating resource and non resource the same)
+    total_sols = 1
+    all_solutions_symbolics = []
+    if not solutions:
+        for bounds_var in opt_info["symbolicvals"]["bounds"]:
+            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
+            if bounds_var in opt_info["symbolicvals"]["logs"].values():
+                vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
+                total_sols *= vals
+                continue
+            vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+            total_sols *= vals
+    else:   # we've preprocessed, used those solutions to calc total
+        # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
+        for sol_choice in solutions:
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+        for nonresource in opt_info["optparams"]["non_resource"]:
+                #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
+                new_sols = []
+                for sol_choice in all_solutions_symbolics:
+                    #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
+                    for v in vals:
+                        # update w/ new value
+                        sol_choice[nonresource] = v
+                        # append to new solution list
+                        new_sols.append(copy.deepcopy(sol_choice))
+
+                all_solutions_symbolics = new_sols
+
+        total_sols *= len(solutions)
+        # total_sols = len(all_solutions_symbolics)
 
     # start time
     start_time = time.time()
@@ -459,8 +505,15 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     if not solutions:
         symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
     else:
+        '''
+        # OLD, treating non-resource vars separate from resource sol index
         # set resource vars
         symbolics_opt, candidate_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
+        '''
+        # NEW, only optimize index var
+        symbolics_opt = choice(all_solutions_symbolics)
+        candidate_index = all_solutions_symbolics.index(symbolics_opt)
+
 
     starting = copy.deepcopy(symbolics_opt)
     num_sols_time = {}
@@ -568,7 +621,9 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         if not solutions:
             symbolics_opt = gen_next_simannealing_nopreprocessing(structchoice, symbolics_opt, structinfo, curr, step_size, bounds, logvars, opt_info)
         else:
-            symbolics_opt, candidate_index = gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr, curr_index, bounds_tree)
+            # OLD, treating non-resource and resource differently
+            #symbolics_opt, candidate_index = gen_next_simannealing_preprocessed(solutions, opt_info, symbolics_opt, curr, curr_index, bounds_tree)
+            symbolics_opt, candidate_index = gen_next_simannealing_preprocessed(all_solutions_symbolics, opt_info, symbolics_opt, curr, curr_index, bounds_tree)
         # evaluate candidate point
         if not solutions:
             candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
@@ -1164,6 +1219,8 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 # NOTE: "candidate_index" is reserved, can't use for variable name
 def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt, 
                                opt_info, solutions=[], tree=None):
+    '''
+    # OLD, treat nonresource differently
     for val_i in range(nparray.size):
         val = int(nparray[val_i])
         var_name = index_dict[val_i]
@@ -1173,10 +1230,13 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
             symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree)
         else:   # this is a variable
             symbolics_opt[var_name] = int(val)
+    '''
+    sol_index = nparray[0]
+    symbolics_opt = solutions[sol_index]
 
-        # set any rule-based vars
-        if "rules" in opt_info["symbolicvals"]:
-            symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
+    # set any rule-based vars
+    if "rules" in opt_info["symbolicvals"]:
+        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
 
     return symbolics_opt
 
@@ -1235,14 +1295,53 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 
     start_time = time.time()
 
+    # NEW, only optimize for index val, treat resource and nonresource the same
+    total_sols = 1
+    all_solutions_symbolics = []
+    if not solutions:
+        for bounds_var in opt_info["symbolicvals"]["bounds"]:
+            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
+            if bounds_var in opt_info["symbolicvals"]["logs"].values():
+                vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
+                total_sols *= vals
+                continue
+            vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+            total_sols *= vals
+    else:   # we've preprocessed, used those solutions to calc total
+        # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
+        for sol_choice in solutions:
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+        for nonresource in opt_info["optparams"]["non_resource"]:
+                #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
+                new_sols = []
+                for sol_choice in all_solutions_symbolics:
+                    #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
+                    for v in vals:
+                        # update w/ new value
+                        sol_choice[nonresource] = v
+                        # append to new solution list
+                        new_sols.append(copy.deepcopy(sol_choice))
+
+                all_solutions_symbolics = new_sols
+
+        total_sols *= len(solutions)
+
+
 
     # randomly generate starting solution
     # if solutions is an empty list, then we haven't done preprocessing
     if not solutions:
         symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
     else:
+        # OLD, treat nonresource differently
         # set resource vars
-        symbolics_opt, candidate_index = gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info)
+        #symbolics_opt, candidate_index = gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info)
+        # NEW, only optimize for index val
+        symbolics_opt = choice(all_solutions_symbolics)
+        candidate_index = all_solutions_symbolics.index(symbolics_opt)
 
     starting = copy.deepcopy(symbolics_opt)
     num_sols_time = {}
@@ -1270,11 +1369,16 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 bounds[index][1] = opt_info["symbolicvals"]["bounds"][var][1] 
                 index += 1
     else:   # dimensions = number of non resource vars + 1 (for solutions list)
-        dimensions = 1 + len(opt_info["optparams"]["non_resource"])
+        # OLD, treat nonresource differently
+        #dimensions = 1 + len(opt_info["optparams"]["non_resource"])
+        # NEW, only optimize for index val
+        dimensions = 1
         x_start = np.zeros(dimensions)
         step = np.zeros(dimensions)
         bounds = np.zeros(shape=(dimensions,2))
         index = 0
+        # OLD, treat nonresource differently
+        '''
         for x_val in opt_info["optparams"]["non_resource"]:
             x_start[index] = symbolics_opt[x_val]
             index_dict[index] = x_val
@@ -1282,15 +1386,22 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             bounds[index][0] = opt_info["symbolicvals"]["bounds"][x_val][0]
             bounds[index][1] = opt_info["symbolicvals"]["bounds"][x_val][1]
             index += 1
+        '''
         x_start[index] = candidate_index
         index_dict[index] = "candidate_index"
         step[index] = 1
         bounds[index][0] = 0
-        bounds[index][1] = len(solutions) - 1
+        # OLD, treat nonresource differently
+        #bounds[index][1] = len(solutions) - 1
+        # NEW, only optimize for index val
+        bounds[index][1] = len(all_solutions_symbolics) - 1
 
     # init
     dim = len(x_start)
-    symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, solutions, tree)
+    # OLD, treat nonresource differently
+    #symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, solutions, tree)
+    # NEW, only optimize for index val
+    symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
     #prev_best = f(x_start)
     if not solutions:
         prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1311,7 +1422,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         # round to closest power of 2 if we need to
         if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
             x[i] = closest_power(x[i])
-        symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # OLD, treat nonresource differently
+        #symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # NEW, only optimize for index val
+        symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
         #score = f(x)
         if not solutions:
             score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1458,7 +1572,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             # round to closest power of 2 if we need to
             if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                 xr[i] = closest_power(xr[i])
-        symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # OLD, treat nonresource differently
+        #symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # NEW, only optimize for index val
+        symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
         #rscore = f(xr)
         if not solutions:
             rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1486,7 +1603,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 # round to closest power of 2 if we need to
                 if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                     xe[i] = closest_power(xe[i])
-            symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, solutions, tree)
+            # OLD, treat nonresource differently
+            #symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, solutions, tree)
+            # NEW, only optimize for index val
+            symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
             #escore = f(xe)
             if not solutions:
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1516,7 +1636,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             # round to closest power of 2 if we need to
             if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                 xc[i] = closest_power(xc[i])
-        symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # OLD, treat nonresource differently
+        #symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, solutions, tree)
+        # NEW, only optimize for index val
+        symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
         #cscore = f(xc)
         if not solutions:
             cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1545,7 +1668,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 # round to closest power of 2 if we need to
                 if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                     redx[i] = closest_power(redx[i])
-            symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, solutions, tree)
+            # OLD, treat nonresource differently
+            #symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, solutions, tree)
+            # NEW, only optimize for index val
+            symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
             #score = f(redx)
             if not solutions:
                 score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1558,7 +1684,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         res = nres
 
 
-    best_sol = set_symbolics_from_nparray(res[0][0], index_dict, symbolics_opt, opt_info, solutions, tree)
+    # OLD, treat nonresource differently
+    #best_sol = set_symbolics_from_nparray(res[0][0], index_dict, symbolics_opt, opt_info, solutions, tree)
+    # NEW, only optimize for index val
+    best_sol = set_symbolics_from_nparray(res[0][0], index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
     with open('final_testing_sols_nm.pkl','wb') as f:
         pickle.dump(testing_sols,f)
     with open('final_testing_eval_nm.pkl','wb') as f:
@@ -1641,7 +1770,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
     # sample x% of solutions
     # TODO: do this for non preprocessed
-    sample_size = int(0.01*total_sols)
+    sample_size = int(0.05*total_sols)
     print("SAMPLE SIZE", sample_size)
     sampled_sols = []
     sample_xvals = []
@@ -1714,10 +1843,16 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
     # step 1.2: define the model (gaussian process regression)
     # TODO: try something other than gp regressor model????
-    model = GaussianProcessRegressor()
+    #kernel = kernels.ConstantKernel(2.0, (1e-1, 1e3)) * kernels.RBF(2.0, (1e-3, 1e3))
+    kernel_rbf = 1.0 * kernels.RBF(length_scale=10.0, length_scale_bounds=(5, 1e2))
+    kernel_exp = kernels.ExpSineSquared(length_scale=0.5, periodicity=10)
+    kernel = kernel_rbf+kernel_exp
+    model = GaussianProcessRegressor(kernel=kernel)
+    #model = KernelRidge(kernel='poly')
     # step 1.3: fit the model (given sampled values)  
     model.fit(np_xvals, np_yvals)
  
+
     # step 2: optimize acquisition function
     # step 2.1: choose points in domain (via some search strategy)
     # TODO: do for non preprocessed
@@ -1770,8 +1905,15 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     acq_samples_symbolics = all_solutions_symbolics
 
     np_acq_xvals = np.array(acq_xsamples)
+    #mu, std = model.predict(np_acq_xvals, return_std=True)
+    #mu = model.predict(np_acq_xvals)
+    #with open('mutest.pkl','wb') as f:
+    #    pickle.dump(mu, f)
 
-    # TODO: repeat this next part
+
+    #exit()
+
+
      
     mu_vals = []
     best_sols = []
@@ -1878,6 +2020,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         probs = norm.cdf((mu - best) / (std+1E-9))
         ix_prob = np.argmin(probs)
         ix = np.argmin(mu)
+        mu_sorted = np.sort(mu)
 
         print("MU MIN VALUE")
         print("MU VALUE", mu[ix])
@@ -1891,6 +2034,17 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         print(np_acq_xvals[ix])
         #sol_choice = solutions[np_acq_xvals[ix, 0]]
         sol_choice = all_solutions_symbolics[np_acq_xvals[ix,0]]
+
+        # DON'T eval a sol we've already tried:
+        min_index = 1
+        while sol_choice in best_sols:
+            print("MU",mu)
+            print("MU_SORTED",mu_sorted)
+            print("min_index", min_index)
+            print("mu sorted at index", mu_sorted[min_index])
+            ix_next = np.where(mu==mu_sorted[min_index])[0][0]
+            sol_choice = all_solutions_symbolics[np_acq_xvals[ix_next,0]]
+            min_index += 1
         # ARGMAX best values: 87,37
         # ARGMIN best value: 151 (9 rows, 65536 cols) 
         '''
