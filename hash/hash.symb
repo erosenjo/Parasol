@@ -1,9 +1,0 @@
-{
-    "sizes": {
-        "log_size": 13,
-        "tables": 3
-    },
-    "symbolics": {
-        "table_size": 8192
-    }
-}

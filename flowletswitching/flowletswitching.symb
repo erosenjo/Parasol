@@ -1,9 +1,0 @@
-{
-    "sizes": {
-        "log_flowlets": 8
-    },
-    "symbolics": {
-        "flowlets": 256,
-        "IPG_thresh": 60000000
-    }
-}

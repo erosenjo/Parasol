@@ -20,7 +20,7 @@ build/
 nsdieval/
 lucidCompilerOut/
 
-# excluding conquest traces
+# excluding traffic traces
 conquest/conquest.json
 conquest/old/nsdieval/conquestrand.json
 flowletswitching/flowletswitching.json
@@ -33,4 +33,5 @@ precision/precision.json
 cms/old/nsdieval/cms_symrand.json
 starflow/starflow.json
 *_test.json
+cms/cms_sym.json
 
