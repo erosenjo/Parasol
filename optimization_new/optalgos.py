@@ -1396,7 +1396,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         '''
         x_start[index] = candidate_index
         index_dict[index] = "candidate_index"
-        step[index] = 1
+        #step[index] = 1
+        step[index] = 10
         bounds[index][0] = 0
         # OLD, treat nonresource differently
         #bounds[index][1] = len(solutions) - 1
@@ -1570,6 +1571,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         # reflection
         print("XO BEFORE REFLECTION", x0)
         xr = x0 + alpha*(x0 - res[-1][0])
+        while int(xr[0]) == int(res[-1][0]) or int(xr[0]) == int(res[0][0]):
+            xr[0] = int(xr[0])+1
         print("XR AFTER REFLECTION", xr)
         for i in range(dim):    # check bounds, round
             # can't have floats, round
@@ -1578,6 +1581,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 xr[i]=bounds[i][0]
             elif xr[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                 xr[i]=bounds[i][1]
+                while int(xr[0]) == int(res[-1][0]) or int(xr[0]) == int(res[0][0]):
+                    xr[0] = int(xr[0])-1
             # round to closest power of 2 if we need to
             if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                 xr[i] = closest_power(xr[i])
@@ -1601,11 +1606,16 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         if res[0][1] <= rscore < res[-2][1]:
             del res[-1]
             res.append([xr, rscore])
+            if res[0][0] == res[1][0]:
+                print("SAME, reflection")
+                exit()
             continue
 
         # expansion
         if rscore < res[0][1]:
             xe = x0 + gamma*(x0 - res[-1][0])
+            while int(xe[0]) == int(res[-1][0]) or int(xe[0]) == int(res[0][0]):
+                xe[0] = int(xe[0])+1
             for i in range(dim):    # check bounds, round
                 # can't have floats, round
                 xe[i] = int(xe[i])
@@ -1613,6 +1623,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     xe[i]=bounds[i][0]
                 elif xe[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                     xe[i]=bounds[i][1]
+                    while int(xe[0]) == int(res[-1][0]) or int(xe[0]) == int(res[0][0]):
+                        xe[0] = int(xe[0])+1
                 # round to closest power of 2 if we need to
                 if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                     xe[i] = closest_power(xe[i])
@@ -1635,19 +1647,32 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             if escore < rscore:
                 del res[-1]
                 res.append([xe, escore])
+                if res[0][0] == res[1][0]:
+                    print("SAME, expansion1")
+                    exit()
                 continue
             else:
                 del res[-1]
                 res.append([xr, rscore])
+                if res[0][0] == res[1][0]:
+                    print("SAME, expansion2")
+                    exit()
                 continue
 
         # contraction
         xc = x0 + rho*(x0 - res[-1][0])
+        print("ORIG XC", xc)
+        print("ORIG RES", res)
+        while int(xc[0]) == int(res[-1][0]) or int(xc[0]) == int(res[0][0]):
+            print("XC SAME", xc[0])
+            xc[0] = int(xc[0])-1
         for i in range(dim):    # check bounds, round
             # can't have floats, round
             xc[i] = int(xc[i])
             if xc[i] < bounds[i][0]: # we're < lb for variable, set to lb
                 xc[i]=bounds[i][0]
+                while int(xc[0]) == int(res[-1][0]) or int(xc[0]) == int(res[0][0]):
+                    xc[0] = int(xc[0])+1
             elif xc[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                 xc[i]=bounds[i][1]
             # round to closest power of 2 if we need to
@@ -1657,7 +1682,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         #symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
         symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
-        print(xc[0])
+        print("XC", xc[0])
+        print("RES", res)
         print(symbolics_opt)
         print(all_solutions_symbolics[int(xc[0])])
         #exit()
@@ -1672,18 +1698,27 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         if cscore < res[-1][1]:
             del res[-1]
             res.append([xc, cscore])
+            if res[0][0] == res[1][0]:
+                print(res)
+                print("SAME, contraction")
+                exit()
             continue
 
         # reduction
         x1 = res[0][0]
         nres = []
+        print("orig res reduction", res)
         for tup in res:
             redx = x1 + sigma*(tup[0] - x1)
             for i in range(dim):    # check bounds, round
                 # can't have floats, round
                 redx[i] = int(redx[i])
+                while int(redx[i]) == int(res[-1][0]) or int(redx[i]) == int(res[0][0]) or (len(nres)>0 and int(redx[i]) == int(nres[0][0])):
+                    redx[i] = int(redx[i])-1
                 if redx[i] < bounds[i][0]: # we're < lb for variable, set to lb
                     redx[i]=bounds[i][0]
+                    while int(redx[i]) == int(res[-1][0]) or int(redx[i]) == int(res[0][0]) or (len(nres)>0 and int(redx[i]) == int(nres[0][0])):
+                        redx[i] = int(redx[i])+1
                 elif redx[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                     redx[i]=bounds[i][1]
                 # round to closest power of 2 if we need to
@@ -1706,7 +1741,11 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(score)
             nres.append([redx, score])
+            print("new redx reduction, redx")
         res = nres
+        if res[0][0] == res[1][0]:
+            print("SAME, reduction")
+            exit()
 
 
     # OLD, treat nonresource differently
