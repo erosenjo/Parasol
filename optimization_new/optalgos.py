@@ -1236,7 +1236,7 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
         else:   # this is a variable
             symbolics_opt[var_name] = int(val)
     '''
-    sol_index = nparray[0]
+    sol_index = int(nparray[0])
     symbolics_opt = solutions[sol_index]
 
     # set any rule-based vars
@@ -1264,7 +1264,7 @@ def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
 '''
 def nelder_mead(symbolics_opt, opt_info, o, timetest, 
                 no_improve_thr=10e-6, no_improv_break=50,
-                alpha=100., gamma=200., rho=-0.5, sigma=0.5,
+                alpha=10., gamma=20., rho=-0.5, sigma=0.5,
                 solutions=[], tree=None): 
     '''
         @param symbolics_opt (dict): dict of symbolics and their values (or index in preprocessed list), used to gen cost
@@ -1315,7 +1315,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     else:   # we've preprocessed, used those solutions to calc total
         # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
         for sol_choice in solutions:
-            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
                 total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
@@ -1347,6 +1347,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         # NEW, only optimize for index val
         symbolics_opt = choice(all_solutions_symbolics)
         candidate_index = all_solutions_symbolics.index(symbolics_opt)
+        print("STARTING", candidate_index)
+        print(symbolics_opt)
 
     starting = copy.deepcopy(symbolics_opt)
     num_sols_time = {}
@@ -1431,6 +1433,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         #symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
         symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+
         #score = f(x)
         if not solutions:
             score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1561,6 +1564,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                     x0[i] = closest_power(x0[i])
 
+        print("x0", x0)
 
 
         # reflection
@@ -1581,6 +1585,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         #symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
         symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+        print(xr[0])
+        print(symbolics_opt)
+        print(all_solutions_symbolics[int(xr[0])])
+        #exit()
         #rscore = f(xr)
         if not solutions:
             rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1612,6 +1620,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             #symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, solutions, tree)
             # NEW, only optimize for index val
             symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+            print(xe[0])
+            print(symbolics_opt)
+            print(all_solutions_symbolics[int(xe[0])])
+            #exit()
             #escore = f(xe)
             if not solutions:
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1645,6 +1657,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         #symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
         symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+        print(xc[0])
+        print(symbolics_opt)
+        print(all_solutions_symbolics[int(xc[0])])
+        #exit()
         #cscore = f(xc)
         if not solutions:
             cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1677,6 +1693,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             #symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, solutions, tree)
             # NEW, only optimize for index val
             symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+            print(redx[0])
+            print(symbolics_opt)
+            print(all_solutions_symbolics[int(redx[0])])
+            #exit()
             #score = f(redx)
             if not solutions:
                 score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -2041,9 +2061,14 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         #sol_choice = solutions[np_acq_xvals[ix, 0]]
         sol_choice = all_solutions_symbolics[np_acq_xvals[ix,0]]
 
+        early_exit = False
         # DON'T eval a sol we've already tried:
         min_index = 1
-        while sol_choice in best_sols:
+        while sol_choice in sampled_sols:
+            if min_index >= len(mu):
+                # we've somehow gone through all the solutions
+                early_exit = True
+                break
             print("MU",mu)
             print("MU_SORTED",mu_sorted)
             print("min_index", min_index)
@@ -2061,6 +2086,10 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             print("var:", node.tag[0], "value:", node.tag[1])
         '''
         print("BEST", sol_choice)
+
+        if early_exit:
+            break
+
         # eval best choice, fit model w/ new value
         #symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)
         best_sols.append(copy.deepcopy(sol_choice))
