@@ -1,10 +1,10 @@
-.PHONY: opttest interp compile layout assemble test
+.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test
 LUCID_DIR = /media/data/mh43/lucid
 OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --shortcut
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive

@@ -18,11 +18,11 @@ opttest:
 	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --nopruning --exhaustive
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --nopruning --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --timetest
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --timetest --nopruning --shortcut
 
 # run interpreter
 interp: 

@@ -4,7 +4,7 @@ OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --shortcut --nopruning
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --nopruning --exhaustive --shortcut
