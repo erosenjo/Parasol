@@ -22,7 +22,8 @@ global Array.t<<32>> saved_hops = Array.create(flowlets);
 
 /* events */
 entry event ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport, int<<16>> dstport, int<<8>> protocol, int<<16>> len);
-exit event ip_out(int<<9>> egress_port, int<<7>> dummy_bytes);
+//exit event ip_out(int<<9>> egress_port, int<<7>> dummy_bytes);
+exit event ip_out();
 
 /* externs */
 //extern log_newflowlethop(int hop, bool thresh);	// count the number of flowlets sent across each path
@@ -55,7 +56,8 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     // compute difference between time of this pkt and last pkt of this flow
     // storing time as 32 bits, tofino doesn't support 48 bit registers
-    int timedelta = Array.update(flowlet_time, idx, gettimedelta, (int<<32>>)arr_time, setf_time, (int<<32>>)arr_time);
+    int short_time = arr_time[31:0];
+    int timedelta = Array.update(flowlet_time, idx, gettimedelta, short_time, setf_time, short_time);
 
     // compute hash for hop 
     // making it 32 bits for now, then casting to 9 bits for egress_port
@@ -81,7 +83,8 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     log_pkthop(egress_port, len);
 
-    generate ip_out(egress_port, 0);
+    //generate ip_out(egress_port, 0);
+    generate ip_out();
 
 }
 
