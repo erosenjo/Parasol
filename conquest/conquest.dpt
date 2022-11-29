@@ -170,6 +170,7 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
     // univ1_pt3 testing trace 223315815558
     if (global_time == 223315815558) {
         write_to_file();    
+    }
 
 }
 
