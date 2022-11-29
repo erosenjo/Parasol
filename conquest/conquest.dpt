@@ -93,6 +93,7 @@ memop compute_min_complex(int memval, int minval, int unused) {
 
 /* externs */
 extern track_qlen(int qlen_est);
+extern write_to_file();
 
 /* Handlers */
 // type of variables? not all have to be 32-bit ints
@@ -166,7 +167,9 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
 
     // TODO: REPORT TOTAL COUNT TO EXTERN
     track_qlen(total_count);
-
+    // univ1_pt3 testing trace 223315815558
+    if (global_time == 223315815558) {
+        write_to_file();    
 
 }
 
