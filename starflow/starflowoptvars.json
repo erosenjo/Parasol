@@ -28,7 +28,7 @@
     },
     "optparams": {
     "optalgo" : "ordered",
-    "strategy": "bayesian",
+    "strategy": "neldermead",
     "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],

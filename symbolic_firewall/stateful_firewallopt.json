@@ -21,7 +21,7 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "bayesian",
+        "strategy" : "neldermead",
         "stop_time" : 8000,
         "order_resource" : ["stages", "entries"],
         "non_resource" : ["interscan_delay", "timeout"],

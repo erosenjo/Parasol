@@ -17,8 +17,8 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "bayesian",
-        "stop_time" : 8000,
+        "strategy" : "neldermead",
+        "stop_time" : 36000,
         "order_resource" : ["tables", "entries"],
         "non_resource" : [],
         "mem_formula" : "tables * entries",

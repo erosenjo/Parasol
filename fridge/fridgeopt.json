@@ -17,7 +17,7 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "bayesian",
+        "strategy" : "neldermead",
         "stop_time" : 8000,
         "order_resource": ["fridge_size"],
         "non_resource" : ["ENTRY_PROB_LOG2"],

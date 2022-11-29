@@ -19,7 +19,7 @@
         "order_resource" : ["flowlets"],
         "non_resource" : ["IPG_thresh"],
         "optalgo" : "ordered",
-        "strategy" : "simannealing",
+        "strategy" : "bayesian",
     	"stop_time" : 8000,
 	    "temp" : 10,
     	"stepsize": {

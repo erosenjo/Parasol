@@ -10,7 +10,7 @@ exhaustive:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --exhaustive --shortcut
 
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --shortcut
 
 # run interpreter
 interp: 
