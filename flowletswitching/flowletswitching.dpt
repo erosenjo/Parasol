@@ -30,6 +30,7 @@ exit event ip_out();
 extern log_pkthop(int<<9>> hop,int<<16>> len);	// count the number of pkts sent across each path
 //extern log_test(int hop, int timedelta);
 //extern log_testmemops(int hop, int timedelta);
+extern write_to_file();
 
 /* memops */
 memop gettimedelta(int memval, int newval) {
@@ -83,6 +84,10 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     log_pkthop(egress_port, len);
 
+    // testing timestamp: 6961511135
+    if (arr_time==6961511135) {
+        write_to_file();
+    }
     //generate ip_out(egress_port, 0);
     generate ip_out();
 

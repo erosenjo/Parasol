@@ -24,10 +24,15 @@ def log_pkthop(hop,pktlen):
         pkthopcounts[hop] = pktlen
     else:
         pkthopcounts[hop] += pktlen
+    '''
     if pktcounter[0] > 499999:
         with open('pkthops.pkl','wb') as f:
             pickle.dump(pkthopcounts, f)
 
+    '''
+def write_to_file():
+    with open('pkthops.pkl','wb') as f:
+        pickle.dump(pkthopcounts, f)
 
 def log_test(hop,timedelta):
     with open('testhop.txt','a') as f:
