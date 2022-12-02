@@ -4,6 +4,8 @@
 import json
 from scapy.all import *
 import pickle
+import dpkt
+import ipaddress
 
 # helpers
 def i2Hex (n):
@@ -34,11 +36,54 @@ class Opt:
         info["random seed"] = 0
         info["python file"] = "flowletswitching.py"
         events = []
+        pkt_counter = 0
         #starttime = 1261067164.398500 # placeholder until figure out timestamps, univ1 trace
-        starttime = 1453381151.415037 # caida trace
+        #starttime = 1453381151.415037 # caida trace, training
+        starttime = 0   # caida trace, testing
+
+        pcap = dpkt.pcap.Reader(open(self.pkts,'rb'))
+        for ts, buf in pcap:
+            pkt_counter += 1
+            if pkt_counter < 2000000:
+                continue
+            if pkt_counter == 2000000:
+            #if pkt_counter == 1:
+                starttime = ts
+            try:
+                ip = dpkt.ip.IP(buf)
+                if ip.p != 6:   # not a tcp pkt
+                    continue
+                tcp = ip.data
+                if type(tcp) != dpkt.tcp.TCP:
+                    continue
+                src_uint = struct.unpack("!I", ip.src)[0]
+                dst_uint = struct.unpack("!I", ip.dst)[0]
+                timestamp = int((ts-starttime)*1000000000)
+                args = [timestamp, src_uint, dst_uint, tcp.sport, tcp.dport, ip.p, ip.len] 
+                p = {"name":"ip_in", "args":args}
+                events.append(p)
+                self.ground_truth += ip.len
+                # training: first 500000 pkts of caida trace
+                # testing: 3000000 pkts, starting w/ 2000000 of caida trace
+                #if len(events) >= 500000:
+                if len(events) >= 3000000:
+                    print("max events")
+                    break
+            except dpkt.dpkt.UnpackError:
+                pass
+                #print("unpack error", pkt_counter)
+
+        '''
         with PcapReader(self.pkts) as pcap_reader:
             for pkt in pcap_reader:
+                pkt_counter += 1
+                if pkt_counter == 2000068:
+                    print("IP?", pkt.haslayer(IP))
+                    print("TCP?", pkt.haslayer(TCP))
+                    exit()
                 if not (pkt.haslayer(IP)) or not (pkt.haslayer(TCP)):
+                    continue
+                if pkt_counter < 2000000:
                     continue
                 timestamp = int((pkt.time-starttime)*1000000000)    # placeholder until figure out timestamps
                 src_int = int(hexadecimal(pkt[IP].src),0)
@@ -59,8 +104,14 @@ class Opt:
                 #print(pkt[IP].dst)
                 #print(int(hexadecimal(pkt[IP].dst),0))
                 #if len(events) > 10000:
-                if len(events) >= 500000:
+                # training: first 500000 pkts of caida trace
+                # testing: pkts 2000000-5000000 of caida trace
+                #if len(events) >= 500000:
+                if len(events) >= 3000000:
                     break
+
+        '''
+
 
         self.ground_truth = self.ground_truth/4
 
@@ -70,6 +121,7 @@ class Opt:
         info["events"] = events
         with open('flowletswitching.json', 'w') as f:
             json.dump(info, f, indent=4)
+
 
     # called after every interp run
     # measurement is list of measurements (one measurement for each output file)
@@ -112,6 +164,18 @@ class Opt:
 #o.gen_traffic()
 #m = [pickle.load(open('pkthops.txt','rb'))]
 #o.calc_cost(m)
+
+o = Opt("/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+o.gen_traffic()
+
+cmd = ["make", "interp"]
+ret = subprocess.run(cmd)
+
+measurement = []
+outfiles = ["pkthops.pkl"]
+for out in outfiles:
+    measurement.append(pickle.load(open(out,"rb")))
+o.calc_cost(measurement)
 
 
 
