@@ -35,4 +35,6 @@ starflow/starflow.json
 *_test.json
 cms/cms_sym.json
 caching/caching.json
+symbolic_firewall/stateful_firewall.json
+
 
