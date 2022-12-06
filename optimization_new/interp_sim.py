@@ -112,7 +112,7 @@ while True:
     '''
 
 
-def write_symb(sizes, symbolics, logs, symfile):
+def write_symb(sizes, symbolics, logs, symfile, opt_info):
     # we often have symbolics that should = log2(some other symbolic)
     # in that case, we compute it here
     for var in logs:
@@ -124,6 +124,19 @@ def write_symb(sizes, symbolics, logs, symfile):
             sizes[var] = log
         else:
             symbolics[var] = log
+    if "rules" in opt_info["symbolicvals"]:
+        for rulevar in opt_info["symbolicvals"]["rules"]:
+            rule = opt_info["symbolicvals"]["rules"][rulevar].split()
+            for v in range(len(rule)):
+                if rule[v] in opt_info["symbolicvals"]["symbolics"] or rule[v] in opt_info["symbolicvals"]["sizes"]:
+                       rule[v] = str(symbolics_opt[rule[v]])
+                symbolics_opt[rulevar] = eval(''.join(rule))
+            if rulevar in sizes:
+                sizes[rulevar] = symbolics_opt[rulevar]
+            else:
+                symbolics[rulevar] = symbolics_opt[rulevar]
+
+ 
     concretes = {}
     concretes["sizes"] = sizes
     concretes["symbolics"] = symbolics

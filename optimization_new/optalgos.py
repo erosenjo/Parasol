@@ -80,9 +80,9 @@ def set_rule_vars(opt_info, symbolics_opt):
                     rule[v] = str(int(math.log2(symbolics_opt[opt_info["symbolicvals"]["logs"][rule[v]]])))
                 else:
                     rule[v] = str(symbolics_opt[rule[v]])
-        print("BEFORE RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
+        #print("BEFORE RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
         symbolics_opt[rulevar] = eval(''.join(rule))
-        print("RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
+        #print("RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
     return symbolics_opt
 
 
@@ -1045,8 +1045,8 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         if opt_info["lucidfile"] == "caching.dpt":
             print("CACHING")
             symbolics_opt["eviction"] = False
-            symbolics_opt["rows"] = 2
-            symbolics_opt["cols"] = 1024
+            symbolics_opt["rows"] = 1
+            symbolics_opt["cols"] = 2
         build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)    
@@ -1397,12 +1397,18 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         x_start[index] = candidate_index
         index_dict[index] = "candidate_index"
         #step[index] = 1
-        step[index] = 10
+        #step[index] = 10
+        step[index] = 5
         bounds[index][0] = 0
         # OLD, treat nonresource differently
         #bounds[index][1] = len(solutions) - 1
         # NEW, only optimize for index val
         bounds[index][1] = len(all_solutions_symbolics) - 1
+        print("X START", x_start)
+        print("INDEX DICT", index_dict)
+        print("STEP", step)
+        print("BOUNDS", bounds)
+
 
     # init
     dim = len(x_start)
@@ -1410,6 +1416,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     #symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, solutions, tree)
     # NEW, only optimize for index val
     symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
+    print("symbolics opt after set from np array", symbolics_opt)
     #prev_best = f(x_start)
     if not solutions:
         prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
@@ -1418,6 +1425,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
     no_improv = 0
     res = [[x_start, prev_best]]
+    testing_sols.append(copy.deepcopy(symbolics_opt))
+    testing_eval.append(prev_best)
 
     for i in range(dim):
         x = copy.copy(x_start)
@@ -1445,6 +1454,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         testing_eval.append(score)
         res.append([x, score])
 
+
+    print("RES AFTER FIRST 2", res)
 
     # simplex iter
     iterations = 0
@@ -1567,7 +1578,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 
         print("x0", x0)
 
-
+        early_exit = False
         # reflection
         print("XO BEFORE REFLECTION", x0)
         xr = x0 + alpha*(x0 - res[-1][0])
@@ -1583,9 +1594,17 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 xr[i]=bounds[i][1]
                 while int(xr[0]) == int(res[-1][0]) or int(xr[0]) == int(res[0][0]):
                     xr[0] = int(xr[0])-1
+                if xr[0] < 0:
+                    early_exit = True
+                    print("res", res)
+                    print("xr", xr)
+                    print("early exit, reflection")
             # round to closest power of 2 if we need to
             if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                 xr[i] = closest_power(xr[i])
+
+        if early_exit:
+            break
         # OLD, treat nonresource differently
         #symbolics_opt = set_symbolics_from_nparray(xr, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
@@ -1608,7 +1627,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             res.append([xr, rscore])
             if res[0][0] == res[1][0]:
                 print("SAME, reflection")
-                exit()
+                break
             continue
 
         # expansion
@@ -1625,9 +1644,17 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     xe[i]=bounds[i][1]
                     while int(xe[0]) == int(res[-1][0]) or int(xe[0]) == int(res[0][0]):
                         xe[0] = int(xe[0])+1
+                    if xe[0] < 0:
+                        early_exit = True
+                        print("res", res)
+                        print("xe", xe)
+                        print("early exit, expansion")
                 # round to closest power of 2 if we need to
                 if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                     xe[i] = closest_power(xe[i])
+
+            if early_exit:
+                break
             # OLD, treat nonresource differently
             #symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, solutions, tree)
             # NEW, only optimize for index val
@@ -1649,14 +1676,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 res.append([xe, escore])
                 if res[0][0] == res[1][0]:
                     print("SAME, expansion1")
-                    exit()
+                    break
                 continue
             else:
                 del res[-1]
                 res.append([xr, rscore])
                 if res[0][0] == res[1][0]:
                     print("SAME, expansion2")
-                    exit()
+                    break
                 continue
 
         # contraction
@@ -1673,11 +1700,18 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 xc[i]=bounds[i][0]
                 while int(xc[0]) == int(res[-1][0]) or int(xc[0]) == int(res[0][0]):
                     xc[0] = int(xc[0])+1
+                    if xc[0] > len(all_solutions_symbolics)-1:
+                        early_exit = True
+                        print("res", res)
+                        print("xc", xr)
+                        print("early exit, contraction")
             elif xc[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                 xc[i]=bounds[i][1]
             # round to closest power of 2 if we need to
             if index_dict[i] in opt_info["symbolicvals"]["logs"].values():
                 xc[i] = closest_power(xc[i])
+        if early_exit:
+            break
         # OLD, treat nonresource differently
         #symbolics_opt = set_symbolics_from_nparray(xc, index_dict, symbolics_opt, opt_info, solutions, tree)
         # NEW, only optimize for index val
@@ -1701,7 +1735,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             if res[0][0] == res[1][0]:
                 print(res)
                 print("SAME, contraction")
-                exit()
+                break
             continue
 
         # reduction
@@ -1719,6 +1753,11 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     redx[i]=bounds[i][0]
                     while int(redx[i]) == int(res[-1][0]) or int(redx[i]) == int(res[0][0]) or (len(nres)>0 and int(redx[i]) == int(nres[0][0])):
                         redx[i] = int(redx[i])+1
+                        if redx[0] > len(all_solutions_symbolics)-1:
+                            early_exit = True
+                            print("res", res)
+                            print("redx", redx)
+                            print("early exit, reduction")
                 elif redx[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                     redx[i]=bounds[i][1]
                 # round to closest power of 2 if we need to
@@ -1727,6 +1766,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             # OLD, treat nonresource differently
             #symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, solutions, tree)
             # NEW, only optimize for index val
+            if early_exit:
+                break
             symbolics_opt = set_symbolics_from_nparray(redx, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
             print(redx[0])
             print(symbolics_opt)
@@ -1745,7 +1786,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         res = nres
         if res[0][0] == res[1][0]:
             print("SAME, reduction")
-            exit()
+            break
 
 
     # OLD, treat nonresource differently
@@ -1822,9 +1863,14 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                         sol_choice[nonresource] = v
                         # append to new solution list
                         new_sols.append(copy.deepcopy(sol_choice))
-
                 all_solutions_symbolics = new_sols
-            
+
+
+        if "rules" in opt_info["symbolicvals"]:
+            for sol in all_solutions_symbolics:
+                sol = set_rule_vars(opt_info, sol)
+        #print(all_solutions_symbolics)
+        #exit()
         total_sols *= len(solutions)
 
     #print(all_solutions_symbolics)
@@ -1836,6 +1882,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # TODO: do this for non preprocessed
     #sample_size = int(0.05*total_sols)
     sample_size = int(0.01*total_sols)
+    #sample_size = int(0.1*total_sols)
     print("SAMPLE SIZE", sample_size)
     sampled_sols = []
     sample_xvals = []
