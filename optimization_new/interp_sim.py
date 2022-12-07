@@ -128,13 +128,14 @@ def write_symb(sizes, symbolics, logs, symfile, opt_info):
         for rulevar in opt_info["symbolicvals"]["rules"]:
             rule = opt_info["symbolicvals"]["rules"][rulevar].split()
             for v in range(len(rule)):
-                if rule[v] in opt_info["symbolicvals"]["symbolics"] or rule[v] in opt_info["symbolicvals"]["sizes"]:
-                       rule[v] = str(symbolics_opt[rule[v]])
-                symbolics_opt[rulevar] = eval(''.join(rule))
+                if rule[v] in opt_info["symbolicvals"]["symbolics"]:
+                    rule[v] = str(symbolics[rule[v]])
+                elif rule[v] in opt_info["symbolicvals"]["sizes"]:
+                    rule[v] = str(sizes[rule[v]])
             if rulevar in sizes:
-                sizes[rulevar] = symbolics_opt[rulevar]
+                sizes[rulevar] = eval(''.join(rule))
             else:
-                symbolics[rulevar] = symbolics_opt[rulevar]
+                symbolics[rulevar] = eval(''.join(rule))
 
  
     concretes = {}
@@ -158,7 +159,7 @@ def update_sym_sizes(symbolics_opt, sizes, symbolics):
 def compile_num_stages(symbolics_opt, opt_info):
     # gen symbolic file so we can compile with new values
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
-    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
     # NEW LUCID COMPILATION
     #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "build", "--symb", opt_info["symfile", "--silent"]
     cmd = ["make", "compile"]
@@ -176,7 +177,7 @@ def compile_num_stages(symbolics_opt, opt_info):
 def layout(symbolics_opt, opt_info):
     # gen symbolic file so we can compile with new values
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
-    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
     # NEW DATA FLOW COMPILE AND LAYOUT
     cmd = ["make", "layout"]
     ret = subprocess.run(cmd)
@@ -202,7 +203,7 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
 
     # generate symbolic file
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
-    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"])
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
 
     '''
     # moving generation of symbolic file to compile_num_stages function
