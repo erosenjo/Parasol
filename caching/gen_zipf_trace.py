@@ -19,8 +19,7 @@ from collections import Counter
                 0,
                 0,
                 0,
-                3859,
-                0
+                3859
             ]
         },
 '''
@@ -29,10 +28,13 @@ from collections import Counter
 
 # distr_param is float > 1, higher means more skewed, lower means more even
 # not skew = 1.2
-#distr_param = 1.2
+distr_param = 1.2
 # skew = 1.5
-distr_param = 1.5
-num_events = 80000000
+#distr_param = 1.5
+# large trace 80000000 events
+# med traces 1000000 events
+#num_events = 80000000
+num_events = 1000000
 
 key_list = list(np.random.zipf(distr_param, num_events))
 # figure out number of unique keys
@@ -63,14 +65,14 @@ for k in key_list:
     if int(k) not in key_dict:
         key_dict[int(k)] = key_counter
         key_counter += 1
-    args = [key_dict[int(k)], 0,0,0,timestamp,0]
+    args = [key_dict[int(k)], 0,0,0,timestamp]
     e = {"name":"ip_in", "args":args}
     events.append(e)
     timestamp += random.randint(50000, 800000) 
 
 trace["events"] = events
 
-with open("skew.json",'w') as f:
+with open("testmednotskew.json",'w') as f:
     json.dump(trace,f,indent=4)
 
 
