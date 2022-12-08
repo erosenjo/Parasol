@@ -168,7 +168,13 @@ handle ip_in (int<<16>> src_port, int<<16>> dst_port, int src, int dst, int qdel
     // TODO: REPORT TOTAL COUNT TO EXTERN
     track_qlen(total_count);
     // univ1_pt3 testing trace 223315815558
-    if (global_time == 223315815558) {
+    // univ1_pt1 training trace 345002289543
+    // univ1_pt1-10 training trace 2667622769390
+    // univ1_pt11-20 training trace 1246999812349
+    //if (global_time == 223315815558) {
+    //if (global_time ==  345002289543) {
+    //if (global_time == 2667622769390) {
+    if (global_time == 1246999812349) {
         write_to_file();    
     }
 
