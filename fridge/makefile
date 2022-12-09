@@ -1,10 +1,13 @@
-.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test layout
+.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test layout dfg preprocess_dfg
 LUCID_DIR = /media/data/mh43/lucid
 OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
 	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly
+
+preprocess_dfg:
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py fridgeopt.json --nopruning --exhaustive --shortcut
@@ -23,6 +26,10 @@ compile:
 
 layout:
 	$(LUCID_DIR)/bin/layout.py fridge.dpt --symb fridge.symb
+
+#dfg compile
+dfg:
+	$(LUCID_DIR)/bin/layout.py fridge.dpt --symb fridge.symb --dfg
 
 # compile P4 to tofino
 assemble:

@@ -1,4 +1,4 @@
-.PHONY: opttest interp compile layout assemble test
+.PHONY: opttest interp compile layout assemble test exhaustive optimize_timetest dfg preprocess_dfg
 LUCID_DIR = /media/data/mh43/lucid
 OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
@@ -16,6 +16,9 @@ lucid:
 # run p4all optimizer
 opttest: 
 	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen
+
+preprocess_dfg:
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --nopruning --exhaustive --shortcut
@@ -36,9 +39,13 @@ ccompile:
 compile: 
 	$(LUCID_DIR)/dptc $(SOURCE).dpt build --symb $(SOURCE).symb --silent
 
-#dfg compile and layout
+#layout
 layout:
 	$(LUCID_DIR)/bin/layout.py stateful_firewall.dpt --symb stateful_firewall.symb
+
+#dfg compile
+dfg:
+	$(LUCID_DIR)/bin/layout.py stateful_firewall.dpt --symb stateful_firewall.symb --dfg
 
 # compile P4 to tofino
 assemble:

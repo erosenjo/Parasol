@@ -1,10 +1,13 @@
-.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test
+.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test dfg preprocess_dfg
 LUCID_DIR = /media/data/mh43/lucid
 OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --shortcut
+
+preprocess_dfg:
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --preprocessingonly --dfg
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive
@@ -21,9 +24,13 @@ interp:
 compile: 
 	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb 
 
-#dfg compile and layout
+#layout
 layout:
 	$(LUCID_DIR)/bin/layout.py cms_sym.dpt --symb cms_sym.symb
+#dfg compile
+dfg:
+	$(LUCID_DIR)/bin/layout.py cms_sym.dpt --symb cms_sym.symb --dfg
+
 
 # compile P4 to tofino
 assemble:
