@@ -1,5 +1,5 @@
-import subprocess, json, math, pickle, time
-from optalgos import *
+import subprocess, json, math, pickle, time, os
+#from optalgos import *
 
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
 def interp_sim(lucidfile,outfiles):
@@ -168,7 +168,8 @@ def compile_num_stages(symbolics_opt, opt_info):
         exit("compiler error")
     num_stg = 0
     # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
-    with open('build/num_stages.txt') as f:
+    stg_file = os.getcwd()+"/build/num_stages.txt"
+    with open(stg_file) as f:
         num_stg = int(f.readline())
     return num_stg
 

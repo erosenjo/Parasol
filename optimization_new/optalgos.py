@@ -1,4 +1,4 @@
-import math, json, sys, copy, time, os, itertools
+import math, json, sys, copy, time, itertools
 from random import randint, random, getrandbits, choice
 from interp_sim import gen_cost, compile_num_stages, layout, dfg
 import numpy as np
