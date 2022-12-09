@@ -1,6 +1,6 @@
 import math, json, sys, copy, time, os, itertools
 from random import randint, random, getrandbits, choice
-from interp_sim import gen_cost, compile_num_stages, layout
+from interp_sim import gen_cost, compile_num_stages, layout, dfg
 import numpy as np
 #from scipy.optimize import basinhopping
 import pickle
@@ -767,7 +767,7 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
 # we start at lower bound bc we know that we can't be < 1; harder to start at upper bound bc we don't really know that would be, unless user tells us (which forces them to reason a bit about resources)
 # this returns dictionary of either:
 #   {sol_tested: stgs_required} (full compile)
-#   {sol_tested: {resource: required} } (layout)
+#   {sol_tested: {resource: required} } (layout, dfg)
 def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair):
     '''
     # if we have a lower bound for var_to_opt, use it
@@ -792,7 +792,10 @@ def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, 
             stgs_used = compile_num_stages(symbolics_opt, opt_info)
             resources_used = stgs_used
         else:
-            resources_used = layout(symbolics_opt, opt_info)
+            if dfg: # use dataflow analysis
+                resources_used = dfg(symbolics_opt, opt_info)
+            else:   # use layout script
+                resources_used = layout(symbolics_opt, opt_info)
             stgs_used = resources_used["stages"]
         # incr if we still have more stages to use
         if stgs_used == 0:   # this should only happen if there's no num_stages.txt file, or the program actually doesn't use any stages (which indicates an error somewhere)
@@ -1015,7 +1018,7 @@ def prune_layout(solutions, bounds_tree):
     return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
 
 # testing out ordered parameter search
-def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive, pair, preprocessingonly, shortcut):
+def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg):
     opt_start_time = time.time()
 
     # if we're shortcutting, we've already done the preprocessing, so load from preprocessed.pkl 
@@ -1089,6 +1092,10 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         sols["regaccess_sols"] = best_regaccess_sols
         sols["tree"] = bounds_tree
         sols["time(s)"] = time.time()-opt_start_time
+        if dfg:
+            with open('preprocessed_dfg.pkl','wb') as f:
+                pickle.dump(sols, f)
+            exit()
         with open('preprocessed.pkl','wb') as f:
             pickle.dump(sols, f)
         exit()

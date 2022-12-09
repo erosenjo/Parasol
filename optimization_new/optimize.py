@@ -44,6 +44,7 @@ def main():
     parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true")
     parser.add_argument("--preprocessingonly", help="only do preprocessing, store sols in preprocessed.pkl", action="store_true")
     parser.add_argument("--shortcut", help="don't do preprocessing, load already preprocessed sols from preprocessed.pkl", action="store_true")
+    parser.add_argument("--dfg", help="use dataflow analysis instead of layout in preprocessing", action="store_true")
     args = parser.parse_args()
 
     '''
@@ -86,9 +87,9 @@ def main():
         time_costs = []
         num_sols_time = []
         starting_sols = []
-        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut)
+        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
         for i in range(1): # repeat once times
-            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut)
+            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
             best_costs.append(best_cost)
             best_sols.append(best_sol)
             time_costs.append(time_cost)

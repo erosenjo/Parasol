@@ -173,7 +173,7 @@ def compile_num_stages(symbolics_opt, opt_info):
     return num_stg
 
 
-# partial compiler, data flow graph and layout script
+# partial compiler, layout script
 def layout(symbolics_opt, opt_info):
     # gen symbolic file so we can compile with new values
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
@@ -187,7 +187,22 @@ def layout(symbolics_opt, opt_info):
     resfile = os.getcwd()+"/resources.json"
     resources = json.load(open(resfile,'r'))
     return resources
-    
+
+# partial compiler, data flow graph
+def dfg(symbolics_opt, opt_info):
+    # gen symbolic file so we can compile with new values
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
+    # NEW DATA FLOW COMPILE AND LAYOUT
+    cmd = ["make", "dfg"]
+    ret = subprocess.run(cmd)
+    if ret.returncode != 0: # stop if there's an error  
+        exit("dfg error")
+    # NOTE: assuming that we're calling layout and opt from same working directory 
+    resfile = os.getcwd()+"/resources_dfg.json"
+    resources = json.load(open(resfile,'r'))
+    return resources
+
 
 def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
     # if scipyalgo is true, then symolics_opt is np array, not dict
