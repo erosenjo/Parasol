@@ -10,6 +10,7 @@
 *.symb
 *.layout.json
 resources.json
+resources_dfg.json
 
 __pycache__/
 *.py[cod]

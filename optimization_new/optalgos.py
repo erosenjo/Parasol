@@ -1047,9 +1047,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         # if caching, just set to true (cms) and in theory do precision in parallel
         if opt_info["lucidfile"] == "caching.dpt":
             print("CACHING")
-            symbolics_opt["eviction"] = False
-            symbolics_opt["rows"] = 1
-            symbolics_opt["cols"] = 2
+            symbolics_opt["eviction"] = True
+            #symbolics_opt["rows"] = 1
+            #symbolics_opt["cols"] = 2
         build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)    
