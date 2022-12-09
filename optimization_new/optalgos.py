@@ -1887,9 +1887,12 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
     # sample x% of solutions
     # TODO: do this for non preprocessed
-    #sample_size = int(0.05*total_sols)
-    sample_size = int(0.01*total_sols)
-    #sample_size = int(0.1*total_sols)
+    if "samplesize" in opt_info["optparams"]:
+        sample_size=int(opt_info["optparams"]["samplesize"]*total_sols)
+    else:
+        #sample_size = int(0.05*total_sols)
+        sample_size = int(0.01*total_sols)
+        #sample_size = int(0.1*total_sols)
     print("SAMPLE SIZE", sample_size)
     sampled_sols = []
     sample_xvals = []

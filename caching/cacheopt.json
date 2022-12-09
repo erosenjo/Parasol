@@ -23,7 +23,7 @@
             "rows" : [1,12],
             "cols" : [32, 131072],
             "expire_thresh": [5000000,50000000],
-    	"THRESH" : [1, 60]
+        	"THRESH" : [1000, 200000]
         }
     },
     "structchoice": {
@@ -34,12 +34,13 @@
         "optalgo" : "ordered",
         "strat" : "exhaustive",
         "stop_time" : 8000,
-        "struct" : "precision",
-        "order_resource" : ["tables", "entries"],
-        "non_resource" : ["expire_thresh"],
+        "struct" : "cms",
+        "order_resource" : ["tables", "rows", "entries", "cols"],
+        "non_resource" : ["expire_thresh", "THRESH"],
         "mem_formula" : "(tables*entries) + (rows*cols)",
         "hash_formula" : "tables + rows",
         "regaccess_formula" : "tables + rows",
+        "samplesize": 0.0002,
         "temp" : 100,
         "stepsize": {
             "tables": 1,
@@ -47,7 +48,7 @@
             "cols" : 5000,
             "rows" : 2,
             "expire_thresh": 5000000,
-	        "THRESH": 10
+	        "THRESH": 10000
         }
     },
     "symfile" : "caching.symb",
@@ -55,4 +56,5 @@
     "outputfiles" : ["misses.pkl"],
     "optmodule" : "cacheopt",
     "trafficpcap" : ""
+
 }
