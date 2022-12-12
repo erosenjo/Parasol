@@ -345,13 +345,13 @@ module Precisioncache : {
     event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
 
     handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
-        int short_time = timestamp[31:0];
+        //int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-		        Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
+		        //Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
             }
@@ -369,14 +369,14 @@ module Precisioncache : {
         int c_or_maxint = 0;
     	int max_int = 0xffffffff;
 
-        int short_time = timestamp[31:0];
+        //int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
 
 
         for (i < 'tab) {
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire2 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
+            //int expire2 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
 
             if (match_1==1) {   // else if match, incr counter
                     c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
@@ -391,16 +391,18 @@ module Precisioncache : {
             }
 
 
+            /*
             if (expire2==1) {
                 min_stg_to_set = size_to_int(i+1);
                 min_val = 0;
             } else {
+            */
                 // MIN COMP, compute as we go
                 if (c_or_maxint != 0xffffffff) {
                     min_stg_to_set = size_to_int(i+1);
                     min_val = c_or_maxint;
                 }
-            }
+            //}
 
         }
         // if no match, probabilistically recirc
