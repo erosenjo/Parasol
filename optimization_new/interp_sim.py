@@ -144,7 +144,6 @@ def write_symb(sizes, symbolics, logs, symfile, opt_info):
     with open(symfile, 'w') as f:
         json.dump(concretes, f, indent=4)
 
-
 def update_sym_sizes(symbolics_opt, sizes, symbolics):
     for var in symbolics_opt:
         if var in sizes:
@@ -152,6 +151,7 @@ def update_sym_sizes(symbolics_opt, sizes, symbolics):
             continue
         if var in symbolics:
             symbolics[var] = symbolics_opt[var]
+
     return sizes, symbolics
 
 
