@@ -12,7 +12,6 @@
         "L_SLOTS" : 32
     },
     "logs": {
-        "dummy_var" : "num_short",
         "log_s_slots" : "S_SLOTS",
         "log_l_slots": "L_SLOTS"
     },
@@ -28,7 +27,7 @@
     },
     "optparams": {
     "optalgo" : "ordered",
-    "strategy": "neldermead",
+    "strategy": "bayesian",
     "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],
@@ -48,6 +47,6 @@
     "lucidfile" : "starflow.dpt",
     "outputfiles" : ["total.pkl"],
     "optmodule" : "starflowopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap"]
 
 }
