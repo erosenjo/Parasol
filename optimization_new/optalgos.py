@@ -69,6 +69,8 @@ def closest_power(x):
 
 # if we have rule-based vars, set them with this function
 def set_rule_vars(opt_info, symbolics_opt):
+    if "rules" not in opt_info["symbolicvals"]:
+        return symbolics_opt
     for rulevar in opt_info["symbolicvals"]["rules"]:
         rule = opt_info["symbolicvals"]["rules"][rulevar].split()
         for v in range(len(rule)):
@@ -119,7 +121,7 @@ def gen_next_random_nopreprocessing(symbolics_opt, logs, bounds, structchoice, s
 def gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info):
     sol_choice = choice(solutions)
     candidate_index = solutions.index(sol_choice)
-    symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree)
+    symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)
 
     # set non-resource vars
     for nonresource in opt_info["optparams"]["non_resource"]:
@@ -481,7 +483,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     else:   # we've preprocessed, used those solutions to calc total
         # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
         for sol_choice in solutions:
-            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree, opt_info)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
                 total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
@@ -667,6 +669,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(candidate_cost)
+        print("BEST", best_cost)
         
     #best_sol = prioritize(best_sols,opt_info)
     with open('final_testing_sols_sa.pkl','wb') as f:
@@ -923,12 +926,14 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
         else:   # we still have more variables to find bounds for, so keep going
             build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair)
 
-def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree):
+def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
     for sol in sol_choice:
         node = tree.get_node(sol)
         if node.tag=="root":
             continue
         symbolics_opt[node.tag[0]] = node.tag[1]
+    # set rule vars
+    set_rule_vars(opt_info, symbolics_opt)
 
     return symbolics_opt
 
@@ -1322,7 +1327,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     else:   # we've preprocessed, used those solutions to calc total
         # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
         for sol_choice in solutions:
-            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree)))
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
                 total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
@@ -1650,7 +1655,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 elif xe[i] > bounds[i][1]:   # we're > ub for variable, set to ub
                     xe[i]=bounds[i][1]
                     while int(xe[0]) == int(res[-1][0]) or int(xe[0]) == int(res[0][0]):
-                        xe[0] = int(xe[0])+1
+                        xe[0] = int(xe[0])-1
                     if xe[0] < 0:
                         early_exit = True
                         print("res", res)
@@ -1665,6 +1670,8 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             # OLD, treat nonresource differently
             #symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, solutions, tree)
             # NEW, only optimize for index val
+            print("XE",xe)
+            print(len(all_solutions_symbolics))
             symbolics_opt = set_symbolics_from_nparray(xe, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
             print(xe[0])
             print(symbolics_opt)
@@ -1856,7 +1863,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     else:   # we've preprocessed, used those solutions to calc total
         # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
         for sol_choice in solutions:
-            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)))
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree, opt_info)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
                 total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
@@ -2165,10 +2172,10 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                 # we've somehow gone through all the solutions
                 early_exit = True
                 break
-            print("MU",mu)
-            print("MU_SORTED",mu_sorted)
-            print("min_index", min_index)
-            print("mu sorted at index", mu_sorted[min_index])
+            #print("MU",mu)
+            #print("MU_SORTED",mu_sorted)
+            #print("min_index", min_index)
+            #print("mu sorted at index", mu_sorted[min_index])
             ix_next = np.where(mu==mu_sorted[min_index])[0][0]
             sol_choice = all_solutions_symbolics[np_acq_xvals[ix_next,0]]
             min_index += 1
