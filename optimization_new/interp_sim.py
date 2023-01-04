@@ -143,6 +143,8 @@ def write_symb(sizes, symbolics, logs, symfile, opt_info):
     concretes["symbolics"] = symbolics
     with open(symfile, 'w') as f:
         json.dump(concretes, f, indent=4)
+    print("SYMB FILE SIZES", sizes)
+    print("SYMB FILE SYMBOLICS", symbolics)
 
 def update_sym_sizes(symbolics_opt, sizes, symbolics):
     for var in symbolics_opt:

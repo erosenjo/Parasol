@@ -951,7 +951,7 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
     #print("SYMBOLICSOPT:", symbolics_opt)
     children = tree.children(root)
     for child in children:
-        #print("CHILD:", child.tag)
+        print("CHILD:", child.tag)
         #if child.tag[0]=="C":
         #    return
         # set the value for this variable
@@ -1010,6 +1010,14 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
             log2 = False
             startbound = 4
             lb = 1
+            # set lb for all left to find
+            for v in to_find:
+                symbolics_opt[v] = 1
+                if v in opt_info["symbolicvals"]["symbolics"]:  # memory
+                    symbolics_opt[v] = 32
+                if v in opt_info["symbolicvals"]["bounds"]:
+                    symbolics_opt[v] = opt_info["symbolicvals"]["bounds"][v][0]
+                
             if to_find[0] in opt_info["symbolicvals"]["bounds"]:
                 startbound = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
                 lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
@@ -1045,6 +1053,8 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
                 tree.create_node([to_find[0],v], parent=root)
             symbolics_opt[to_find[0]] = lb
             tree.show()
+            print("VAR", to_find[0])
+            print("LB", lb, "\n")
             # keep going if we have more variables (to_find[1:] not empty)
             if not to_find[1:]: # we're done! we've found all vars for this path
                 return
