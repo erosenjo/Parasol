@@ -1,4 +1,4 @@
-import subprocess, json, math, pickle, time, os
+import subprocess, json, math, pickle, time, os, re
 #from optalgos import *
 
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
@@ -183,12 +183,15 @@ def layout(symbolics_opt, opt_info):
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
     # NEW DATA FLOW COMPILE AND LAYOUT
     cmd = ["make", "layout"]
-    ret = subprocess.run(cmd)
+    ret = subprocess.run(cmd, capture_output=True)
+    #ret = subprocess.check_output(cmd)
+    res = re.split('LAYOUTSTAGES', str(ret.stdout))
+    resources = json.loads(res[1])
     if ret.returncode != 0: # stop if there's an error  
         exit("layout error")
     # NOTE: assuming that we're calling layout and opt from same working directory 
-    resfile = os.getcwd()+"/resources.json"
-    resources = json.load(open(resfile,'r'))
+    #resfile = os.getcwd()+"/resources.json"
+    #resources = json.load(open(resfile,'r'))
     return resources
 
 # partial compiler, data flow graph
