@@ -9,6 +9,9 @@ opttest:
 preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --preprocessingonly --dfg
 
+preprocess_efficient:
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --preprocessingonly --efficient
+
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive
 

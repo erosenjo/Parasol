@@ -192,6 +192,7 @@ def layout(symbolics_opt, opt_info):
     # NOTE: assuming that we're calling layout and opt from same working directory 
     #resfile = os.getcwd()+"/resources.json"
     #resources = json.load(open(resfile,'r'))
+    print(resources)
     return resources
 
 # partial compiler, data flow graph

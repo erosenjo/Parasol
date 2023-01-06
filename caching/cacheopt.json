@@ -18,12 +18,11 @@
             "logcols" : "cols"
         },
         "bounds" : {
-            "tables" : [1,12],
-            "entries" : [32, 131072],
-            "rows" : [1,12],
-            "cols" : [32, 131072],
-            "expire_thresh": [5000000,50000000],
-        	"THRESH" : [1000, 200000]
+            "expire_thresh": [500000,50000000],
+        	"THRESH" : [5000, 100000]
+        },
+        "rules" : {
+            "eviction": "True"
         }
     },
     "structchoice": {
@@ -32,15 +31,15 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strat" : "exhaustive",
-        "stop_time" : 8000,
+        "strategy" : "bayesian",
+        "stop_time" : 36000,
         "struct" : "cms",
         "order_resource" : ["tables", "rows", "entries", "cols"],
         "non_resource" : ["expire_thresh", "THRESH"],
         "mem_formula" : "(tables*entries) + (rows*cols)",
         "hash_formula" : "tables + rows",
         "regaccess_formula" : "tables + rows",
-        "samplesize": 0.0002,
+        "samplesize": 0.0005,
         "temp" : 100,
         "stepsize": {
             "tables": 1,
@@ -48,7 +47,7 @@
             "cols" : 5000,
             "rows" : 2,
             "expire_thresh": 5000000,
-	        "THRESH": 10000
+	        "THRESH": 30000
         }
     },
     "symfile" : "caching.symb",

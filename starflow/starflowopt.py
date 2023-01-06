@@ -29,6 +29,8 @@ class Opt:
             pcap = dpkt.pcap.Reader(open(trace,'rb'))
             for ts, buf in pcap:
                 try:
+                    '''
+                    #caida parsing
                     #eth = dpkt.ethernet.Ethernet(buf)
                     ip = dpkt.ip.IP(buf)
                     src_uint = struct.unpack("!I", ip.src)[0]
@@ -36,13 +38,24 @@ class Opt:
                     if src_uint not in self.flows:
                         self.flows.append(src_uint)
                     args = [src_uint, dst_uint, ip.len, ip.tos]
+                    '''
+                    # univ parsing
+                    eth = dpkt.ethernet.Ethernet(buf)
+                    if type(eth.data) != dpkt.ip.IP:
+                        continue
+                    src_uint = struct.unpack("!I", eth.ip.src)[0]
+                    dst_uint = struct.unpack("!I", eth.ip.dst)[0]
+                    if src_uint not in self.flows:
+                        self.flows.append(src_uint)
+                    args = [src_uint, dst_uint, eth.ip.len, eth.ip.tos]
                     p = {"name":"ip_in", "args":args}
                     self.events.append(p)
                     # testing, caida trace 10000000 pkts
                     # training, univ1_pt1 trace 20000 pkts
+                    # training 2, all of univ1_pt1
                     #if len(self.events) > 20000:
-                    if len(self.events) >= 5000000:
-                        break
+                    #if len(self.events) >= 5000000:
+                    #    break
                     #if len(self.events)%500000 == 0:
                     #    print(len(self.events))
                 except dpkt.dpkt.UnpackError:
@@ -108,7 +121,7 @@ class Opt:
 #s_o = {"max_short_idx": 1, "num_long": 1, "log_s_slots": 16, "log_l_slots": 16, "num_short": 8, "S_SLOTS": 65536,"L_SLOTS": 65536,"dummy_var": 3}
 #o.init_iteration(s_o)
 
-#'''
+'''
 #o = Opt("univ1_pt8.pcap")
 #o = Opt(["univ1_pt8.pcap", "univ1_pt9.pcap"])
 #o = Opt(["univ1_pt9.pcap"])
@@ -118,7 +131,7 @@ o.gen_traffic()
 # bayesian
 #s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
 #s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 32768, 'L_SLOTS': 32768}
-s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
 #s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 32768}
 # sim annealing
 #s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 8192, 'L_SLOTS': 32768}
@@ -126,7 +139,14 @@ s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_
 #s_t = {'max_short_idx': 3, 'num_long': 9, 'num_short': 4, 'S_SLOTS': 512, 'L_SLOTS': 512}
 # exhaustive
 #s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
-s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
+#s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
+# test for eval
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 256, 'L_SLOTS': 32768}
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 1024, 'L_SLOTS': 32768}
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 1024}
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 2048}
+#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 4096}
+s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 8192}
 o.init_iteration(s_t)
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
@@ -136,6 +156,6 @@ outfiles = ["total.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
-#'''
+'''
 
 

@@ -9,6 +9,9 @@ opttest:
 preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
+preprocess_efficient:
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+
 # run p4all optimizer, time test
 optimize_timetest:
 	python3 $(OPT_DIR)/optimize.py cacheopt.json --timetest

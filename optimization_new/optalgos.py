@@ -2034,9 +2034,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         #exit()
         total_sols *= len(solutions)
 
-    #print(all_solutions_symbolics)
-    #exit()
-
     print("TOTAL_SOLS", total_sols)
 
     # sample x% of solutions

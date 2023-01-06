@@ -17,10 +17,6 @@
         "log_l_slots": "L_SLOTS"
     },
     "bounds" : {
-        "num_long" : [1,10],
-        "num_short" : [2, 8],
-        "S_SLOTS" : [32, 131072],
-        "L_SLOTS" : [32, 131072]
     },
     "rules": {
         "max_short_idx" : "num_short - 1"
@@ -28,7 +24,7 @@
     },
     "optparams": {
     "optalgo" : "ordered",
-    "strategy": "neldermead",
+    "strategy": "simannealing",
     "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],
@@ -36,6 +32,7 @@
     "hash_formula" : "num_short + num_long",
     "regaccess_formula" : "num_short + num_long",
     "stop_time" : 8000,
+    "samplesize" : 0.002,
     "temp" : 1000,
     "stepsize": {
        "max_short_idx" : 3,
@@ -48,6 +45,6 @@
     "lucidfile" : "starflow.dpt",
     "outputfiles" : ["total.pkl"],
     "optmodule" : "starflowopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap"]
 
 }

@@ -17,7 +17,7 @@ exhaustive:
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --timetest --nopruning --shortcut --efficient
 
 # run interpreter
 interp: 
