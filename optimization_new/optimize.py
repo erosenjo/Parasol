@@ -81,6 +81,12 @@ def main():
     elif opt_info["optparams"]["optalgo"] == "exhaustive":
         best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest)
 
+    elif opt_info["optparams"]["optalgo"] == "bayesian":
+        best_sol, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, [], None)
+
+    elif opt_info["optparams"]["optalgo"] == "neldermead":
+        best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
+
     # testing out ordered search
     elif opt_info["optparams"]["optalgo"] == "ordered":
         best_costs = []
