@@ -116,8 +116,16 @@ memop counter_incr_read_complex(int memval, int minval, int maxint) {
 }
 
 
+memop read(int stored, int dummy){
+  return stored;
+}
+
+memop write(int stored, int newval){
+    return newval;
+}
+
 /* extern */
-extern log_count(int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int count);
+extern log_count(int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int fid3, int count, int oldsrc, int olddst, int oldfid3);
 extern write_to_file();
 
 handle add_val (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes) {
@@ -128,33 +136,30 @@ handle add_val (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<
     for (i < tables) {
         if (resubmitted_min_stage==arrs[i]#pos) {
             //printf("HASH: %d",idxes[i]);
-            Array.set(arrs[i]#fid_1,idxes[i],srcaddr);
-            Array.set(arrs[i]#fid_2,idxes[i],dstaddr);
-            Array.set(arrs[i]#fid_3,idxes[i],fid_3var);
+            int oldsrcaddr = Array.update(arrs[i]#fid_1,idxes[i], read, 0, write, srcaddr);
+            int olddstaddr = Array.update(arrs[i]#fid_2,idxes[i], read, 0, write, dstaddr);
+            int oldfid_3var = Array.update(arrs[i]#fid_3,idxes[i], read, 0, write, fid_3var);
 //            Array.set(arrs[i]#fid_4,idxes[i],fid_4var);
             int count = Array.update(arrs[i]#counter,idxes[i],incr,1,incr,1);
 
-            log_count(srcaddr,dstaddr,sport,dport,count);
+            log_count(srcaddr,dstaddr,sport, dport, oldfid_3var,count,oldsrcaddr,olddstaddr,oldfid_3var);
 
         }
     }
-    if (srcaddr==1664727917) {
-        if (dstaddr==26618738) {
-            if (sport==51540) {
-                if (dport==9339) {
-                    write_to_file();
-                }
-            }
-        }
-    }
+
+    
 }
 
 handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes) {
-    if (srcaddr==1664727917) {
-        if (dstaddr==26618738) {
-            if (sport==51540) {
-                if (dport==9339) {
+
+
+    // dummy packet
+    if (srcaddr==0) {
+        if (dstaddr==0) {
+            if (sport==0) {
+                if (dport==0) {
                     write_to_file();
+                    generate ip_out();
                 }
             }
         }
@@ -167,6 +172,8 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
     // 4 is ipv4.protocol, vlan.vlan_id, concat w identity hash
     int fidvar_3 = hash<<32>>(1,sport,dport);
 //    int fidvar_4 = hash<<32>>(1, proto, vlan_id, zero12b);
+
+
 
     // precompute hashes
     int<<logentries>>[tables] idxes = [hash<<logentries>>(size_to_int(i+3),srcaddr,dstaddr,fidvar_3) for i < tables];
@@ -204,7 +211,7 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
             //printf("KEY MATCH: %d%d%d%d",srcaddr,dstaddr,sport,dport);
 
             // hit; log count
-            log_count(srcaddr,dstaddr,sport,dport,0);
+            log_count(srcaddr,dstaddr,sport,dport,fidvar_3,0,0,0,0);
 
         }
         else {	// else grab counter value

@@ -11,20 +11,19 @@
             "logentries": "entries"
         },
         "bounds" : {
-            "tables" : [1,12],
+            "tables" : [1,20],
             "entries" : [32, 131072]
         }
     },
     "optparams": {
         "optalgo" : "ordered",
         "strategy" : "neldermead",
-        "stop_time" : 36000,
+        "stop_time" : 8000,
         "order_resource" : ["tables", "entries"],
         "non_resource" : [],
-        "mem_formula" : "tables * entries",
-        "hash_formula" : "tables",
-        "regaccess_formula" : "tables",
+        "maxcost": 1,
         "temp" : 10,
+        "samplesize": 0.05,
         "stepsize": {
             "tables": 1,
             "entries": 2000
@@ -34,6 +33,6 @@
     "lucidfile" : "precision.dpt",
     "outputfiles" : ["counts.pkl"],
     "optmodule" : "precisionopt",
-    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+    "trafficpcap" : "/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
 
 }
