@@ -36,6 +36,13 @@ def log_hit_cms(key):
     '''
 
 
+# separate externs for hash
+def log_miss_hash(key):
+    misses[0]+=1
+
+def log_hit_hash(key):
+    hits[0]+=1
+
 def write_to_file_cms():
     with open('hits.pkl','wb') as f:
         pickle.dump(hits[0],f)
@@ -49,5 +56,14 @@ def write_to_file_precision():
 
     with open('hits.pkl','wb') as f:
         pickle.dump(hits[0],f)
+
+def write_to_file_hash():
+    print("HASH WRITE")
+    with open('misses.pkl','wb') as f:
+        pickle.dump(misses[0],f)
+
+    with open('hits.pkl','wb') as f:
+        pickle.dump(hits[0],f)
+
 
 
