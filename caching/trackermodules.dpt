@@ -1531,4 +1531,124 @@ module Precisioncache : {
 }
 
 
+// HASH
+// this is a simple multi-stage hash, where we always evict on collisions
+// if collision, evict item with smallest count
+// NO TIMEOUT
+
+/* externs */
+extern log_miss_hash(int key);
+extern log_hit_hash(int key);
+extern write_to_file_hash();
+
+module Hashcache : {
+    global type t<<'logent, 'tab, 'logcols, 'rows>>;
+    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
+
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+
+    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) [start <= ca; end ca];
+
+
+} {
+
+    type t<<'logent, 'tab, 'logcols, 'rows>> = {
+        regs['tab] arrs;
+        int<<'logent>> dummy_var;
+        Array.t<<32>>['rows] cms;
+        int<<'logcols>> dummy_var2;
+    }
+
+    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
+        arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
+        dummy_var = 0;
+        cms = [Array.create(cols) for i<'rows];
+        dummy_var2 = 0;
+    };
+
+
+
+    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+
+    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+        int short_time = timestamp[31:0];
+        // NOTE: precompute mht_idxes helps in some scenarios.
+        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        for (i < 'tab) {
+            if (min_stg==ca#arrs[i]#pos) {
+                Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
+                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
+                Array.set(ca#arrs[i]#counter,mht_idxes[i],1);
+                //Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
+                Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
+            }
+        }
+    }
+
+   fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+
+        int matched = 0;
+        int min_val = 0xffffffff;
+        int min_stg_to_set = 0;
+        int c_or_maxint = 0;
+        int max_int = 0xffffffff;
+
+        int short_time = timestamp[31:0];
+
+        // dummy packet at end of trace
+        if (key==0) {
+            if (short_time==0) {
+                write_to_file_cms();
+                return;
+            }
+        }
+
+        // NOTE: precompute mht_idxes helps in some scenarios.
+        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+
+        for (i < 'tab) {
+            // init match vars, for each fid entry
+            int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
+            int expire_1 = 0;
+            if (match_1==1) {   // else if match, incr counter
+                matched = 1;
+                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
+                // no need to complex update, we've matched so don't need to worry about min value
+                Array.setm(ca#arrs[i]#counter,mht_idxes[i], incr, 1);
+                // cache hit, log it
+                //log_hit_cms(key);
+            }
+            else {  // else grab counter value
+                expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
+                c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+            }
+
+            // MIN COMP, compute as we go
+            if (c_or_maxint != 0xffffffff) {
+                min_stg_to_set = size_to_int(i+1);
+                min_val = c_or_maxint;
+            }
+        }
+
+
+        /* hash logic, always evict on collision */
+        bool notinserted = insert==0 && matched==0;
+        if (notinserted) {
+            // cache miss, log it
+            log_miss_hash(key);
+
+            // always insert
+            generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
+
+
+        }
+    }
+
+}
+
+
+
+
+
+
 
