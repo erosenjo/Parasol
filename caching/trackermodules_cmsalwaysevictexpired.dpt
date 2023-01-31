@@ -2,7 +2,7 @@
 
 // NOTE: this version includes timeouts for cms and hash
 //  it also stores timestamp for precision, but doesn't use it
-//  it only replaces expired entries in cms if ALSO over threshold
+//  it ALWAYS replaces expired enries for cms
 
 // this version has a multi-stage hash table that ALWAYS evicts on collision
 //  evicts and replaces entry with min count or expired
@@ -184,7 +184,7 @@ module Cmscache : {
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
         int max_int = 0xffffffff;
-
+        int expire = 0;
         int short_time = timestamp[31:0];
 
         // dummy packet at end of trace
@@ -218,6 +218,7 @@ module Cmscache : {
             if (expire_1==1) {
                 min_stg_to_set = size_to_int(i+1);
                 min_val = 0;
+                expire = 1;
             } else {
                 // MIN COMP, compute as we go
                 if (c_or_maxint != 0xffffffff) {
@@ -228,31 +229,37 @@ module Cmscache : {
         }
 
 
+        // if entry is expired, always replace it
+        if (expire==1) {
+            generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
+        }
+        // otherwise,
+        else {
+            /* cms */
+            bool notinserted = insert==0 && matched==0;
+            //int notinserted = insert + matched;
+            int min_count = 0xffffff;
+            if (notinserted) {
+                    // cache miss, log it
+                    log_miss(key);
+                    int<<'logcols>>['rows] cms_idxes = [hash<<'logcols>>(size_to_int(i+2),key) for i<'rows];
 
-        /* cms */
-        bool notinserted = insert==0 && matched==0;
-        //int notinserted = insert + matched;
-        int min_count = 0xffffff;
-        if (notinserted) {
-                // cache miss, log it
-                log_miss(key);
-                int<<'logcols>>['rows] cms_idxes = [hash<<'logcols>>(size_to_int(i+2),key) for i<'rows];
-
-                for (i < 'rows) {
-                    min_count = Array.update(ca#cms[i], cms_idxes[i], compute_min, min_count, incr, 1);
-                }
+                    for (i < 'rows) {
+                        min_count = Array.update(ca#cms[i], cms_idxes[i], compute_min, min_count, incr, 1);
+                    }
 
 
-            if (min_val==0) { // cache slot was empty
-                generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
-            } else {
-                if (min_count < THRESH) {
-                    return;
+                if (min_val==0) { // cache slot was empty
+                    generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
                 } else {
-                    generate add_val(ca,key,1,min_stg_to_set,key, timestamp);
+                    if (min_count < THRESH) {
+                        return;
+                    } else {
+                        generate add_val(ca,key,1,min_stg_to_set,key, timestamp);
+                    }
                 }
-            }
 
+            }
         }
 
     }
