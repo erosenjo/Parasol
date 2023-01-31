@@ -1553,8 +1553,7 @@ module Precisioncache : {
 
 // HASH
 // this is a simple multi-stage hash, where we always evict on collisions
-// if collision, evict item with smallest count
-// NO TIMEOUT
+// if collision, evict item with smallest count or expired
 
 module Hashcache : {
     global type t<<'logent, 'tab, 'logcols, 'rows>>;

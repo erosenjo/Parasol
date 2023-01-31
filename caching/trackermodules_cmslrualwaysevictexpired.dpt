@@ -1,11 +1,14 @@
 /* CMS, PRECISION, HASH based cache modules */
 
+// this version of cms and hash replaces least recently used entry
+// (instead of min count/expired)
+// this cms ALWAYS evicts lru entry if expired
+
 // NOTE: this version includes timeouts for cms and hash
 //  it also stores timestamp for precision, but doesn't use it
-//  it ALWAYS replaces expired enries for cms
 
 // this version has a multi-stage hash table that ALWAYS evicts on collision
-//  evicts and replaces entry with min count or expired
+//  evicts and replaces entry least recently used entry
 
 // basic algo for precision:
 // d hash functions (tables)
@@ -182,9 +185,9 @@ module Cmscache : {
         int matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
-        int c_or_maxint = 0;
+        int time_or_maxint = 0;
         int max_int = 0xffffffff;
-        int expire = 0;
+
         int short_time = timestamp[31:0];
 
         // dummy packet at end of trace
@@ -201,7 +204,7 @@ module Cmscache : {
         for (i < 'tab) {
             // init match vars, for each fid entry
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire_1 = 0;
+            //int expire_1 = 0;
             if (match_1==1) {   // else if match, incr counter
                 matched = 1;
                 Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
@@ -211,26 +214,21 @@ module Cmscache : {
                 //log_hit(key);
             }
             else {  // else grab counter value
-                expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
-                c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+                //expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
+                time_or_maxint = Array.update_complex(ca#arrs[i]#times,mht_idxes[i], counter_read_complex,min_val, max_int, 0);
+                //c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
             }
 
-            if (expire_1==1) {
+            // MIN COMP, compute as we go
+            if (time_or_maxint != 0xffffffff) {
                 min_stg_to_set = size_to_int(i+1);
-                min_val = 0;
-                expire = 1;
-            } else {
-                // MIN COMP, compute as we go
-                if (c_or_maxint != 0xffffffff) {
-                    min_stg_to_set = size_to_int(i+1);
-                    min_val = c_or_maxint;
-                }
+                min_val = time_or_maxint;
             }
         }
 
 
-        // if entry is expired, always replace it
-        if (expire==1) {
+        // if lru entry is expired, always evict it
+        if (short_time - min_val > expire_thresh) {
             generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
         }
         // otherwise,
@@ -1560,7 +1558,7 @@ module Precisioncache : {
 
 // HASH
 // this is a simple multi-stage hash, where we always evict on collisions
-// if collision, evict item with smallest count or expired
+// if collision, evict least recently used item
 
 module Hashcache : {
     global type t<<'logent, 'tab, 'logcols, 'rows>>;
@@ -1628,7 +1626,7 @@ module Hashcache : {
         int matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
-        int c_or_maxint = 0;
+        int time_or_maxint = 0;
         int max_int = 0xffffffff;
 
         int short_time = timestamp[31:0];
@@ -1657,19 +1655,15 @@ module Hashcache : {
                 //log_hit(key);
             }
             else {  // else grab counter value
-                expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
-                c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+                //expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
+                time_or_maxint = Array.update_complex(ca#arrs[i]#times,mht_idxes[i],counter_read_complex, min_val, max_int, 0);
+                //c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
             }
 
-            if (expire_1==1) {
+            // MIN COMP, compute as we go
+            if (time_or_maxint != 0xffffffff) {
                 min_stg_to_set = size_to_int(i+1);
-                min_val = 0;
-            } else {
-                // MIN COMP, compute as we go
-                if (c_or_maxint != 0xffffffff) {
-                    min_stg_to_set = size_to_int(i+1);
-                    min_val = c_or_maxint;
-                }
+                min_val = time_or_maxint;
             }
         }
 
