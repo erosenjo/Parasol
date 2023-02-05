@@ -140,7 +140,7 @@ memop write(int stored, int newval){
 extern log_count(int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int fid3, int count, int oldsrc, int olddst, int oldfid3);
 extern write_to_file();
 
-event add_val_new (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int stage, int idx) {
+event add_val_new (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int stage, int<<16>> idx) {
     int<<logentries>> resubmitted_idx = (int<<logentries>>)idx;
     int<<logentries>>[tables] idxes = [(int<<logentries>>)idx for i < tables];
     // int<<logentries>>[tables] idxes = [hash<<logentries>>(size_to_int(i+3),srcaddr,dstaddr,sport, dport) for i < tables];
@@ -226,7 +226,7 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
     int min_val = 0xffffff;	// signed ints? set this to max value
 
     int min_stg_to_set = 0;
-    int min_stg_idx = 0;
+    int<<16>> min_stg_idx = 0;
     int c_or_maxint = 0;
     int<<1>> matched = 0;
     int max_int = 0xffffffff;
@@ -263,7 +263,7 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
              //printf("TESTCOUNT %d", c_or_maxint);
              //printf("TESTSTG %d", size_to_int(i));
              min_stg_to_set = size_to_int(i+1);
-             min_stg_idx = (int<<32>>)idxes[i];
+             min_stg_idx = (int<<16>>)idxes[i];
              min_val = c_or_maxint;
          }
 
