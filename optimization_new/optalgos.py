@@ -1,6 +1,6 @@
 import math, json, sys, copy, time, itertools
 from random import randint, random, getrandbits, choice
-from interp_sim import gen_cost, compile_num_stages, layout, dfg
+from interp_sim import gen_cost, compile_num_stages, layout, dfg, gen_cost_multitrace
 import numpy as np
 #from scipy.optimize import basinhopping
 import pickle
@@ -426,6 +426,15 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             for var in non_preprocess_ranges:
                 symbolics[var] = sol[sol_index]
                 sol_index += 1
+            if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+                if symbolics["entries"] * symbolics["tables"] > 10000:
+                    continue
+                if "struct" in opt_info["optparams"] and opt_info["optparams"]["struct"]=="hash":
+                    if symbolics["tables"] > 1:
+                        continue
+                if "rows" in symbolics and "cols" in symbolics:
+                    if symbolics["rows"] * symbolics["cols"] > 10000:
+                        continue
             all_solutions_symbolics.append(symbolics)
 
 
@@ -478,11 +487,18 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
-    # if solutions is empty, no preprocessing, regular sim annealing (need to compile before interpreter)
-    if not solutions:
-        best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
-    else:
-        best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
+    if "interp_traces" not in opt_info: # single trace for opt, named the same as dpt file
+        # if solutions is empty, no preprocessing, regular sim annealing (need to compile before interpreter)
+        if not solutions:
+            best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
+        else:
+            best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
+    else: # multiple training traces, arbitrary names
+        if not solutions:
+            best_cost = gen_cost_multitrace(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
+        else:
+            best_cost = gen_cost_multitrace(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
+
     curr_index = candidate_index
 
     # current working solution
@@ -577,10 +593,16 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         symbolics_opt, candidate_index = gen_next_simannealing(all_solutions_symbolics, opt_info, symbolics_opt, curr, curr_index)
 
         # evaluate candidate point
-        if not solutions:
-            candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
+        if "interp_traces" not in opt_info:
+            if not solutions:
+                candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
+            else:
+                candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         else:
-            candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+            if not solutions:
+                candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
+            else:
+                candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
 
         tested_sols.append(copy.deepcopy(symbolics_opt))
 
@@ -675,6 +697,12 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
         for var in non_preprocess_ranges:
             symbolics[var] = sol[sol_index]
             sol_index += 1
+        if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+            if symbolics["entries"]*symbolics["tables"] > 10000:
+                continue
+        if "rows" in symbolics and "cols" in symbolics:
+            if symbolics["rows"]*symbolics["cols"] > 10000:
+                continue
         all_solutions_symbolics.append(symbolics)
 
     testing_sols = []
@@ -683,7 +711,10 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
     best_sols = []
     best_cost = float("inf")
     for sol in all_solutions_symbolics:
-        cost = gen_cost(sol, sol, opt_info, o, False, "exhaustive")
+        if "interp_traces" not in opt_info:
+            cost = gen_cost(sol, sol, opt_info, o, False, "exhaustive")
+        else:
+            cost = gen_cost_multitrace(sol, sol, opt_info, o, False, "exhaustive")
         testing_sols.append(sol)
         testing_eval.append(cost)
         if cost < best_cost:
@@ -959,8 +990,8 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
                 log2 = True
                 if lb < 2:
                     lb = 2
-                if startbound < 4:  # if user gives us higher bound, don't overwrite it
-                    startbound = 4
+            if startbound < 4:  # if user gives us higher bound, don't overwrite it
+                startbound = 4
 
             # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
             # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
@@ -1126,9 +1157,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         # if caching, just set to true (cms) and in theory do precision in parallel
         if opt_info["lucidfile"] == "caching.dpt":
             print("CACHING")
-            symbolics_opt["eviction"] = True
-            #symbolics_opt["rows"] = 1
-            #symbolics_opt["cols"] = 2
+            symbolics_opt["eviction"] = False
+            symbolics_opt["rows"] = 1
+            symbolics_opt["cols"] = 2
         build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)    
@@ -1259,14 +1290,42 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                 if "rules" in opt_info["symbolicvals"]:
                     symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
                 print("SYMBOLICS TO EVAL", symbolics_opt)
-                cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                if testing_eval:
+                    current_progress = {"evaling": symbolics_opt, "best eval": min(testing_eval), "best sol": testing_sols[testing_eval.index(min(testing_eval))]}
+                    with open("current.pkl", 'wb') as f:
+                        pickle.dump(current_progress, f)
+                    
+
+                if "struct" in opt_info["optparams"]:
+                    if opt_info["optparams"]["struct"] != "hash":
+                        if "tables" in symbolics_opt and "entries" in symbolics_opt and "rows" in symbolics_opt and "cols" in symbolics_opt and "THRESH" in symbolics_opt:
+                            if symbolics_opt["tables"]*symbolics_opt["entries"] < 8192:
+                                continue
+                            if symbolics_opt["cols"] < 2:
+                                continue
+                            if "skew" in opt_info["optparams"]:
+                                if opt_info["optparams"]["skew"] == "less":
+                                    if symbolics_opt["THRESH"] < 1500 or symbolics_opt["expire_thresh"] < 50000000:
+                                        continue
+                                if opt_info["optparams"]["skew"] == "uniform":
+                                    if symbolics_opt["THRESH"] < 3000 or symbolics_opt["expire_thresh"] > 50000000:
+                                        continue
+                    
+                            # skew
+                            elif symbolics_opt["THRESH"] < 1500 or symbolics_opt["expire_thresh"] < 60000000:
+                                continue
+                if "interp_traces" not in opt_info:
+                    cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                else:
+                    cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
                 tested_sols.append(copy.deepcopy(symbolics_opt))
 
                 testing_sols.append(copy.deepcopy(symbolics_opt))
                 testing_eval.append(cost)
                 iterations += 1
         best_sols = [{}]
-
+        print("EXHAUSTIVE TIME", time.time() - interpreter_start_time)
+        print("NUM SOLS", len(testing_eval))
         with open('final_testing_sols_ordered_exhaustive.pkl','wb') as f:
             pickle.dump(testing_sols,f)
         with open('final_testing_eval_ordered_exhaustive.pkl','wb') as f:
@@ -1408,6 +1467,15 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             for var in non_preprocess_ranges:
                 symbolics[var] = sol[sol_index]
                 sol_index += 1
+            if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+                if symbolics["entries"] * symbolics["tables"] > 10000:
+                    continue
+                if "struct" in opt_info["optparams"] and opt_info["optparams"]["struct"]=="hash":
+                    if symbolics["tables"] > 1:
+                        continue
+                if "rows" in symbolics and "cols" in symbolics:
+                    if symbolics["rows"] * symbolics["cols"] > 10000:
+                        continue
             all_solutions_symbolics.append(symbolics)
 
 
@@ -1477,11 +1545,19 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     symbolics_opt = set_symbolics_from_nparray(x_start, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
     print("symbolics opt after set from np array", symbolics_opt)
     #prev_best = f(x_start)
-    if not solutions:
-        prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
-    else:
-        print("EVALED SOL", symbolics_opt)
-        prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+    if "interp_traces" not in opt_info: # single trace, same name as dpt file
+        if not solutions:
+            prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+        else:
+            print("EVALED SOL", symbolics_opt)
+            prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+    else: # multiple traces, arbitrary name
+        if not solutions:
+            prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+        else:
+            print("EVALED SOL", symbolics_opt)
+            prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
     no_improv = 0
     res = [[x_start, prev_best]]
     testing_sols.append(copy.deepcopy(symbolics_opt))
@@ -1502,11 +1578,20 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         symbolics_opt = set_symbolics_from_nparray(x, index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
 
         #score = f(x)
-        if not solutions:
-            score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
-        else:
-            print("EVALED SOL", symbolics_opt)
-            score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+        if "interp_traces" not in opt_info: # single trace, same name as dpt file
+            if not solutions:
+                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL", symbolics_opt)
+                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+        else: # multiple traces, arbitrary name
+            if not solutions:
+                score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL", symbolics_opt)
+                score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(score)
         res.append([x, score])
@@ -1671,11 +1756,19 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         print(all_solutions_symbolics[int(xr[0])])
         #exit()
         #rscore = f(xr)
-        if not solutions:
-            rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
-        else:
-            print("EVALED SOL AFTER REFLECTION", symbolics_opt)
-            rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+        if "interp_traces" not in opt_info: # single trace, same name as dpt file
+            if not solutions:
+                rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL", symbolics_opt)
+                rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+        else: # multiple traces, arbitrary name
+            if not solutions:
+                rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL AFTER REFLECTION", symbolics_opt)
+                rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(rscore)
         print("RES RELFECTION", res)
@@ -1721,11 +1814,19 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             print(all_solutions_symbolics[int(xe[0])])
             #exit()
             #escore = f(xe)
+        if "interp_traces" not in opt_info: # single trace, same name as dpt file
             if not solutions:
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
-                print("EVALED SOL AFTER EXPANSION", symbolics_opt)
+                print("EVALED SOL", symbolics_opt)
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+        else: # multiple traces, arbitrary name
+            if not solutions:
+                escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL AFTER EXPANSION", symbolics_opt)
+                escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(escore)
             if escore < rscore:
@@ -1777,11 +1878,19 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         print(all_solutions_symbolics[int(xc[0])])
         #exit()
         #cscore = f(xc)
-        if not solutions:
-            cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
-        else:
-            print("EVALED SOL AFTER CONTRACTION", symbolics_opt)
-            cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+        if "interp_traces" not in opt_info: # single trace, same name as dpt file
+            if not solutions:
+                cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL", symbolics_opt)
+                cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+        else: # multiple traces, arbitrary name
+            if not solutions:
+                cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+            else:
+                print("EVALED SOL AFTER CONTRACTION", symbolics_opt)
+                cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cscore)
         if cscore < res[-1][1]:
@@ -1827,11 +1936,19 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             print(all_solutions_symbolics[int(redx[0])])
             #exit()
             #score = f(redx)
-            if not solutions:
-                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
-            else:
-                print("EVALED SOL AFTER REDUCTION", symbolics_opt)
-                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+            if "interp_traces" not in opt_info: # single trace, same name as dpt file
+                if not solutions:
+                    score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+                else:
+                    print("EVALED SOL", symbolics_opt)
+                    score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+
+            else: # multiple traces, arbitrary name
+                if not solutions:
+                    score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
+                else:
+                    print("EVALED SOL AFTER REDUCTION", symbolics_opt)
+                    score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(score)
             nres.append([redx, score])
@@ -1911,6 +2028,15 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             for var in non_preprocess_ranges:
                 symbolics[var] = sol[sol_index]
                 sol_index += 1
+            if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+                if symbolics["entries"] * symbolics["tables"] > 10000:
+                    continue
+                if "struct" in opt_info["optparams"] and opt_info["optparams"]["struct"]=="hash":
+                    if symbolics["tables"] > 1:
+                        continue
+                if "rows" in symbolics and "cols" in symbolics:
+                    if symbolics["rows"] * symbolics["cols"] > 10000:
+                        continue
             all_solutions_symbolics.append(symbolics)
 
     else:   # we've preprocessed, used those solutions to calc total
@@ -1939,6 +2065,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         #exit()
         total_sols *= len(solutions)
 
+    total_sols = len(all_solutions_symbolics)
     print("TOTAL_SOLS", total_sols)
 
     # sample x% of solutions
@@ -2005,10 +2132,18 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # step 1.1: get cost for each sampled value
     sample_costs = []
     for sample in sampled_sols:
-        if not solutions:
-            score = gen_cost(sample, sample, opt_info, o, False, "bayesian")
+        # single trace file
+        if "interp_traces" not in opt_info:
+            if not solutions:
+                score = gen_cost(sample, sample, opt_info, o, False, "bayesian")
+            else:
+                score = gen_cost(sample, sample, opt_info, o, False, "ordered")
+        # else, multi trace
         else:
-            score = gen_cost(sample, sample, opt_info, o, False, "ordered")
+            if not solutions:
+                score = gen_cost_multitrace(sample, sample, opt_info, o, False, "bayesian")
+            else:
+                score = gen_cost_multitrace(sample, sample, opt_info, o, False, "ordered")
         sample_costs.append(score)
         '''
         if not test_cost:
@@ -2242,10 +2377,16 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         # eval best choice, fit model w/ new value
         #symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)
         best_sols.append(copy.deepcopy(sol_choice))
-        if not solutions:
-            score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "bayesian")
-        else:
-            score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "ordered")
+        if "interp_traces" not in opt_info: # single trace, same name as dpt file
+            if not solutions:
+                score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "bayesian")
+            else:
+                score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "ordered")
+        else:   # multiple traces, arbitrary names
+            if not solutions:
+                score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "bayesian")
+            else:
+                score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "ordered")
         print("ACTUAL VALUE:", score)
         actual_eval.append(score)
 

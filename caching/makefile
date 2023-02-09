@@ -14,7 +14,7 @@ preprocess_efficient:
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --timetest
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --timetest --nopruning --efficient --shortcut
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py cacheopt.json --nopruning --exhaustive --shortcut

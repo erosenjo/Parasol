@@ -18,6 +18,10 @@
             "logcols" : "cols"
         },
         "bounds" : {
+            "tables" : [1,20],
+            "entries" : [32, 131072],
+            "rows" : [1,20],
+            "cols" : [32, 131072],
             "expire_thresh": [500000,50000000],
         	"THRESH" : [5000, 100000]
         },
@@ -31,8 +35,8 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "bayesian",
-        "stop_time" : 36000,
+        "strategy" : "simannealing",
+        "stop_time" : 60,
         "struct" : "cms",
         "order_resource" : ["tables", "rows", "entries", "cols"],
         "non_resource" : ["expire_thresh", "THRESH"],
@@ -54,6 +58,7 @@
     "lucidfile" : "caching.dpt",
     "outputfiles" : ["misses.pkl"],
     "optmodule" : "cacheopt",
+    "interp_traces": ["1milzipf1-3.json", "1milzipf1-05.json"],
     "trafficpcap" : ""
 
 }

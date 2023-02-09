@@ -2,17 +2,18 @@ import subprocess, json, math, pickle, time, os, re
 #from optalgos import *
 
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
-def interp_sim(lucidfile,outfiles):
+def interp_sim(lucidfile,outfiles,tracefile=None):
     # run the interpreter
-    #cmd = ["../../dpt", "--suppress-final-state", lucidfile]
-    #cmd = ["../../lucid/dpt", "--suppress-final-state", lucidfile]
-    cmd = ["make", "interp"]
+    if not tracefile:   # single trace file, that should have the same name as dpt file
+        cmd = ["make", "interp"]
+    else:               # mult trace files, name does NOT have to be same as dpt file
+        cmd = ["/media/data/mh43/lucid/dpt", "--suppress-final-state", lucidfile, "--spec", tracefile]
+
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
     ret = subprocess.run(cmd)
     if ret.returncode != 0: # stop if there's an error running interp
-        print("err")
-        quit()
+        exit("error running interpreter")
 
 
     # get output from interpreter
@@ -240,45 +241,7 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]
-    '''
-    if symbolics_opt["eviction"]==True:
-        cmd = ["../../dptc", "noextern_caching_cms.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-    else:
-        cmd = ["../../dptc", "noextern_caching_precision.dpt", "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-    '''
-    '''
-    #cmd = ["../../dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-
-    #cmd = ["../../lucid/dptc", opt_info["compilefile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-
-    # OLD LUCID COMPILATION
-    #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "ip_harness.p4", "linker_config.json", "build", "--symb", opt_info["symfile"]]
-    # NEW LUCID COMPILATION
-    #cmd = ["../../lucid/dptc", opt_info["lucidfile"], "build", "--symb", opt_info["symfile", "--silent"]
-    cmd = ["make", "compile"]
-
-    #with open('output.txt','w') as outfile:
-    #    ret = subprocess.run(cmd, stdout=outfile, shell=True)
-    ret = subprocess.run(cmd)
-    if ret.returncode != 0: # stop if there's an error running interp
-        print("err")
-        quit()
-    num_stg = 0
-    # NOTE(!!!!!!): makefile compile command MUST call folder build, otherwise this will fail
-    with open('build/num_stages.txt') as f:
-        num_stg = int(f.readline())
-    '''
     
-    '''
-    # we don't need to compile here, we've already guaranteed that we're only picking compiling solutions
-    num_stg = compile_num_stages(symbolics_opt, opt_info)
-
-    if num_stg > 12:
-        return opt_info["optparams"]["maxcost"]
-        #return 1 # miss rate of 100%
-        #return float('inf')
-    '''
-
     # call init_iteration for opt class
     o.init_iteration(symbolics_opt)
 
@@ -291,7 +254,35 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
     return cost
 
 
+def gen_cost_multitrace(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
+    symbolics_opt = symbolics_opt_vars
+    # generate symbolic file
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
+
+    # compile to p4 and check if stgs <= tofino
+    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
+    if searchtype != "ordered":
+        res = layout(symbolics_opt, opt_info)
+        if res["stages"] > 12:  # we won't fit on the switch
+            return opt_info["optparams"]["maxcost"]
 
 
+    # we have multiple json traces to simulate
+    # each trace should dump output to a different file
+    # run interp on each trace, THEN calc the cost
+
+    # TODO: NEED TO ADD ARG TO INTERP COMMAND?? how to pass in trace name to make command?
+    m = []
+    for trace in opt_info["interp_traces"]:
+        # call init_iteration for opt class
+        o.init_iteration(symbolics_opt)       
+
+        m += interp_sim(opt_info["lucidfile"],opt_info["outputfiles"],trace)
+
+    # pass measurement(s) to cost func, get cost of sol
+    cost = o.calc_cost(m)
+ 
+    return cost
 
 
