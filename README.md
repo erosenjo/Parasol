@@ -2,7 +2,7 @@
 Parasol is framework for writing generalized, parameterized network algorithms and automatically optimizing those parameters.
 
 ## Setup
-Parasol is built on top of [Lucid](https://github.com/PrincetonUniversity/lucid). SOMETHING ABOUT INSTALLING LUCID, INSTRUCTIONS IN THEIR README
+Parasol is built on top of [Lucid](https://github.com/PrincetonUniversity/lucid). Instructions in installing Lucid can be found in the linked repo.
 
 ## Writing a Parasol Program
 ### Lucid Code and Measurement Functions
