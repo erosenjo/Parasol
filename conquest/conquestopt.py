@@ -45,10 +45,18 @@ class Opt:
         self.vect_qlong = np.load("reqfiles_dctraining/vect_qlong.npy")
         self.tracepkts = np.load("reqfiles_dctraining/tracepkts.npy")
         '''
+        #'''
         self.ground_truth = np.load("reqfiles_dctest/conquestgt.npy")
         self.qlen_arr = np.load("reqfiles_dctest/qlen_arr.npy")
         self.vect_qlong = np.load("reqfiles_dctest/vect_qlong.npy")
         self.tracepkts = np.load("reqfiles_dctest/tracepkts.npy")
+        #'''
+        '''
+        self.ground_truth = np.load("reqfiles_dctest200/conquestgt.npy")
+        self.qlen_arr = np.load("reqfiles_dctest200/qlen_arr.npy")
+        self.vect_qlong = np.load("reqfiles_dctest200/vect_qlong.npy")
+        self.tracepkts = np.load("reqfiles_dctest200/tracepkts.npy")
+        '''
         pkt_counter = 0
         events = []
         for pkt in self.tracepkts[:len(self.vect_qlong)]:
@@ -163,6 +171,8 @@ class Opt:
         #print(self.ground_truth)
 
         #return
+        print(len(events))
+        #exit()
         info["events"] = events
         with open('conquest.json', 'w') as f: 
             json.dump(info, f, indent=4)
@@ -223,7 +233,6 @@ class Opt:
 #traces = ["univ1_pt8.pcap", "univ1_pt9.pcap", "univ1_pt10.pcap", "univ1_pt11.pcap", "univ1_pt12.pcap"]
 #o = Opt("univ1_pt3.pcap")
 #o = Opt("univ1_pt1.pcap")
-#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
 o = Opt("")
 o.gen_traffic()
 

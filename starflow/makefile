@@ -13,7 +13,7 @@ preprocess_efficient:
 	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --notrafficgen --nopruning --preprocessingonly --efficient
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --nopruning --exhaustive
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --nopruning --exhaustive --shortcut --efficient
 
 # run p4all optimizer, time test
 optimize_timetest:

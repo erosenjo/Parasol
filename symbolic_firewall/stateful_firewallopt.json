@@ -13,23 +13,21 @@
         "logentries" : "entries"
     },
     "bounds" : {
-        "stages": [1,12],
+        "stages": [1,20],
         "entries": [32, 131072],
         "timeout": [1000000,1000000000],
-        "interscan_delay" : [1000000,1000000000]
+        "interscan_delay" : [100000000,1000000000]
     }
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "neldermead",
+        "strategy" : "simannealing",
         "stop_time" : 8000,
         "order_resource" : ["stages", "entries"],
         "non_resource" : ["interscan_delay", "timeout"],
-        "mem_formula" : "stages * entries",
-        "hash_formula" : "stages+1",
-        "regaccess_formula" : "3*stages+1",
         "temp" : 1000,
         "maxcost" : 10000,
+        "samplesize": 0.002,
         "stepsize": {
             "stages": 1,
 	        "entries": 512,
@@ -41,6 +39,6 @@
     "lucidfile" : "stateful_firewall.dpt",
     "outputfiles" : ["stateful_firewall_out_trace.pkl"],
     "optmodule" : "stateful_firewallopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : ["pcap"]
 
 }

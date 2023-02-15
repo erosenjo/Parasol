@@ -112,8 +112,8 @@ def main():
         with open("1iter_results.pkl",'wb') as f:
             pickle.dump(results, f)
 
-    elif opt_info["optparams"]["optalgo"] == "neldermead":
-        best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
+    #elif opt_info["optparams"]["optalgo"] == "neldermead":
+    #    best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
 
 
     end_time = time.time()

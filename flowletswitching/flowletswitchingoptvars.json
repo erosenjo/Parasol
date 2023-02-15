@@ -19,9 +19,11 @@
         "order_resource" : ["flowlets"],
         "non_resource" : ["IPG_thresh"],
         "optalgo" : "ordered",
-        "strategy" : "bayesian",
+        "strategy" : "exhaustive",
     	"stop_time" : 8000,
 	    "temp" : 10,
+        "samplesize": 0.1,
+        "maxcost": 100,
     	"stepsize": {
 	        "flowlets" : 100,
 	        "IPG_thresh" : 10000000
@@ -31,6 +33,6 @@
     "lucidfile" : "flowletswitching.dpt",
     "outputfiles" : ["pkthops.pkl"],
     "optmodule" : "flowletswitchingopt",
-    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+    "trafficpcap" : "pcap_file"
 
 }

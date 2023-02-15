@@ -13,7 +13,7 @@ preprocess_efficient:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --nopruning --preprocessingonly --efficient
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --nopruning --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:

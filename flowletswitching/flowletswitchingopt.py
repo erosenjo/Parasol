@@ -44,9 +44,11 @@ class Opt:
         pcap = dpkt.pcap.Reader(open(self.pkts,'rb'))
         for ts, buf in pcap:
             pkt_counter += 1
-            if pkt_counter < 2000000:
+            if pkt_counter < 5000000:
+            #if pkt_counter < 2000000:
                 continue
-            if pkt_counter == 2000000:
+            if pkt_counter == 5000000:
+            #if pkt_counter == 2000000:
             #if pkt_counter == 1:
                 starttime = ts
             try:
@@ -63,8 +65,8 @@ class Opt:
                 p = {"name":"ip_in", "args":args}
                 events.append(p)
                 self.ground_truth += ip.len
-                # training: first 500000 pkts of caida trace
-                # testing: 3000000 pkts, starting w/ 2000000 of caida trace
+                # training: 500000 pkts of caida trace, starting w/ 2000000 of caida trace
+                # testing: 3000000 pkts, starting w/ 5000000 of caida trace
                 #if len(events) >= 500000:
                 if len(events) >= 3000000:
                     print("max events")
@@ -122,7 +124,6 @@ class Opt:
         with open('flowletswitching.json', 'w') as f:
             json.dump(info, f, indent=4)
 
-
     # called after every interp run
     # measurement is list of measurements (one measurement for each output file)
     # order in list is same ordered specified in opt json
@@ -149,7 +150,7 @@ class Opt:
             print(hops[i])
             errs.append(abs(hops[i]-self.ground_truth)/self.ground_truth)
 
-        print(sum(errs)/len(errs))
+        print("ERROR", sum(errs)/len(errs))
         return sum(errs)/len(errs)
         
 
@@ -160,14 +161,13 @@ class Opt:
 
 
 
-#o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
 #o.gen_traffic()
 #m = [pickle.load(open('pkthops.txt','rb'))]
 #o.calc_cost(m)
-
-o = Opt("/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+'''
+o = Opt("pcap")
 o.gen_traffic()
-
+#exit()
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
 
@@ -176,7 +176,7 @@ outfiles = ["pkthops.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
-
+'''
 
 
 

@@ -43,107 +43,113 @@ class Opt:
         gt = []
         pkt_counter = 0
 
-        pcap = dpkt.pcap.Reader(open(self.pkts,'rb'))
-        for ts, buf in pcap:
-            if pkt_counter == 0:
-                starttime = ts
-            pkt_counter += 1
-            try:
-                # univ parsing:
-                eth = dpkt.ethernet.Ethernet(buf)
-                #print(type(eth.data))
-                if type(eth.data) != dpkt.ip.IP:
-                    continue
-                #print(type(eth.ip.data))
-                if type(eth.ip.data) != dpkt.tcp.TCP:
-                    continue
-                src_uint = struct.unpack("!I", eth.ip.src)[0]
-                dst_uint = struct.unpack("!I", eth.ip.dst)[0]
-                timestamp = int((ts-starttime)*1000000000) 
-                f_int = eth.ip.tcp.flags
-                #print(eth.ip.tcp.flags)
-                args = [f_int, eth.ip.len, eth.ip.hl, eth.ip.tcp.off, eth.ip.tcp.seq, eth.ip.tcp.ack, src_uint, dst_uint, eth.ip.tcp.sport, eth.ip.tcp.dport, timestamp]
-                '''
-                # caida parsing: 
-                ip = dpkt.ip.IP(buf)
-                if ip.p != 6:   # not a tcp pkt
-                    continue
-                tcp = ip.data
-                if type(tcp) != dpkt.tcp.TCP:
-                    continue
-                src_uint = struct.unpack("!I", ip.src)[0]
-                dst_uint = struct.unpack("!I", ip.dst)[0]
-                timestamp = int((ts-starttime)*1000000000)        
-                f_int = tcp.flags
-                args = [f_int, ip.len, ip.hl, tcp.off, tcp.seq, tcp.ack, src_uint, dst_uint, tcp.sport, tcp.dport, timestamp]
-                '''
-                p = {"name":"tcp_in", "args":args}
-                events.append(p)
-
-                # ground truth calc
-                pkttype=0
-                drop = False
-                if f_int==2:
-                    pkttype=1
-                elif f_int==18:
+        for pkt_pcap in self.pkts:
+            pcap = dpkt.pcap.Reader(open(pkt_pcap,'rb'))
+            for ts, buf in pcap:
+                if pkt_counter == 0:
+                    starttime = ts
+                pkt_counter += 1
+                try:
+                    #'''
+                    # univ parsing:
+                    eth = dpkt.ethernet.Ethernet(buf)
+                    #print(type(eth.data))
+                    if type(eth.data) != dpkt.ip.IP:
+                        continue
+                    #print(type(eth.ip.data))
+                    if type(eth.ip.data) != dpkt.tcp.TCP:
+                        continue
+                    src_uint = struct.unpack("!I", eth.ip.src)[0]
+                    dst_uint = struct.unpack("!I", eth.ip.dst)[0]
+                    timestamp = int((ts-starttime)*1000000000) 
+                    f_int = eth.ip.tcp.flags
+                    #print(eth.ip.tcp.flags)
+                    args = [f_int, eth.ip.len, eth.ip.hl, eth.ip.tcp.off, eth.ip.tcp.seq, eth.ip.tcp.ack, src_uint, dst_uint, eth.ip.tcp.sport, eth.ip.tcp.dport, timestamp]
+                    '''
+                    # caida parsing: 
+                    ip = dpkt.ip.IP(buf)
+                    if ip.p != 6:   # not a tcp pkt
+                        continue
+                    tcp = ip.data
+                    if type(tcp) != dpkt.tcp.TCP:
+                        continue
+                    src_uint = struct.unpack("!I", ip.src)[0]
+                    dst_uint = struct.unpack("!I", ip.dst)[0]
+                    print(src_uint, dst_uint)
+                    exit()
+                    timestamp = int((ts-starttime)*1000000000)        
+                    f_int = tcp.flags
+                    args = [f_int, ip.len, ip.hl, tcp.off, tcp.seq, tcp.ack, src_uint, dst_uint, tcp.sport, tcp.dport, timestamp]
+                    '''
+                    p = {"name":"tcp_in", "args":args}
+                    events.append(p)
+    
+                    # ground truth calc
                     pkttype=0
-                elif f_int==16 and eth.ip.len <= 80:
-                    pkttype=0
-                elif f_int==24 and eth.ip.len <= 80:
-                    pkttype=0
-                elif 80 <= eth.ip.len <= 1600:
-                    pkttype=1
-                elif f_int==4 or f_int==1:
-                    drop=True
-                else:
-                    pkttype=0
-
-                #print(args)
-                #print("PKT TYPE: "+str(pkttype))
-                if pkttype==1 and drop==False:
-                    #print("IHL "+str(ihl*4))
-                    #print("OFFSET "+str(offset*4))
-                    tmp4 = eth.ip.hl*4+eth.ip.tcp.off*4
-                    #print("LEN "+str(pktlen))
-                    tmp5 = eth.ip.len-tmp4
-                    #print("TMP4 "+str(tmp4))
-                    #print("TMP5 "+str(tmp5))
-                    eack = eth.ip.tcp.seq+tmp5
-                    #print("EXPECTED "+str(eack))
+                    drop = False
                     if f_int==2:
-                        eack = eack+1
-                    key = str(src_uint)+str(dst_uint)+str(eth.ip.tcp.sport)+str(eth.ip.tcp.dport)+str(eack)
+                        pkttype=1
+                    elif f_int==18:
+                        pkttype=0
+                    elif f_int==16 and eth.ip.len <= 80:
+                        pkttype=0
+                    elif f_int==24 and eth.ip.len <= 80:
+                        pkttype=0
+                    elif 80 <= eth.ip.len <= 1600:
+                        pkttype=1
+                    elif f_int==4 or f_int==1:
+                        drop=True
+                    else:
+                        pkttype=0
+
+                    #print(args)
+                    #print("PKT TYPE: "+str(pkttype))
+                    if pkttype==1 and drop==False:
+                        #print("IHL "+str(ihl*4))
+                        #print("OFFSET "+str(offset*4))
+                        tmp4 = eth.ip.hl*4+eth.ip.tcp.off*4
+                        #print("LEN "+str(pktlen))
+                        tmp5 = eth.ip.len-tmp4
+                        #print("TMP4 "+str(tmp4))
+                        #print("TMP5 "+str(tmp5))
+                        eack = eth.ip.tcp.seq+tmp5
+                        #print("EXPECTED "+str(eack))
+                        if f_int==2:
+                            eack = eack+1
+                        key = str(src_uint)+str(dst_uint)+str(eth.ip.tcp.sport)+str(eth.ip.tcp.dport)+str(eack)
+    
+                        '''
+                        if args==[24, 108, 5, 5, 389537286, 3974322786, 4093882517, 699466720, 1869, 9809, 5524034]:
+                            print(f_str)
+                            print("EACK: "+str(eack))
+                            print("KEY: "+str(key))
+                        '''
+                        syns[key] = timestamp
+                        #print("EACK: "  + str(eack))
+                    elif drop==False:
+                        key = str(dst_uint)+str(src_uint)+str(eth.ip.tcp.dport)+str(eth.ip.tcp.sport)+str(eth.ip.tcp.ack)
+    
+                        '''
+                        if args==[16, 40, 5, 5, 3974322862, 389537355, 699466720, 4093882517, 9809, 1869, 6418034]:
+                            print("KEY: "+str(key))
+                        '''
+    
+                        if key in syns:
+                            #print("MATCH!!")
+                            gt.append(timestamp-syns[key])
 
                     '''
-                    if args==[24, 108, 5, 5, 389537286, 3974322786, 4093882517, 699466720, 1869, 9809, 5524034]:
-                        print(f_str)
-                        print("EACK: "+str(eack))
-                        print("KEY: "+str(key))
+                    if len(events) > 0:
+                        return
                     '''
-                    syns[key] = timestamp
-                    #print("EACK: "  + str(eack))
-                elif drop==False:
-                    key = str(dst_uint)+str(src_uint)+str(eth.ip.tcp.dport)+str(eth.ip.tcp.sport)+str(eth.ip.tcp.ack)
+                    # training: 1000000 events
+                    # testing: all events for univ, 5000000 for caida
+                    #if len(events) > 1000000:
+                    #if len(events) >= 5000000:
+                    #    break
 
-                    '''
-                    if args==[16, 40, 5, 5, 3974322862, 389537355, 699466720, 4093882517, 9809, 1869, 6418034]:
-                        print("KEY: "+str(key))
-                    '''
-
-                    if key in syns:
-                        #print("MATCH!!")
-                        gt.append(timestamp-syns[key])
-
-                '''
-                if len(events) > 0:
-                    return
-                '''
-
-                if len(events) > 1000000:
-                    break
-
-            except dpkt.dpkt.UnpackError:
-                pass
+                except dpkt.dpkt.UnpackError:
+                    pass
 
         '''
         # scapy parsing
@@ -229,6 +235,11 @@ class Opt:
         '''
 
         print(len(gt))        
+        print("EVENTS", len(events))
+        # add a dummy packet
+        args = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        p = {"name":"tcp_in", "args":args}
+        events.append(p)
 
         info["events"] = events
         ecdf = ECDF([x/1000000 for x in gt])
@@ -255,7 +266,6 @@ class Opt:
         info["events"] = events
         with open('fridge.json', 'w') as f:
             json.dump(info, f, indent=4)
-
 
     # measurement is dictionary of rtts and correction factors
     def calc_cost(self, measure):
@@ -300,7 +310,8 @@ class Opt:
             err1 = abs((sampled_percentiles_x[sv]-self.ground_truth[sv])/self.ground_truth[sv])
             errs.append(err1)
 
-        print(max(errs))
+        print("MAX ERR", max(errs))
+        print("ALL ERRS", errs)
         return max(errs)
 
         '''
@@ -337,9 +348,9 @@ class Opt:
 #o.gen_traffic()
 #m = pickle.load(open('rtt_correction.txt','rb'))
 #o.calc_cost([m])
-
-o = Opt("/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap")
+'''
 o.gen_traffic()
+#exit("UPDATE DPT")
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
 
@@ -348,5 +359,5 @@ outfiles = ["rtt_correction.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
-
+'''
 

@@ -19,18 +19,20 @@
         "order_resource" : ["tables", "table_size"],
         "non_resource" : [],
         "optalgo" : "ordered",
-        "strategy" : "exhaustive",
+        "strategy" : "bayesian",
 	    "stop_time" : 8000,
     	"temp" : 10,
+        "maxcost": 1,
+        "samplesize": 0.05, 
 	    "stepsize": {
 	        "table_size" : 1500,
-    	    "tables" : 2
+    	    "tables" : 1
 	    }
     },
     "symfile" : "hash.symb",
     "lucidfile" : "hash.dpt",
     "outputfiles" : ["colls.pkl"],
     "optmodule" : "hashopt",
-    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+    "trafficpcap" : "pcap_file"
 
 }

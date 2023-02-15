@@ -231,6 +231,7 @@ module Cmscache : {
 
         // if entry is expired, always replace it
         if (expire==1) {
+            log_miss(key); // log miss
             generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
         }
         // otherwise,

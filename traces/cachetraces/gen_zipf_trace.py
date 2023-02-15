@@ -27,28 +27,16 @@ from collections import Counter
 # not skewed events: 78400
 
 # distr_param is float > 1, higher means more skewed, lower means more even
-# not skew = 1.2
-# not skew 2 = 1.3
-# not skew 3 = 1.1
-# not skew 4 = 1.05
-# not skew 5 = 1.03
-#distr_param = 1.2
-#distr_param = 1.3
-#distr_param = 1.1
-distr_param = 1.05
-#distr_param = 1.03
-# skew = 1.4
-#distr_param = 1.4
-# large trace 80000000 events
-# med traces 1000000 events
-#num_events = 80000000
-#num_events = 1000000
-#num_events = 10000000
-# num unique keys in medskew1mil = 27012
+# not skew = 1.05
+# skew = 1.3
+distr_param = 1.3
 num_events = 1000000
+#num_events = 5000000
 
+# zipfian:
 key_list = list(np.random.zipf(distr_param, num_events))
-#key_list = list(np.random.randint(1, high=27013, size=num_events))
+# uniform: 
+#key_list = list(np.random.randint(1, high=30000, size=num_events))
 # figure out number of unique keys
 counts = Counter(key_list)
 unique = list(counts.keys())
@@ -91,7 +79,7 @@ events.append(e)
 trace["events"] = events
 print(key_counter)
 
-with open("mednotskew1mil1-05.json",'w') as f:
+with open("cache_trace.json",'w') as f:
     json.dump(trace,f,indent=4)
 
 

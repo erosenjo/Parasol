@@ -9,8 +9,11 @@ opttest:
 preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
+preprocess_efficient:
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --nopruning --exhaustive --shortcut --efficient
 
 # run p4all optimizer, time test
 optimize_timetest:

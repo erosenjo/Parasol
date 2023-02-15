@@ -36,13 +36,10 @@
     "optparams": {
         "optalgo" : "ordered",
         "strategy" : "simannealing",
-        "stop_time" : 60,
+        "stop_time" : 8000,
         "struct" : "cms",
         "order_resource" : ["tables", "rows", "entries", "cols"],
         "non_resource" : ["expire_thresh", "THRESH"],
-        "mem_formula" : "(tables*entries) + (rows*cols)",
-        "hash_formula" : "tables + rows",
-        "regaccess_formula" : "tables + rows",
         "samplesize": 0.0005,
         "temp" : 100,
         "stepsize": {
@@ -58,7 +55,7 @@
     "lucidfile" : "caching.dpt",
     "outputfiles" : ["misses.pkl"],
     "optmodule" : "cacheopt",
-    "interp_traces": ["1milzipf1-3.json", "1milzipf1-05.json"],
+    "interp_traces": ["1milzipf1-3.json", "1milzipf1-05.json", "1miluniform.json"],
     "trafficpcap" : ""
 
 }

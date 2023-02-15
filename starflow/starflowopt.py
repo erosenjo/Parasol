@@ -29,7 +29,7 @@ class Opt:
             pcap = dpkt.pcap.Reader(open(trace,'rb'))
             for ts, buf in pcap:
                 try:
-                    '''
+                    #'''
                     #caida parsing
                     #eth = dpkt.ethernet.Ethernet(buf)
                     ip = dpkt.ip.IP(buf)
@@ -48,14 +48,15 @@ class Opt:
                     if src_uint not in self.flows:
                         self.flows.append(src_uint)
                     args = [src_uint, dst_uint, eth.ip.len, eth.ip.tos]
+                    '''
                     p = {"name":"ip_in", "args":args}
                     self.events.append(p)
-                    # testing, caida trace 10000000 pkts
+                    # testing, caida trace 5000000 pkts
                     # training, univ1_pt1 trace 20000 pkts
                     # training 2, all of univ1_pt1
-                    #if len(self.events) > 20000:
-                    #if len(self.events) >= 5000000:
-                    #    break
+                    #if len(self.events) > 5000:
+                    if len(self.events) >= 5000000:
+                        break
                     #if len(self.events)%500000 == 0:
                     #    print(len(self.events))
                 except dpkt.dpkt.UnpackError:
@@ -122,31 +123,8 @@ class Opt:
 #o.init_iteration(s_o)
 
 '''
-#o = Opt("univ1_pt8.pcap")
-#o = Opt(["univ1_pt8.pcap", "univ1_pt9.pcap"])
-#o = Opt(["univ1_pt9.pcap"])
-#o = Opt(["univ1_pt2.pcap", "univ1_pt3.pcap","univ1_pt4.pcap","univ1_pt5.pcap","univ1_pt6.pcap","univ1_pt7.pcap","univ1_pt8.pcap","univ1_pt9.pcap","univ1_pt10.pcap","univ1_pt11.pcap","univ1_pt12.pcap","univ1_pt13.pcap","univ1_pt14.pcap","univ1_pt15.pcap","univ1_pt16.pcap","univ1_pt17.pcap","univ1_pt18.pcap","univ1_pt19.pcap","univ1_pt20.pcap"])
-o = Opt(["../traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"])
-o.gen_traffic()
-# bayesian
-#s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
-#s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 32768, 'L_SLOTS': 32768}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 32768}
-# sim annealing
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 8192, 'L_SLOTS': 32768}
-# simplex
-#s_t = {'max_short_idx': 3, 'num_long': 9, 'num_short': 4, 'S_SLOTS': 512, 'L_SLOTS': 512}
-# exhaustive
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
-#s_t = {'max_short_idx': 3, 'num_long': 12, 'num_short': 4, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
-# test for eval
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 256, 'L_SLOTS': 32768}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 1024, 'L_SLOTS': 32768}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 1024}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 2048}
-#s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 4096}
-s_t = {'max_short_idx': 1, 'num_long': 14, 'num_short': 2, 'S_SLOTS': 32768, 'L_SLOTS': 8192}
+o = Opt(["pcap"])
+#s_t = {'max_short_idx': 7, 'num_long': 8, 'num_short': 8, 'S_SLOTS': 65536, 'L_SLOTS': 16384}
 o.init_iteration(s_t)
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)

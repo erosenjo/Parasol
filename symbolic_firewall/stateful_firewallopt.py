@@ -1,5 +1,5 @@
 # how many ns of packet trace to use as a sample
-trace_time_seconds = 4 
+trace_time_seconds = 10000
 max_packet_sample_time = trace_time_seconds * 1000000000
 using_caida = False # caida is ip pcap instead of eth
 
@@ -11,7 +11,7 @@ import numpy as np
 from statsmodels.distributions.empirical_distribution import ECDF
 import math
 import pickle
-
+import subprocess
 
 import dpkt
 import ipaddress
@@ -30,34 +30,70 @@ def hexadecimal (ip_addr):
     return "0x" + "".join( map( i2Hex,  ip_addr.split(".") ) )
 
 
-def events_of_pkts(inPcapFn, maxts = 1000000000):
+def events_of_pkts(inPcapFnlist, maxts = 1000000000):
     def ns_ts(ts):
         return int(ts * 1000000000)
     print ("converting packets to events")
     keys = set()
     events = []
-    pcap = dpkt.pcap.Reader(open(inPcapFn, "rb"))
     pktct = 0
     auth_pktct = 0
-    ret_pktct = 0    
+    ret_pktct = 0
     fst_ts = 0
-    for ts, buf in pcap:
-        if (fst_ts == 0):
-            fst_ts = ts
-        ts = ns_ts(ts - fst_ts)
-        if (ts > maxts):
-            break
-        # if (maxpkts != None):        
-        #     if (pktct == maxpkts): 
-        #         break
-        try:
-            eth = dpkt.ethernet.Ethernet(buf)
-            authorized = None
-            if (type(eth.data) == dpkt.ip.IP):
-                src_uint = struct.unpack("!I", eth.ip.src)[0]
-                dst_uint = struct.unpack("!I", eth.ip.dst)[0]
-                src = str(ipaddress.ip_address(eth.ip.src))
-                dst = str(ipaddress.ip_address(eth.ip.dst))
+    testingct = 0
+    for inPcapFn in inPcapFnlist:
+        pcap = dpkt.pcap.Reader(open(inPcapFn, "rb"))
+        #pktct = 0
+        #auth_pktct = 0
+        #ret_pktct = 0    
+        #fst_ts = 0
+        for ts, buf in pcap:
+            #testingct += 1
+            #if testingct < 3000000:
+            #    continue
+            if (fst_ts == 0):
+                fst_ts = ts
+            ts = ns_ts(ts - fst_ts)
+            if (ts > maxts):
+                break
+            # if (maxpkts != None):        
+            #     if (pktct == maxpkts): 
+            #         break
+            try:
+                #'''
+                # univ parsing
+                eth = dpkt.ethernet.Ethernet(buf)
+                authorized = None
+                if (type(eth.data) == dpkt.ip.IP):
+                    src_uint = struct.unpack("!I", eth.ip.src)[0]
+                    dst_uint = struct.unpack("!I", eth.ip.dst)[0]
+                    src = str(ipaddress.ip_address(eth.ip.src))
+                    dst = str(ipaddress.ip_address(eth.ip.dst))
+                    key = (src, dst)
+                    reverse_key = (dst, src)
+                    # case: some packet from return of authorized flow
+                    if (reverse_key in keys):
+                        authorized = 0
+                        ret_pktct += 1
+                    # case: first packet from authorized flow
+                    elif (key in keys):
+                        authorized = 1
+                    # case: first packet of a flow. Consider it authorized. 
+                    else:
+                        keys.add(key)
+                        authorized = 1
+                    if (authorized == 1):
+                        auth_pktct += 1
+                    event = {"name":"ip_in", "args":[0, src_uint, dst_uint, (eth.ip.len+16), authorized], "timestamp":ts}
+                    events.append(event)
+                    pktct += 1
+                '''
+                # caida parsing
+                ip = dpkt.ip.IP(buf)
+                src_uint = struct.unpack("!I", ip.src)[0]
+                dst_uint = struct.unpack("!I", ip.dst)[0]
+                src = str(ipaddress.ip_address(ip.src))
+                dst = str(ipaddress.ip_address(ip.dst))
                 key = (src, dst)
                 reverse_key = (dst, src)
                 # case: some packet from return of authorized flow
@@ -72,12 +108,15 @@ def events_of_pkts(inPcapFn, maxts = 1000000000):
                     keys.add(key)
                     authorized = 1
                 if (authorized == 1):
-                    auth_pktct += 1
-                event = {"name":"ip_in", "args":[0, src_uint, dst_uint, (eth.ip.len+16), authorized], "timestamp":ts}
+                        auth_pktct += 1
+                event = {"name":"ip_in", "args":[0, src_uint, dst_uint, (ip.len+16), authorized], "timestamp":ts}
                 events.append(event)
                 pktct += 1
-        except dpkt.dpkt.UnpackError:
-            print ("unpack error")
+
+                '''
+            except dpkt.dpkt.UnpackError:
+                #print ("unpack error")
+                pass
     print ("packet to event conversion done")
     print ("pkts: %s authorized: %s return: %s keys: %s"%(pktct, auth_pktct, ret_pktct, len(keys)))
     return events
@@ -92,7 +131,7 @@ class Opt:
         print ("generating traffic")
         info = {}
         info["switches"] = 1
-        info["default input gap"] = 1
+        info["default input gap"] = 200
         info["random seed"] = 0
         info["python file"] = "stateful_firewall.py" # externs
         pktevents = events_of_pkts(self.pcapfn, max_packet_sample_time)
@@ -102,7 +141,7 @@ class Opt:
         finalevent = {"name":"final_packet", "args":[], "timestamp":(pktevents[-1]["timestamp"]+1)}
         info["events"] = [initevent] + pktevents + [finalevent] 
         # info["events"] = pktevents + [finalevent] 
-        info["max time"] = finalevent["timestamp"]+1
+        info["max time"] = finalevent["timestamp"]+10000
         with open('stateful_firewall.json', 'w') as f:
             json.dump(info, f, indent=4)
 
@@ -124,6 +163,7 @@ class Opt:
         self.result_trace.append((self.cur_params, {"kbps_missed_packet":kbps_missed_packet, "kbps_recirc":kbps_recirc, "cost":cost}))
         print ("parameters: %s"%(str(self.cur_params)))
         print ("kbps_missed_packet: %f kbps_recirc: %f cost: %f"%(kbps_missed_packet, kbps_recirc, cost))
+        print("COST", cost)
         return cost            
 
     def init_iteration(self, symbs):
@@ -131,10 +171,19 @@ class Opt:
         print("init_iteration called")
         pass
 
-#o = Opt("univ1_pt1.pcap")
-#o.gen_traffic()
-#m = pickle.load(open('rtt_correction.txt','rb'))
-#o.calc_cost([m])
+'''
+o = Opt(["pcap"])
+o.gen_traffic()
+s_t = {'stages': 2, 'entries': 65536, 'timeout': 901000000, 'interscan_delay': 1000000000}
+o.init_iteration(s_t)
+cmd = ["make", "interp"]
+ret = subprocess.run(cmd)
 
+measurement = []
+outfiles = ["stateful_firewall_out_trace.pkl"]
+for out in outfiles:
+    measurement.append(pickle.load(open(out,"rb")))
+o.calc_cost(measurement)
+'''
 
 

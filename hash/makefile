@@ -9,12 +9,19 @@ opttest:
 preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py hashopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
+preprocess_efficient:
+	python3 $(OPT_DIR)/optimize.py hashopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+
+
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py hashopt.json --nopruning --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:
 	python3 $(OPT_DIR)/optimize.py hashopt.json --timetest --nopruning --shortcut
+
+optimize_notimetest:
+	python3 $(OPT_DIR)/optimize.py hashopt.json
 
 #layout
 layout:

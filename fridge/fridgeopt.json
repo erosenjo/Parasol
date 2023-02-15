@@ -17,11 +17,13 @@
     },
     "optparams": {
         "optalgo" : "ordered",
-        "strategy" : "neldermead",
+        "strategy" : "exhaustive",
         "stop_time" : 8000,
         "order_resource": ["fridge_size"],
         "non_resource" : ["ENTRY_PROB_LOG2"],
         "temp" : 1000,
+        "samplesize": 0.04,
+        "maxcost": 100,
         "stepsize": {
             "ENTRY_PROB_LOG2": 1,
 	        "fridge_size": 100
@@ -31,6 +33,6 @@
     "lucidfile" : "fridge.dpt",
     "outputfiles" : ["rtt_correction.pkl"],
     "optmodule" : "fridgeopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : ["pcap_file"]
 
 }

@@ -11,7 +11,7 @@
 	        "logcols" : "cols"
 	    },
         "bounds" : {
-	        "rows" : [1,11],
+	        "rows" : [1,20],
 	        "cols" : [32, 131072]
 	    }
     },
@@ -20,9 +20,10 @@
         "non_resource" : [],
         "optalgo" : "ordered",
         "strategy" : "bayesian",
-	    "stop_time" : 300,
+	    "stop_time" : 8000,
 	    "temp" : 10,
         "maxcost" : 50000, 
+        "samplesize": 0.01, 
 	    "stepsize": {
 	        "cols" : 5000,
 	        "rows" : 1
@@ -32,6 +33,6 @@
     "lucidfile" : "cms_sym.dpt",
     "outputfiles" : ["test.pkl"],
     "optmodule" : "cmsopt",
-    "trafficpcap" : "equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+    "trafficpcap" : "pcap_file"
 
 }

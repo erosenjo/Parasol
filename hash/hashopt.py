@@ -1,7 +1,7 @@
 # (user-provided) class containing functions necessary for optimization:
 #   gen traffic (as json), init function called each time we run interp iteration
 
-import json, pickle
+import json, pickle, time
 from scapy.all import *
 
 # helpers
@@ -41,7 +41,7 @@ class Opt:
                 if not (pkt.haslayer(TCP)):
                     continue
                 pkt_counter += 1
-                # for training, use pkts 1000000-2000000
+                # for testing, use pkts 1000000-2000000
                 if pkt_counter < 1000000:
                     continue
                 src_int = int(hexadecimal(pkt[IP].src),0)
@@ -58,9 +58,9 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].dst),0))
 
                 # first 100000 events for training
-                # 1000000 events for testing
-                #if len(events) > 100000:
-                if len(events) > 1000000:
+                # 10000000 events for testing
+                #if len(events) > 1000000:
+                if len(events) > 10000000:
                     break
 
 
@@ -82,15 +82,19 @@ class Opt:
         pass
 
 
-
-o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+'''
+o = Opt("pcap")
 o.gen_traffic()
-
+starttime = time.time()
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
-
+endtime = time.time()
 measurement = []
 outfiles = ["colls.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
+print("TESTTIME", endtime-starttime)
+'''
+
+

@@ -4,6 +4,7 @@
 import json
 from scapy.all import *
 import pickle
+import time
 
 # helpers
 def i2Hex (n):
@@ -34,8 +35,8 @@ class Opt:
         infopkts = []
         info = {}
         info["switches"] = 1
-        info["max time"] = 999999999
-        info["default input gap"] = 1
+        info["max time"] = 99999999999
+        info["default input gap"] = 100
         info["random seed"] = 0
         info["python file"] = "cms_sym.py"
         events = []
@@ -45,8 +46,8 @@ class Opt:
                 if not (pkt.haslayer(IP)):
                     continue
                 pktcounter += 1
-                if pktcounter < 1000000:    # get a different part of the trace to test our solution
-                    continue
+                #if pktcounter < 1000000:    # get a different part of the trace to test our solution
+                #    continue
                 src_int = int(hexadecimal(pkt[IP].src),0)
                 dst_int = int(hexadecimal(pkt[IP].dst),0)
                 # 0 as dummy argument, for byte-alignment
@@ -69,7 +70,7 @@ class Opt:
                 #print(int(hexadecimal(pkt[IP].dst),0))
                 # 500000 events for training, 1000000 for testing
                 #if len(events) >= 500000:
-                if len(events) >= 1000000:
+                if len(events) >= 100000:
                     break
 
         # update last dummy byte, this helps us identify the last pkt
@@ -116,11 +117,14 @@ class Opt:
         pass
 
 '''
-o = Opt("equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+o = Opt("pcap")
 o.gen_traffic()
+#exit()
+starttime = time.time()
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
 
+print("TIME", time.time()-starttime)
 measurement = []
 outfiles = ["test.pkl"]
 for out in outfiles:

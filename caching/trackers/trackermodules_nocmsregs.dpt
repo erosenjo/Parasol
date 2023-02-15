@@ -1,14 +1,7 @@
 /* CMS, PRECISION, HASH based cache modules */
 
-// this version of cms and hash replaces least recently used entry
-// (instead of min count/expired)
-// this cms ALWAYS evicts lru entry if expired
-
-// NOTE: this version includes timeouts for cms and hash
-//  it also stores timestamp for precision, but doesn't use it
-
-// this version has a multi-stage hash table that ALWAYS evicts on collision
-//  evicts and replaces entry least recently used entry
+// NOTE: this version does NOT include a timeout for ANY module
+//       also does not include array to store times
 
 // basic algo for precision:
 // d hash functions (tables)
@@ -126,18 +119,16 @@ module Cmscache : {
 
 } {
     /* record for symbolic arrays that are interleaved in loop */
-    type regs = {
+    type regscms = {
         Array.t<<32>> keys;
-        Array.t<<32>> times;
         Array.t<<32>> counter;
         Array.t<<32>> values;
         Array.t<<32>> dummy_reg;
         int pos;
     }
 
-    constr regs create_regs(int ent, int pos) = {
+    constr regscms create_regs(int ent, int pos) = {
         keys = Array.create(ent);
-        times = Array.create(ent);
         counter = Array.create(ent);
         values = Array.create(ent);
         dummy_reg = Array.create(1);
@@ -145,7 +136,7 @@ module Cmscache : {
     };
 
     type t<<'logent, 'tab, 'logcols, 'rows>> = {
-        regs['tab] arrs;
+        regscms['tab] arrs;
         int<<'logent>> dummy_var;
         Array.t<<32>>['rows] cms;
         int<<'logcols>> dummy_var2;
@@ -163,13 +154,11 @@ module Cmscache : {
     event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
 
     handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
-        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 //Array.set(ca#arrs[i]#counter,mht_idxes[i],1);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
@@ -185,10 +174,9 @@ module Cmscache : {
         int matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
-        int time_or_maxint = 0;
+        int c_or_maxint = 0;
         int max_int = 0xffffffff;
 
-        int short_time = timestamp[31:0];
 
         // dummy packet at end of trace
         if (key==0) {
@@ -204,60 +192,50 @@ module Cmscache : {
         for (i < 'tab) {
             // init match vars, for each fid entry
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            //int expire_1 = 0;
             if (match_1==1) {   // else if match, incr counter
                 matched = 1;
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 // no need to complex update, we've matched so don't need to worry about min value
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i], incr, 1);
                 // cache hit, log it
                 //log_hit(key);
             }
             else {  // else grab counter value
-                //expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
-                time_or_maxint = Array.update_complex(ca#arrs[i]#times,mht_idxes[i], counter_read_complex,min_val, max_int, 0);
-                //c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+                c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
             }
 
             // MIN COMP, compute as we go
-            if (time_or_maxint != 0xffffffff) {
+            if (c_or_maxint != 0xffffffff) {
                 min_stg_to_set = size_to_int(i+1);
-                min_val = time_or_maxint;
+                min_val = c_or_maxint;
             }
         }
 
 
-        // if lru entry is expired, always evict it
-        if (short_time - min_val > expire_thresh) {
-            generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
-        }
-        // otherwise,
-        else {
-            /* cms */
-            bool notinserted = insert==0 && matched==0;
-            //int notinserted = insert + matched;
-            int min_count = 0xffffff;
-            if (notinserted) {
-                    // cache miss, log it
-                    log_miss(key);
-                    int<<'logcols>>['rows] cms_idxes = [hash<<'logcols>>(size_to_int(i+2),key) for i<'rows];
 
-                    for (i < 'rows) {
-                        min_count = Array.update(ca#cms[i], cms_idxes[i], compute_min, min_count, incr, 1);
-                    }
+        /* cms */
+        bool notinserted = insert==0 && matched==0;
+        //int notinserted = insert + matched;
+        int min_count = 0xffffff;
+        if (notinserted) {
+                // cache miss, log it
+                log_miss(key);
+                int<<'logcols>>['rows] cms_idxes = [hash<<'logcols>>(size_to_int(i+2),key) for i<'rows];
 
-
-                if (min_val==0) { // cache slot was empty
-                    generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
-                } else {
-                    if (min_count < THRESH) {
-                        return;
-                    } else {
-                        generate add_val(ca,key,1,min_stg_to_set,key, timestamp);
-                    }
+                for (i < 'rows) {
+                    min_count = Array.update(ca#cms[i], cms_idxes[i], compute_min, min_count, incr, 1);
                 }
 
+
+            if (min_val==0) { // cache slot was empty
+                generate add_val(ca,key,1,min_stg_to_set,key,timestamp);
+            } else {
+                if (min_count < THRESH) {
+                    return;
+                } else {
+                    generate add_val(ca,key,1,min_stg_to_set,key, timestamp);
+                }
             }
+
         }
 
     }
@@ -279,7 +257,6 @@ module Precisioncache : {
     /* record for symbolic arrays that are interleaved in loop */
     type regs = {
         Array.t<<32>> keys;
-        Array.t<<32>> times;
         Array.t<<32>> counter;
         Array.t<<32>> values;
         Array.t<<32>> dummy_reg;
@@ -288,7 +265,6 @@ module Precisioncache : {
 
     constr regs create_regs(int ent, int pos) = {
         keys = Array.create(ent);
-        times = Array.create(ent);
         counter = Array.create(ent);
         values = Array.create(ent);
         dummy_reg = Array.create(1);
@@ -298,27 +274,21 @@ module Precisioncache : {
     type t<<'logent, 'tab, 'logcols, 'rows>> = {
         regs['tab] arrs;
         int<<'logent>> dummy_var;
-        Array.t<<32>>['rows] cms;
-        int<<'logcols>> dummy_var2;
     }
 
     constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
         arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
         dummy_var = 0;
-        cms = [Array.create(cols) for i<'rows];
-        dummy_var2 = 0;
     };
 
     event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
 
     handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
-        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
             }
@@ -333,8 +303,6 @@ module Precisioncache : {
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
         int max_int = 0xffffffff;
-
-        int short_time = timestamp[31:0];
 
         if (key==0) {
             if (timestamp==0) {
@@ -351,10 +319,7 @@ module Precisioncache : {
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
 
             if (match_1==1) {   // else if match, incr counter
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
-                // we've matched, so no need to do complex update
-                Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr, 1);
-                //c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
+                c_or_maxint = Array.update(ca#arrs[i]#counter,mht_idxes[i],counter_incr_read,min_val,incr,1);
 
                 matched = 1;
                 // cache hit, log it
@@ -1558,7 +1523,8 @@ module Precisioncache : {
 
 // HASH
 // this is a simple multi-stage hash, where we always evict on collisions
-// if collision, evict least recently used item
+// if collision, evict item with smallest count
+// NO TIMEOUT
 
 module Hashcache : {
     global type t<<'logent, 'tab, 'logcols, 'rows>>;
@@ -1573,7 +1539,6 @@ module Hashcache : {
     /* record for symbolic arrays that are interleaved in loop */
     type regs = {
         Array.t<<32>> keys;
-        Array.t<<32>> times;
         Array.t<<32>> counter;
         Array.t<<32>> values;
         Array.t<<32>> dummy_reg;
@@ -1582,7 +1547,6 @@ module Hashcache : {
 
     constr regs create_regs(int ent, int pos) = {
         keys = Array.create(ent);
-        times = Array.create(ent);
         counter = Array.create(ent);
         values = Array.create(ent);
         dummy_reg = Array.create(1);
@@ -1592,28 +1556,23 @@ module Hashcache : {
     type t<<'logent, 'tab, 'logcols, 'rows>> = {
         regs['tab] arrs;
         int<<'logent>> dummy_var;
-        Array.t<<32>>['rows] cms;
-        int<<'logcols>> dummy_var2;
     }
 
     constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
         arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
         dummy_var = 0;
-        cms = [Array.create(cols) for i<'rows];
-        dummy_var2 = 0;
     };
+
 
 
     event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
 
     handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
-        int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
         int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 Array.set(ca#arrs[i]#counter,mht_idxes[i],1);
                 //Array.setm(ca#arrs[i]#counter,mht_idxes[i],incr,1);
                 Array.set(ca#arrs[i]#values,mht_idxes[i],cacheval);
@@ -1626,10 +1585,9 @@ module Hashcache : {
         int matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
-        int time_or_maxint = 0;
+        int c_or_maxint = 0;
         int max_int = 0xffffffff;
 
-        int short_time = timestamp[31:0];
 
         // dummy packet at end of trace
         if (key==0) {
@@ -1645,25 +1603,21 @@ module Hashcache : {
         for (i < 'tab) {
             // init match vars, for each fid entry
             int match_1 = Array.getm(ca#arrs[i]#keys,mht_idxes[i],key_match,key);
-            int expire_1 = 0;
             if (match_1==1) {   // else if match, incr counter
                 matched = 1;
-                Array.set(ca#arrs[i]#times,mht_idxes[i],short_time);
                 // no need to complex update, we've matched so don't need to worry about min value
                 Array.setm(ca#arrs[i]#counter,mht_idxes[i], incr, 1);
                 // cache hit, log it
                 //log_hit(key);
             }
             else {  // else grab counter value
-                //expire_1 = Array.getm(ca#arrs[i]#times,mht_idxes[i],checktime,short_time);
-                time_or_maxint = Array.update_complex(ca#arrs[i]#times,mht_idxes[i],counter_read_complex, min_val, max_int, 0);
-                //c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
+                c_or_maxint = Array.update_complex(ca#arrs[i]#counter,mht_idxes[i],counter_read_complex,min_val, max_int, 0);
             }
 
             // MIN COMP, compute as we go
-            if (time_or_maxint != 0xffffffff) {
+            if (c_or_maxint != 0xffffffff) {
                 min_stg_to_set = size_to_int(i+1);
-                min_val = time_or_maxint;
+                min_val = c_or_maxint;
             }
         }
 

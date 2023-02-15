@@ -22,7 +22,7 @@ memop key_match(int keyval, int used, int newkey, int unused) {
 }
 
 extern log_collision();
-
+extern write_to_file();
 
 /* events */
 entry event ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort);
@@ -44,6 +44,28 @@ handle ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort) {
     }
 
     if (match_val==0) { log_collision(); }
+
+    /*
+    if (srcAddr==2144547115) {
+        if (dstAddr==737992859) {
+            if (srcPort==50832) {
+                if (dstPort==80) {
+                    write_to_file();
+                }
+            }
+        }
+    }
+    */
+
+    if (srcAddr==2579597849)  {
+        if (dstAddr==3674901322)  {
+            if (srcPort==443) {
+                if (dstPort==56647) {
+                    write_to_file();
+                }
+            }
+        }
+    }
 
     generate ip_out();
 }

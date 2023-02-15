@@ -66,7 +66,7 @@ const int<<8>> TOS_TRUSTED = 1;
 
 entry event ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos);
 event cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int fst_dst);
-exit event port_out (int<<8>> egr_port);
+exit event port_out ();
 
 
 type stage = {
@@ -122,38 +122,44 @@ memop null_if_eq(int memval, int searchval){
     }
 }
 
+/*
 // hash copying breaks phv dependencies
 // (this program creates a lot of phv pressure)
 fun int hash_copy(int x) {
     return hash<<32>>(1, x);
 }
+*/
 
 handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) { 
     count_data_packet();   
     int ts = Sys.time();
-    int<<8>> out_port = igr_port;
-    int<<8>> tos_cpy = tos;
+    //int<<8>> out_port = igr_port;
+    //int<<8>> tos_cpy = tos;
     // case: ip pkt from trusted host. 
     // int<<8>> idx = hash<<8>>(size_to_int(7), src); // first index..
-    if (tos_cpy == TOS_TRUSTED) {
+    //int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
+    //if (tos_cpy == TOS_TRUSTED) {
+    if (tos == TOS_TRUSTED) {
         //printf ("[LUCID] insert attempt (%d, %d)", src, dst);    
         int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
         int src_output = 1;
         int dst_output = 1;
-        int src_cpy = hash_copy(src);
-        int dst_cpy = hash_copy(dst);        
+        //int src_cpy = hash_copy(src);
+        //int dst_cpy = hash_copy(dst);        
         // insert, evicting others along the way.
         for (stage < stages) {
             // null output is a match on one field.
             if ((src_output != NULL) && (dst_output != NULL)) {
                 //printf ("[LUCID] stage: %d reading idx: [%d]", size_to_int(stage), idxes[stage]);    
-                src_output = Array.update(fw_stages[stage]#src_arr, idxes[stage], null_if_eq, src_cpy, new_if_null, src_cpy); 
-                dst_output = Array.update(fw_stages[stage]#dst_arr, idxes[stage], null_if_eq, dst_cpy, new_if_null, dst_cpy);                 
+                //src_output = Array.update(fw_stages[stage]#src_arr, idxes[stage], null_if_eq, src_cpy, new_if_null, src_cpy); 
+                //dst_output = Array.update(fw_stages[stage]#dst_arr, idxes[stage], null_if_eq, dst_cpy, new_if_null, dst_cpy);                 
+                src_output = Array.update(fw_stages[stage]#src_arr, idxes[stage], null_if_eq, src, new_if_null, src);
+                dst_output = Array.update(fw_stages[stage]#dst_arr, idxes[stage], null_if_eq, dst, new_if_null, dst);
                 //printf ("[LUCID] stage: %d output: (%d, %d)", size_to_int(stage), src_output, dst_output);    
                 // update timestamp on authorized packets.
                 if ((src_output == NULL) && (dst_output == NULL)) {
                     log_access(src, dst, Sys.time());
-                    printf("touching fw[%d][%d] at %d", size_to_int(stage), idxes[stage], ts);
+                    //printf("touching fw[%d][%d] at %d", size_to_int(stage), idxes[stage], ts);
                     Array.set(fw_stages[stage]#tses, idxes[stage], ts);
                 }
             }
@@ -161,28 +167,31 @@ handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
         // if we found somewhere to put the key, we're done.
         if ((src_output == NULL) && (dst_output == NULL)) {
             insert_attempt(src, dst, true);
-            generate port_out(out_port);
+            generate port_out();
             log_insert(src, dst, Sys.time());
         } else {
             // lock cuckoo semaphore
             int insert_pending = Array.update(cuckoo_insert_semaphore, 0, always_mem, NULL, always_new, TRUE);
             if (insert_pending == FALSE) {
                 //printf ("[LUCID] inserting key with cuckoo(%d, %d)", src_cpy, dst_cpy);
-                generate cuckoo_insert(out_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
+                //generate cuckoo_insert(out_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
+                //generate cuckoo_insert(igr_port, src_cpy, dst_cpy, ts, src_cpy, dst_cpy);
+                generate cuckoo_insert(igr_port, src, dst, ts, src, dst);
             }
             else {
                 // lock failed. we did not authorize. 
                 log_busy(src, dst, Sys.time());
                 insert_attempt(src, dst, false);
-            }            
+            } 
         }
     } 
     else {
         int src_match = FALSE;
         int dst_match = FALSE;
-        int src_cpy2 = hash_copy(src);
-        int dst_cpy2 = hash_copy(dst);
+        //int src_cpy2 = hash_copy(src);
+        //int dst_cpy2 = hash_copy(dst);
         int<<logentries>> idx = hash<<logentries>>(7, dst, src);
+        //int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+stage), dst, src) for stage<stages];
         // having a separate copy for this branch relieves PHV pressure.
         for (stage < stages) {
             // int<<8>> idx = hash<<8>>(size_to_int(stage + 7), src);
@@ -190,16 +199,20 @@ handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
             if ((src_match == FALSE) && (dst_match == FALSE)) {
                 // note that we check src array for dst and dst array for src -- 
                 // because this is the return direction of the flow.
-                src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst_cpy2);
-                dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src_cpy2);
+                //src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst_cpy2);
+                //dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src_cpy2);
+                //idx = hash<<logentries>>(size_to_int(7+1+stage), dst, src); // next index..
+                src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst);
+                dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src);
                 idx = hash<<logentries>>(size_to_int(7+1+stage), dst, src); // next index..
+                
             }
         }
         // If its found, allow the packet.
         if ((src_match == TRUE) && (dst_match == TRUE)) {
             //printf ("[LUCID] DECISION: permit");
             decide(src, dst, Sys.time(), true, len);
-            generate port_out(out_port);
+            generate port_out();
         } else {
             //printf ("[LUCID] DECISION: drop");
             decide(src, dst, Sys.time(), false, len);
@@ -267,14 +280,19 @@ handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int f
     // has to be re-inserted.
     // int evicted_src = hash_copy(src); 
     // int evicted_dst = hash_copy(dst);
+    int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+stage), src, dst) for stage<stages];
     for (stage < stages) {
-        int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src, dst);
+        //int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src, dst);
         //printf ("[cuckoo_insert]@fw_stages[%d][%d]", size_to_int(stage), idx);
         //printf ("[cuckoo_insert] input: (%d, %d)", src, dst);
         // do nothing if input is null.
-        src = Array.update_complex(fw_stages[stage]#src_arr, idx, set_and_get_if_not_null, src, 0, 0); 
-        dst = Array.update_complex(fw_stages[stage]#dst_arr, idx, set_and_get_if_not_null, dst, 0, 0); 
-        ts  = Array.update_complex(fw_stages[stage]#tses, idx, set_and_get_if_not_null, ts, 0, 0); 
+        //src = Array.update_complex(fw_stages[stage]#src_arr, idx, set_and_get_if_not_null, src, 0, 0); 
+        //dst = Array.update_complex(fw_stages[stage]#dst_arr, idx, set_and_get_if_not_null, dst, 0, 0); 
+        //ts  = Array.update_complex(fw_stages[stage]#tses, idx, set_and_get_if_not_null, ts, 0, 0); 
+        src = Array.update_complex(fw_stages[stage]#src_arr, idxes[stage], set_and_get_if_not_null, src, 0, 0);
+        dst = Array.update_complex(fw_stages[stage]#dst_arr, idxes[stage], set_and_get_if_not_null, dst, 0, 0);
+        ts  = Array.update_complex(fw_stages[stage]#tses, idxes[stage], set_and_get_if_not_null, ts, 0, 0);
+
         // evicted_src = Array.update(fw_stages[stage]#src_arr, idx, mem_if_not_null, evicted_src, new_if_not_null, evicted_src); 
         // evicted_dst = Array.update(fw_stages[stage]#dst_arr, idx, mem_if_not_null, evicted_dst, new_if_not_null, evicted_dst);                 
         //printf ("[cuckoo_insert] output: (%d, %d)", src, dst);
@@ -285,7 +303,7 @@ handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int f
         log_insert(src, dst, Sys.time());
         //printf("[cuckoo_insert] insert succeeded");
         Array.set(cuckoo_insert_semaphore, 0, FALSE);
-        generate port_out(port);
+        generate port_out();
     }
     else {
         // there's a victim and we reached a cycle -- so give up.
@@ -301,24 +319,27 @@ handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int f
             generate cuckoo_insert(port, src, dst, ts, fst_src, fst_dst);
         }
     }
+
 }
 
 
-event delete(int stage, int<<16>> idx_inp, int elapsed_time) {
-    int<<logentries>> idx = (int<<logentries>>) idx_inp;
-    printf ("deleting fw[%d][%d] -- not accessed in %dns", stage, idx, elapsed_time);
-    int cur_time = Sys.time();
+//event delete(int stage, int<<16>> idx_inp, int elapsed_time) {
+event delete(int stage, int<<16>> idx_inp) {
+    //int<<logentries>> idx = (int<<logentries>>) idx_inp;
+    //printf ("deleting fw[%d][%d] -- not accessed in %dns", stage, idx, elapsed_time);
+    //int cur_time = Sys.time();
     count_recirc_packet();
     for (s < stages) {
         if (size_to_int(s) == stage) {
-            int src = Array.update(fw_stages[s]#src_arr, idx, always_mem, NULL, always_new, NULL);
-            int dst = Array.update(fw_stages[s]#dst_arr, idx, always_mem, NULL, always_new, NULL);
+            int src = Array.update(fw_stages[s]#src_arr, idx_inp, always_mem, NULL, always_new, NULL);
+            int dst = Array.update(fw_stages[s]#dst_arr, idx_inp, always_mem, NULL, always_new, NULL);
             log_delete(src, dst, Sys.time());
-            Array.set(fw_stages[s]#tses, idx, NULL); 
+            Array.set(fw_stages[s]#tses, idx_inp, NULL); 
             // mark time of clear
             // inefficient -- we want to skip if time of clear is 0..
         }
     }
+
 }
 
 memop is_expired(int last_accessed, int cur_time) {
@@ -333,10 +354,12 @@ event check_timeout(int<<16>> idx_inp) {
     int<<logentries>> idx = (int<<logentries>>) idx_inp;
     count_recirc_packet();
     int cur_time = Sys.time();
-    int<<logentries>> idx_cpy = hash<<logentries>>(1, idx);
-    int<<logentries>> next_idx = idx + 1;
+    //int<<logentries>> idx_cpy = hash<<logentries>>(1, idx);
+    //int<<logentries>> next_idx = idx + 1;
+    int<<16>> next_idx = idx_inp + 1;
+
     // Event.delay is bugged in backend, so only use with interp.
-    generate(Event.delay(check_timeout((int<<16>>)next_idx), interscan_delay));
+    generate(Event.delay(check_timeout(next_idx), interscan_delay));
     // if (next_idx == 0){
     //     generate(Event.delay(check_timeout(next_idx), interscan_delay));
     // } else{
@@ -344,11 +367,14 @@ event check_timeout(int<<16>> idx_inp) {
     // }
     // generate(check_timeout(next_idx));
     for (stage < stages) {
-        int last_accessed = Array.get(fw_stages[stage]#tses, idx_cpy);
+        //int last_accessed = Array.get(fw_stages[stage]#tses, idx_cpy);
+        int last_accessed = Array.get(fw_stages[stage]#tses, idx);
         int elapsed_time = cur_time - last_accessed; 
         // int timeout_flag = FALSE;
         if ((elapsed_time > timeout) && (last_accessed != 0)) {
-            generate delete(size_to_int(stage), (int<<16>>)idx, elapsed_time);            
+            //generate delete(size_to_int(stage), (int<<16>>)idx, elapsed_time);
+            //generate delete(size_to_int(stage), idx_inp, elapsed_time);
+            generate delete(size_to_int(stage), idx_inp);
             // timeout_flag = TRUE;
         }
         // printf ("idx: %d cur_time: %d last_accessed: %d timeout_flag: %d", idx, cur_time, last_accessed, timeout_flag);
@@ -356,15 +382,16 @@ event check_timeout(int<<16>> idx_inp) {
         // if (timeout_flag == TRUE) {
         // }
     }
+
 }
 
 event first_event() {
     generate(Event.delay(check_timeout(0), interscan_delay));
-
 }
 
 // placeholder event that signals the python externs to write their output
 event final_packet() {
-    int final_packet_foo = 1;
+    //int final_packet_foo = 1;
     write_logs();
 }
+

@@ -7,6 +7,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 import math
 import pickle
 import dpkt
+import time
 
 def i2Hex (n):
     hstr = str(hex(int(n)))
@@ -53,8 +54,8 @@ class Opt:
                     continue
                 pkt_counter +=1
                 # testing
-                if pkt_counter <= 5000000:
-                    continue
+                #if pkt_counter <= 5000000:
+                #    continue
                 src_uint = struct.unpack("!I", ip.src)[0]
                 dst_uint = struct.unpack("!I", ip.dst)[0]
 
@@ -71,8 +72,8 @@ class Opt:
 
                 # training data: first 1000000 tcp pkts in caida
                 # test data: 10000000 - end, caida
-                #if len(events) > 1:
-                #    break
+                if len(events) >= 1000000:
+                    break
             except dpkt.dpkt.UnpackError:
                 pass
 
@@ -159,19 +160,19 @@ class Opt:
     def init_iteration(self, symbs):
         pass
 
-#'''
-o = Opt("/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap")
+'''
+o = Opt("pcap")
 o.gen_traffic()
-
+starttime = time.time()
 cmd = ["make", "interp"]
 ret = subprocess.run(cmd)
-
+print("TIME", time.time()-starttime)
 measurement = []
 outfiles = ["counts.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
-#'''
+'''
 
 #m = pickle.load(open('counts.txt','rb'))
 #o.calc_cost([m])

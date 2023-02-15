@@ -1157,9 +1157,9 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         # if caching, just set to true (cms) and in theory do precision in parallel
         if opt_info["lucidfile"] == "caching.dpt":
             print("CACHING")
-            symbolics_opt["eviction"] = False
-            symbolics_opt["rows"] = 1
-            symbolics_opt["cols"] = 2
+            symbolics_opt["eviction"] = True
+            #symbolics_opt["rows"] = 1
+            #symbolics_opt["cols"] = 2
         build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)    
@@ -1297,23 +1297,32 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                     
 
                 if "struct" in opt_info["optparams"]:
-                    if opt_info["optparams"]["struct"] != "hash":
+                    if opt_info["optparams"]["struct"] != "hash" and opt_info["optparams"]["struct"] != "precision":
                         if "tables" in symbolics_opt and "entries" in symbolics_opt and "rows" in symbolics_opt and "cols" in symbolics_opt and "THRESH" in symbolics_opt:
                             if symbolics_opt["tables"]*symbolics_opt["entries"] < 8192:
                                 continue
-                            if symbolics_opt["cols"] < 2:
+                            if symbolics_opt["rows"] < 2 or symbolics_opt["cols"] > 8192:
                                 continue
                             if "skew" in opt_info["optparams"]:
                                 if opt_info["optparams"]["skew"] == "less":
-                                    if symbolics_opt["THRESH"] < 1500 or symbolics_opt["expire_thresh"] < 50000000:
+                                    if symbolics_opt["THRESH"] < 3000 or symbolics_opt["expire_thresh"] < 95000000:
                                         continue
                                 if opt_info["optparams"]["skew"] == "uniform":
-                                    if symbolics_opt["THRESH"] < 3000 or symbolics_opt["expire_thresh"] > 50000000:
+                                    if symbolics_opt["THRESH"] < 4000 or symbolics_opt["expire_thresh"] < 90000000:
                                         continue
                     
-                            # skew
-                            elif symbolics_opt["THRESH"] < 1500 or symbolics_opt["expire_thresh"] < 60000000:
+                            # skewed
+                            elif symbolics_opt["THRESH"] < 2000 or symbolics_opt["expire_thresh"] < 90000000:
                                 continue
+                if opt_info["lucidfile"] == "starflow.dpt":
+                    if symbolics_opt["num_long"] + symbolics_opt["num_short"] < 15 or symbolics_opt["S_SLOTS"] < 16384 or symbolics_opt["L_SLOTS"] < 16384:
+                        iterations += 1
+                        continue
+                if opt_info["lucidfile"] == "stateful_firewall.dpt":
+                    if symbolics_opt["stages"] < 2 or symbolics_opt["entries"] < 65536 or symbolics_opt["timeout"] < 700000000 or symbolics_opt["interscan_delay"] < 800000000:
+                        iterations += 1 
+                        continue
+
                 if "interp_traces" not in opt_info:
                     cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
                 else:

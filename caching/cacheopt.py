@@ -9,7 +9,10 @@ class Opt:
         return    
 
     def calc_cost(self,measure):
-        return measure[0]/80000000
+        #return measure[0]/1000000
+        miss_rates = [x/1000000 for x in measure]
+        print("MISS RATES", miss_rates)
+        return sum(miss_rates)/len(miss_rates)
 
     def init_iteration(self,symbs):
         pass

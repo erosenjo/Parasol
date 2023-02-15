@@ -17,23 +17,20 @@
 	},
     "bounds" : {
         "H" : [4,32],
-        "R" : [1,4],
-        "C" : [32, 131072],
-        "LOG_CQ_T" : [4,22]
+        "R" : [1,20],
+        "C" : [32, 131072]
 	},
     "rules" : {
-        "T" : "LOG_CQ_H - 1"
+        "T" : "LOG_CQ_H - 1",
+        "LOG_CQ_T" : "21"
     }
     },
     "optparams": {
     "optalgo" : "ordered",
-    "strategy" : "bayesian",
+    "strategy" : "exhaustive",
 	"stop_time" : 8000,
     "order_resource" : ["H", "R", "C"],
-    "non_resource" : ["LOG_CQ_T"],
-    "mem_formula" : "H*R*C",
-    "hash_formula" : "H*R",
-    "regaccess_formula" : "H*R",
+    "non_resource" : [],
 	"temp" : 1000,
     "maxcost" : 1,
 	"stepsize": {
@@ -48,6 +45,6 @@
     "lucidfile" : "conquest.dpt",
     "outputfiles" : ["qlens.pkl"],
     "optmodule" : "conquestopt",
-    "trafficpcap" : "univ1_pt1.pcap"
+    "trafficpcap" : ""
 
 }

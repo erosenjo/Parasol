@@ -165,7 +165,11 @@ else {
     // training, univ1_pt1
     //if (timestamp == 345002842034) {
     // testing, univ1_pt8
-    if (timestamp == 233286941007) {
+    //if (timestamp == 233286941007) {
+    // testing, pt8-12
+    if (timestamp==1308347705125) {
+    // new training univ1_pt1-2: 682377427101
+    //if (timestamp==682377427101) {
         write_to_file();
     }
     // return computed RTT, to send to controller or do whatever

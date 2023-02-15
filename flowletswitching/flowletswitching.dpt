@@ -84,14 +84,17 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     log_pkthop(egress_port, len);
 
-    // testing timestamp: 6961511135
-    if (arr_time==6961511135) {
+    // testing1 timestamp: 6961511135
+    // testing2 timestamp: 6935249090
+    // training2 timestamp: 1202903032
+    //if (arr_time==6961511135) {
+    //if (arr_time==1202903032) {
+    if (arr_time==6935249090) {
         write_to_file();
     }
     //generate ip_out(egress_port, 0);
     generate ip_out();
 
 }
-
 
 
