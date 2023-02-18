@@ -105,27 +105,6 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         structchoice = True
         structinfo = opt_info["structchoice"]
 
-    '''
-    # OLD, treating non-resource vars separate from resource sol index
-    # get total number of solutions, so we know if we've gone through them all
-    total_sols = 1
-    if not solutions:
-        for bounds_var in opt_info["symbolicvals"]["bounds"]:
-            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
-            if bounds_var in opt_info["symbolicvals"]["logs"].values():
-                vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
-                continue
-            vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
-    else:   # we've preprocessed, used those solutions to calc total
-        for nonresource in opt_info["optparams"]["non_resource"]:
-                total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-        total_sols *= len(solutions)
-
-    print("TOTAL_SOLS", total_sols)
-    '''
-
     # NEW, enumerating all solutions, optimizing ONLY index value
     #   (aka treating resource and non resource the same)
     total_sols = 1
@@ -368,22 +347,6 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
     # return first sol in list of sols
     return best_sols[0], best_cost, time_cost, num_sols_time, starting
-
-'''
-# BASIN HOPPING (with scipy, like sim annealing)
-# scipy doesn't let us restrict to ints (not floats), and doesn't let us restrict to powers of 2
-def basin_hopping(symbolics_opt, opt_info, o):
-    # put symbolic vars in np array
-    x0 = np.empty(shape=(len(symbolics_opt)), dtype=int)
-    i = 0
-    for v in symbolics_opt:
-        x0[i] = symbolics_opt[v]
-        i+=1
-    # extra args that cost func needs
-    args ={'args':(symbolics_opt,opt_info, o, True)}
-    # as of python3.7, dicts are insertion order, so should be ok to rely on ordering
-    res = basinhopping(gen_cost, x0, minimizer_kwargs=args,niter=100)
-'''
 
 # EXHAUSTIVE SEARCH
 # start from lower bound and go until upper bound
@@ -1067,12 +1030,6 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
                 return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
             else:
                 return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, pruned_sols)
-
-        elif strat=="random":
-            if nopruning:
-                return random_opt(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
-            else:
-                return random_opt(symbolics_opt, opt_info, o, timetest, bounds_tree, pruned_sols)
 
         # TODO: incorporate other params in opt_info (alpha, sigma, etc.)
         elif strat=="neldermead":

@@ -72,9 +72,6 @@ def main():
         user = True
 
 
-    elif opt_info["optparams"]["optalgo"] == "random":    # if not using own, should for sure have optalgo field
-        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o, args.timetest)
-
     elif opt_info["optparams"]["optalgo"] == "simannealing":
         best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest)
 
@@ -173,7 +170,7 @@ json fields:
         True: if var==True, list any symbolic vars the corresponding struct doesn't use
         False: if var==False, ^
     optparams: (any info related to optimization algo)
-        optalgo: if using one of our provided functions, tell us the name (random, simannealing)
+        optalgo: if using one of our provided functions, tell us the name (simannealing, bayesian, neldermead)
         optalgofile: if using your own, tell us where to find it (python file)
         stop_iter: num iterations to stop at
         stop_time: time to stop at (in seconds)
