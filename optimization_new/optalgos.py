@@ -2,9 +2,7 @@ import math, json, sys, copy, time, itertools
 from random import randint, random, getrandbits, choice
 from interp_sim import gen_cost, compile_num_stages, layout, dfg, gen_cost_multitrace
 import numpy as np
-#from scipy.optimize import basinhopping
 import pickle
-#from search_ilp import solve
 from treelib import Node, Tree
 from sklearn.gaussian_process import GaussianProcessRegressor
 from warnings import catch_warnings
@@ -20,47 +18,6 @@ single_stg_mem_log2 = 131072 # closest power of 2 for single_stg_mem (most apps 
 single_stg_mem_log2_pairarray = 65536
 
 # helper funcs
-'''
-# narrow down best sols to 1, using priority
-# is there a better/simpler way to do this?????
-# NOTE: might want to save original list of solutions, in case one we choose doesn't compile to tofino (more sols to try before we're forced to rerun optimize)
-def prioritize(best_sols, opt_info):
-    prefs_sym = (opt_info["symbolicvals"]["priority"].keys())
-    if len(best_sols) > 1:  # multiple best sols, use priority prefs
-        best_sol = [best_sols[0],0]
-        for v in prefs_sym: # start w highest priority symbolic, narrow down best sols until we reach 1
-            if len(best_sols) == 1: # we've picked a single solution, no need to continue
-                break
-            to_remove = []
-            pref_direction = opt_info["symbolicvals"]["priority"][v]
-            for s in range(1,len(best_sols)):   # find solutions that are suboptimal according to priority (higher, lower)
-                if pref_direction == "higher":
-                    if best_sols[s][v] > best_sol[0][v]:
-                        to_remove.append(best_sol[1])
-                        best_sol = [best_sols[s],s]
-                        continue
-                    elif best_sols[s][v] < best_sol[0][v]:
-                        to_remove.append(s)
-                        continue
-                elif pref_direction == "lower":
-                    if best_sols[s][v] < best_sol[0][v]:
-                        to_remove.append(best_sol[1])
-                        best_sol = [best_sols[s],s]
-                        continue
-                    elif best_sols[s][v] > best_sol[0][v]:
-                        to_remove.append(s)
-                        continue
-                else:
-                    print("invalid preference, must be higher or lower")
-                    quit()
-
-            to_remove.sort(reverse=True)    # throw out solutions that don't match priority
-            to_remove=list(set(to_remove))  # get rid of duplicates
-            for i in to_remove:
-                best_sols.pop(i)
-            best_sol[1] = best_sols.index(best_sol[0])  # in case things get shuffled around after pops
-    return best_sol[0]
-'''
 # helper for sim annealing, rounds to closest power of 2
 # copied from: https://stackoverflow.com/questions/28228774/find-the-integer-that-is-closest-to-the-power-of-two
 def closest_power(x):
@@ -87,235 +44,6 @@ def set_rule_vars(opt_info, symbolics_opt):
         #print("RULEVAR:", rulevar, "VAL:", symbolics_opt[rulevar])
     return symbolics_opt
 
-
-# RANDOM OPTIMIZATION
-# randomly choose, given some var
-def gen_next_random_nopreprocessing(symbolics_opt, logs, bounds, structchoice, structinfo, opt_info):
-    new_vars = {}
-    exclude = False
-    if structchoice:
-        new_vars[structinfo["var"]] = bool(getrandbits(1))
-        if str(new_vars[structinfo["var"]]) in structinfo:
-            exclude = True
-    for var in symbolics_opt:
-        if var not in bounds:   # it's a rule-based var (or we forgot to add bounds)
-            new_vars[var] = 0
-            continue
-        if structchoice and var==structinfo["var"]: # we've handled this above, don't do it again
-            continue
-        if exclude and var in structinfo[str(new_vars[structinfo["var"]])]: # exlucding this var for struct
-            new_vars[var] = symbolics_opt[var]
-            continue
-        if var in logs.values(): # this var has to be multiple of 2
-            new_vars[var] = 2**randint(int(math.log2(bounds[var][0])),int(math.log2(bounds[var][1])))
-            continue
-        new_vars[var] = randint(bounds[var][0],bounds[var][1])
-
-    # set any rule-based vars
-    if "rules" in opt_info["symbolicvals"]:
-        new_vars = set_rule_vars(opt_info, new_vars)
-
-    return new_vars
-
-
-def gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info):
-    sol_choice = choice(solutions)
-    candidate_index = solutions.index(sol_choice)
-    symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)
-
-    # set non-resource vars
-    for nonresource in opt_info["optparams"]["non_resource"]:
-        symbolics_opt[nonresource] = choice(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-
-    # set any rule-based vars
-    if "rules" in opt_info["symbolicvals"]:
-        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
-
-
-    return symbolics_opt, candidate_index
-
-
-def random_opt(symbolics_opt, opt_info, o, timetest,
-               bounds_tree=None, solutions=[]):
-    # get total number of solutions, so we know if we've gone through them all
-    total_sols = 1
-    if not solutions:
-        for bounds_var in opt_info["symbolicvals"]["bounds"]:
-            bounds = opt_info["symbolicvals"]["bounds"][bounds_var]
-            if bounds_var in opt_info["symbolicvals"]["logs"].values():
-                vals = len(range(int(math.log2(bounds[0])), int(math.log2(bounds[1]))+1))
-                total_sols *= vals
-                continue
-            vals = len(range(bounds[0], bounds[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
-    else:   # we've preprocessed, used those solutions to calc total
-        for nonresource in opt_info["optparams"]["non_resource"]:
-            total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-        total_sols *= len(solutions)
-    print(total_sols)
-
-    # start w/ randomly chosen values
-    if not solutions:
-        symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-    else:
-        symbolics_opt,_ = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
-
-    iterations = 0
-    # init best solution as starting, and best cost as inf
-    best_sols = [copy.deepcopy(symbolics_opt)]
-    best_cost = float("inf")
-    # keep track of sols we've already tried so don't repeat
-    tested_sols = []
-    # we need bounds for random
-    bounds = {}
-    if "bounds" in opt_info["symbolicvals"]:    # not necessarily required for every opt, but def for random
-        bounds = opt_info["symbolicvals"]["bounds"]
-    else:
-        sys.exit("random opt requires bounds on symbolics")
-    # decide if we're stopping by time, iterations, or both (whichever reaches thresh first)
-    iters = False
-    simtime = False
-    iter_time = False
-    if "stop_iter" in opt_info["optparams"]:
-        iters = True
-    if "stop_time" in opt_info["optparams"]:
-        simtime = True
-    if iters and simtime:
-        iter_time = True
-
-    structchoice = False
-    structinfo = {}
-    if "structchoice" in opt_info:
-        structchoice = True
-        structinfo = opt_info["structchoice"]
-
-    testing_sols = []
-    testing_eval = []
-    # start loop
-    start_time = time.time()
-    while True:
-        # check iter/time conditions
-        if iters or iter_time:
-            if iterations >= opt_info["optparams"]["stop_iter"]:
-                break
-        if simtime or iter_time:
-            if (time.time()-start_time) >= opt_info["optparams"]["stop_time"]:
-                break
-
-        curr_time = time.time()
-        # TIME TEST (save sols/costs we've evaled up to this point)
-        if timetest:
-            # 5 min (< 10)
-            if 300 <= (curr_time - start_time) < 600:
-                with open('5min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('5min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
-            # 10 min (< 30)
-            if 600 <= (curr_time - start_time) < 1800:
-                with open('10min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('10min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
-            # 30 min
-            if 1800 <= (curr_time - start_time) < 2700:
-                with open('30min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('30min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
-            # 45 min
-            if 2700 <= (curr_time - start_time) < 3600:
-                with open('45min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('45min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
-            # 60 min
-            if 3600 <= (curr_time - start_time) < 5400:
-                with open('60min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('60min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
-            # 90 min
-            if 5400 <= (curr_time - start_time) < 7200:
-                with open('90min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('90min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
-            # 120  min (end)
-            if 7200 <= (curr_time - start_time):
-                with open('120min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('120min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
-                break
-
-        # get cost
-        if not solutions:
-            cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "random")
-        else:
-            cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
-
-        # add sol to tested_sols to count it as already evaluated
-        # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
-        tested_sols.append(copy.deepcopy(symbolics_opt))
-
-        testing_sols.append(copy.deepcopy(symbolics_opt))
-        testing_eval.append(cost)
-
-        # if new cost < best, replace best (if stgs <= tofino)
-        if cost < best_cost:
-            best_cost = cost
-            # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-            best_sols = [copy.deepcopy(symbolics_opt)]
-        elif cost == best_cost:
-            best_sols.append(copy.deepcopy(symbolics_opt))
-
-        # if we've tested every solution, quit
-        if len(tested_sols) == total_sols:
-            break
-
-        # get next values, but don't repeat one we've already tried
-        while symbolics_opt in tested_sols:
-            if not solutions:
-                symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo, opt_info)
-            else:
-                symbolics_opt, _ = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            
-
-        # incr iterations
-        iterations += 1
-
-    # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
-    #best_sol = prioritize(best_sols,opt_info)
-
-    with open('final_testing_sols_rand.pkl','wb') as f:
-        pickle.dump(testing_sols,f)
-    with open('final_testing_eval_rand.pkl','wb') as f:
-        pickle.dump(testing_eval,f)
-    
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
-    # return the first solution in list of acceptable sols
-    return best_sols[0], best_cost, time_cost, num_sols_time, starting
 
 # NOTE: this is for BOTH preprocessed and non solutions
 def gen_next_simannealing(solutions, opt_info, symbolics_opt, curr, curr_index):
@@ -466,16 +194,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
 
     # start at randomly chosen values
-    '''
-    # OLD, treating non-resource vars separate from resource sol index
-    # if solutions is an empty list, then we haven't done preprocessing
-    if not solutions:
-        symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-    else:
-        # set resource vars
-        symbolics_opt, candidate_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-    '''
-    # NEW, only optimize index var
+    # only optimize index var
     symbolics_opt = choice(all_solutions_symbolics)
     candidate_index = all_solutions_symbolics.index(symbolics_opt)
 
@@ -2089,32 +1808,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     sample_xvals = []
 
 
-    '''
-    # randomly sample % of solutions
-    test_index = None
-    test_cost = None
-    while len(sampled_sols) < sample_size:
-        if not solutions:
-            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-            xvals = []
-        else:
-            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            if not test_index:
-                test_index = [copy.deepcopy(symbolics_opt),sample_index]
-            xvals = [sample_index]
-            #for resource in opt_info["optparams"]["order_resource"]:
-            #    xvals.append(symbolics_opt[resource])
-            for nonresource in opt_info["optparams"]["non_resource"]:
-                xvals.append(symbolics_opt[nonresource])       
- 
-        # don't allow repeat samples
-        if symbolics_opt in sampled_sols:
-            #print("REPEAT")
-            continue
-        sampled_sols.append(copy.deepcopy(symbolics_opt))
-        #print("ADDED", symbolics_opt)
-        sample_xvals.append(xvals)
-    '''
     # grid(ish) sampling
     # instead of random, sample every total_samples/sample_size samples
     sample_xvals = [[x] for x in range(0, len(all_solutions_symbolics), int(total_sols/sample_size))]
@@ -2178,28 +1871,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # use index in sol list, not var value
     # pick min value, eval with gen_cost, refit model w/ actual, then repeat
     # keep track of current min
-    '''
-    acq_xsamples = []
-    acq_sample_size = int(0.5*total_sols) 
-    while len(acq_xsamples) < acq_sample_size:
-        if not solutions:
-            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-            xvals = []
-        else:
-            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            xvals = [sample_index]
-            for nonresource in opt_info["optparams"]["non_resource"]:
-                xvals.append(symbolics_opt[nonresource])
-
-        # don't allow repeat samples
-        if xvals in acq_xsamples:
-            #print("REPEAT")
-            continue
-        #print("ADDED", symbolics_opt)
-        acq_xsamples.append(xvals)
-
-    np_acq_xvals = np.array(acq_xsamples)
-    '''
 
     # use var values directly, not index in sol list
     acq_xsamples = []
