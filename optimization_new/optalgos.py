@@ -105,9 +105,8 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         structchoice = True
         structinfo = opt_info["structchoice"]
 
-    # NEW, enumerating all solutions, optimizing ONLY index value
+    # enumerating all solutions, optimizing ONLY index value
     #   (aka treating resource and non resource the same)
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -115,11 +114,9 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -165,8 +162,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
                 all_solutions_symbolics = new_sols
 
-        total_sols *= len(solutions)
-        # total_sols = len(all_solutions_symbolics)
+    total_sols = len(all_solutions_symbolics)
 
     # start time
     start_time = time.time()
@@ -283,7 +279,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
 
         # if we've tested every solution, quit
-        if len(tested_sols) == total_sols:
+        if len(list(set(tested_sols))) == total_sols:
             break
 
         # TODO: should we test repeated sols????
@@ -361,11 +357,9 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
         bound = opt_info["symbolicvals"]["bounds"][bounds_var]
         if bounds_var in opt_info["symbolicvals"]["logs"].values():
             #vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-            #total_sols *= vals
             non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
             continue
         #vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-        #total_sols *= vals
         non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
     # get all possible solutions given bounds
@@ -1126,7 +1120,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     start_time = time.time()
 
     # NEW, only optimize for index val, treat resource and nonresource the same
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -1134,11 +1127,9 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -1170,7 +1161,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
                 new_sols = []
                 for sol_choice in all_solutions_symbolics:
                     #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
@@ -1184,8 +1174,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 
                 all_solutions_symbolics = new_sols
 
-        total_sols *= len(solutions)
-
+    total_sols = len(all_solutions_symbolics)
 
 
     # randomly generate starting solution
@@ -1686,8 +1675,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # step 0: sample domain and get cost (to build surrogate model)
     # compute the total number of solutions we have
     # get total number of solutions, so we know if we've gone through them all
-    # TODO: simplify this, only need to count length of all_solutions_symbolics to get total_sols
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -1695,11 +1682,9 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -1748,7 +1733,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                 sol = set_rule_vars(opt_info, sol)
         #print(all_solutions_symbolics)
         #exit()
-        total_sols *= len(solutions)
 
     total_sols = len(all_solutions_symbolics)
     print("TOTAL_SOLS", total_sols)
