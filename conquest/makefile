@@ -7,17 +7,17 @@ opttest:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --shortcut --nopruning
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly --efficient
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --nopruning --exhaustive --shortcut --efficient
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --exhaustive --shortcut --efficient
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --timetest --shortcut
 
 # run interpreter
 interp: 

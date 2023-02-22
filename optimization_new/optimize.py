@@ -38,7 +38,6 @@ def main():
     parser.add_argument("optfile", metavar="optfile", help="name of json file with optimization info")
     parser.add_argument("--timetest", help="time test, output results at benchmark times", action="store_true")
     parser.add_argument("--notrafficgen", help="don't call gen_traffic, this is just for testing", action="store_true")
-    parser.add_argument("--nopruning", help="don't do pruning phase of ordered search", action="store_true")
     parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
     parser.add_argument("--exhaustive", help="test every solution that compiles w interpreter", action="store_true")
     parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true")
@@ -91,9 +90,9 @@ def main():
         time_costs = []
         num_sols_time = []
         starting_sols = []
-        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
+        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
         for i in range(1): # repeat once times
-            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg, args.efficient)
+            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg, args.efficient)
             best_costs.append(best_cost)
             best_sols.append(best_sol)
             time_costs.append(time_cost)

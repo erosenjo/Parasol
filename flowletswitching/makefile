@@ -4,21 +4,21 @@ OPT_DIR = optimization_new/
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --nopruning --preprocessingonly
+	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --preprocessingonly
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --notrafficgen --preprocessingonly --efficient
 
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py flowletswitchingoptvars.json --timetest --shortcut
 
 #layout
 layout:

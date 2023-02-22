@@ -4,20 +4,20 @@ OPT_DIR = optimization_new/
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --pair --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --pair --shortcut
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --preprocessingonly --efficient
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --nopruning --exhaustive --pair --shortcut
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --exhaustive --pair --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --timetest --nopruning --pair --shortcut
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --timetest --pair --shortcut
 
 # run interpreter
 interp: 

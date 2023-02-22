@@ -7,17 +7,17 @@ opttest:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --preprocessingonly --efficient
 
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --exhaustive --shortcut
 
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --shortcut --timetest
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --shortcut --timetest
 
 # run interpreter
 interp: 

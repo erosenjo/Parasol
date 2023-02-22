@@ -7,17 +7,17 @@ opttest:
 	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --preprocessingonly
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --notrafficgen --preprocessingonly --efficient
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --timetest --nopruning --efficient --shortcut
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --timetest --efficient --shortcut
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py cacheopt.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py cacheopt.json --exhaustive --shortcut
 
 # run interpreter
 interp: 

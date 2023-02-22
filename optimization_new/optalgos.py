@@ -407,7 +407,6 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
     return best_sols[0], best_cost
 
 
-# TODO: get resource usage for leaves of tree (ignore pruning for now)
 # ONLY return upper bound for now, not resource usage
 def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
     # for memory, start @ ub; lb = 32, ub = whatever we find
@@ -716,91 +715,8 @@ def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
 
 
 
-def prune_fullcompile(solutions, opt_info, bounds_tree):
-    sols_by_mem = {}
-    sols_by_stgs = {}
-    sols_by_hash = {}
-    sols_by_regaccess = {}
-    mem_formula = opt_info["optparams"]["mem_formula"]
-    for sol in solutions:
-        mem_formula = opt_info["optparams"]["mem_formula"]
-        hash_formula = opt_info["optparams"]["hash_formula"]
-        regaccess_formula = opt_info["optparams"]["regaccess_formula"]
-        for n_identifier in sol:
-            # TODO: better way to do this?
-            node = bounds_tree.get_node(n_identifier)
-            if node.tag == "root":
-                continue
-            # replace var name with val of vars in formulas in json file
-            var_name = node.tag[0]
-            var_value = node.tag[1]
-            # replace string with val of var
-            mem_formula = mem_formula.replace(var_name, str(var_value))
-            hash_formula = hash_formula.replace(var_name, str(var_value))
-            regaccess_formula = regaccess_formula.replace(var_name, str(var_value))
-        # compute memory using formula string, add to data structure
-        mem_usage = eval(mem_formula)
-        if mem_usage in sols_by_mem:
-            sols_by_mem[mem_usage] += [sol]
-        else:
-            sols_by_mem[mem_usage] = [sol]
-        # compute stg usage (num stgs at leaf)
-        stg_usage = bounds_tree.get_node(sol[-1]).tag[2]
-        if stg_usage in sols_by_stgs:
-            sols_by_stgs[stg_usage] += [sol]
-        else:
-            sols_by_stgs[stg_usage] = [sol]
-        # compute (total) hash units used
-        hash_usage = eval(hash_formula)
-        if hash_usage in sols_by_hash:
-            sols_by_hash[hash_usage] += [sol]
-        else:
-            sols_by_hash[hash_usage] = [sol]
-        # compute (total) reg accesses
-        regaccess_usage = eval(regaccess_formula)
-        if regaccess_usage in sols_by_regaccess:
-            sols_by_regaccess[regaccess_usage] += [sol]
-        else:
-            sols_by_regaccess[regaccess_usage] = [sol]
-
-    return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
-
-def prune_layout(solutions, bounds_tree):
-    sols_by_mem = {}
-    sols_by_stgs = {}
-    sols_by_hash = {}
-    sols_by_regaccess = {}
-    for sol in solutions:
-        # resource usage for a solution = usage at leaf node
-        # mem usage (sram blocks)
-        mem_usage = bounds_tree.get_node(sol[-1]).tag[2]["sram"]
-        if mem_usage in sols_by_mem:
-            sols_by_mem[mem_usage] += [sol]
-        else:
-            sols_by_mem[mem_usage] = [sol]
-        # stg usage (num stgs at leaf)
-        stg_usage = bounds_tree.get_node(sol[-1]).tag[2]["stages"]
-        if stg_usage in sols_by_stgs:
-            sols_by_stgs[stg_usage] += [sol]
-        else:
-            sols_by_stgs[stg_usage] = [sol]
-        # hash usage
-        hash_usage = bounds_tree.get_node(sol[-1]).tag[2]["hash"]
-        if hash_usage in sols_by_hash:
-            sols_by_hash[hash_usage] += [sol]
-        else:
-            sols_by_hash[hash_usage] = [sol]
-        # reg accesses
-        regaccess_usage = bounds_tree.get_node(sol[-1]).tag[2]["regaccess"]
-        if regaccess_usage in sols_by_regaccess:
-            sols_by_regaccess[regaccess_usage] += [sol]
-        else:
-            sols_by_regaccess[regaccess_usage] = [sol]
-
-    return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
-
 # testing out ordered parameter search
-def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg, efficient):
+def ordered(symbolics_opt, opt_info, o, timetest, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg, efficient):
     opt_start_time = time.time()
 
     # if we're shortcutting, we've already done the preprocessing, so load from preprocessed.pkl 
@@ -842,42 +758,12 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 
         ub_time = time.time()-opt_start_time
 
-        # STEP 2: prune solutions found in step 1 by throwing out solutions that use less resources (memory, stgs) than others
-        # iterate through each path in tree
-        # need a formula for calculating total memory = x * y + j * k
-        # once we calc total resources, remove solutions that are < max
         solutions = bounds_tree.paths_to_leaves()
-        if not efficient:
-            if fullcompile:
-                sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess = prune_fullcompile(solutions, opt_info, bounds_tree)
-            else:
-                sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess = prune_layout(solutions, bounds_tree)
-
-            print("UB+PRUNE TIME:", time.time()-opt_start_time)
-
-            print("TOTAL SOLS:", len(solutions))
-            #print(sols_by_mem.keys())
-            #print("MAX MEM", max(list(sols_by_mem.keys())))
-            best_mem_sols = sols_by_mem[max(list(sols_by_mem.keys()))]
-            best_stgs_sols = sols_by_stgs[max(list(sols_by_stgs.keys()))]
-            best_hash_sols = sols_by_hash[max(list(sols_by_hash.keys()))]
-            best_regaccess_sols = sols_by_regaccess[max(list(sols_by_regaccess.keys()))]
-            print("MAX MEM SOLS", len(best_mem_sols))
-            print("MAX STGS SOLS", len(best_stgs_sols))
-            print("MAX HASH SOLS", len(best_hash_sols))
-            print("MAX REGACCESS SOLS", len(best_regaccess_sols))
-            #best_mem_stgs = [sol for sol in best_mem_sols if sol in best_stgs_sols]
-            #print("OVERLAP SOLS (MEM+STGS)", len(best_mem_stgs))
 
     if preprocessingonly:
         # dump all solutions to preprocessed.pkl
         sols = {}
         sols["all_sols"] = solutions
-        if not efficient:
-            sols["mem_sols"] = best_mem_sols
-            sols["stgs_sols"] = best_stgs_sols
-            sols["hash_sols"] = best_hash_sols
-            sols["regaccess_sols"] = best_regaccess_sols
         sols["tree"] = bounds_tree
         sols["time(s)"] = time.time()-opt_start_time
         if dfg:
@@ -891,25 +777,6 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         with open('preprocessed.pkl','wb') as f:
             pickle.dump(sols, f)
         exit()
-
-
-    if not efficient:
-        # if the user wants to prune, then let's discard extra sols
-        pruned_sols = []
-        if not nopruning:
-            for prune_res in opt_info["optparams"]["prune_res"]:
-                if prune_res=="memory":
-                    pruned_sols.extend(best_mem_sols)
-                elif prune_res=="stages":
-                    pruned_sols.extend(best_stgs_sols)
-                elif prune_res=="hash":
-                    pruned_sols.extend(best_hash_sols)
-                elif prune_res=="regaccess":
-                    pruned_sols.extend(best_regaccess_sols)
-                else:
-                    exit("invalid pruning resource; must be memory, stages, hash, and/or regaccess")
-            # remove any repeated sols in list
-            pruned_sols = list(set(pruned_sols))
 
 
     #exit()
@@ -1020,23 +887,14 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
         strat = opt_info["optparams"]["strategy"]
 
         if strat=="simannealing":
-            if nopruning:
-                return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
-            else:
-                return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, pruned_sols)
+            return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
 
         # TODO: incorporate other params in opt_info (alpha, sigma, etc.)
         elif strat=="neldermead":
-            if nopruning:
-                return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=solutions, tree=bounds_tree)
-            else:
-                return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=pruned_sols, tree=bounds_tree)
+            return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=solutions, tree=bounds_tree)
 
         elif strat=="bayesian":
-            if nopruning:
-                return bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree)
-            else:
-                return bayesian(symbolics_opt, opt_info, o, timetest, pruned_sols, bounds_tree)
+            return bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree)
 
     interp_time = time.time()-interpreter_start_time
     print("TOTAL INTERP TIME:", interp_time)
