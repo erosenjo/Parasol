@@ -1771,6 +1771,8 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # we're including sample time in overall time
     start_time = time.time()
 
+    starting = sampled_sols[0]
+
     # step 1: create surrogate function
     # step 1.1: get cost for each sampled value
     sample_costs = []
@@ -2087,5 +2089,5 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("BEST SOL:", sampled_sols[best_index])
     print("BEST EVAL:", best_eval)
 
-
+    return sampled_sols[best_index], best_eval, time_cost, num_sols_time, starting
 
