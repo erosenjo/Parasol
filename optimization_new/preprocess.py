@@ -149,7 +149,7 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
             build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
 
 
-def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg, efficient):
+def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut, dfg, efficient):
     opt_start_time = time.time()
 
     # if we're shortcutting, we've already done the preprocessing, so load from preprocessed.pkl 
@@ -194,149 +194,12 @@ def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, exhaustive, pa
         solutions = bounds_tree.paths_to_leaves()
 
 
-    if preprocessingonly:
-        # dump all solutions to preprocessed.pkl
-        sols = {}
-        sols["all_sols"] = solutions
-        sols["tree"] = bounds_tree
-        sols["time(s)"] = time.time()-opt_start_time
-        if dfg:
-            with open('preprocessed_dfg.pkl','wb') as f:
-                pickle.dump(sols, f)
-            exit()
-        if efficient:
-            with open('preprocessed_efficient.pkl','wb') as f:
-                pickle.dump(sols, f)
-            exit()
-        with open('preprocessed.pkl','wb') as f:
-            pickle.dump(sols, f)
-        exit()
+    sols = {}
+    sols["all_sols"] = solutions
+    sols["tree"] = bounds_tree
+    sols["time(s)"] = time.time()-opt_start_time
 
-
-    #exit()
-
-    # run interpreter on ones w/ most memory first, then maybe next highest???
-    # STEP 3: run interpreter to get cost, optimize for non-resource parameters
-    # search through that parameter space, using interpreter to get cost
-    # pick resource params: pick one child from each level of tree (checking for logs as we go)
-    # pick non-resource param: some value w/in user-defined bounds
-    # set any rule-based variables
-    # run the interpreter!
-    #print("SYMBOLICS BEFORE:", symbolics_opt)
-
-    if exhaustive:  # evaluate all compiling solutions w/ interpreter
-        iterations = 1
-        tested_sols = []
-        testing_sols = []
-        testing_eval = []
-        if "struct" in opt_info["optparams"]:
-            if opt_info["optparams"]["struct"] == "cms":
-                symbolics_opt["eviction"] = True
-            elif opt_info["optparams"]["struct"] == "precision":
-                symbolics_opt["eviction"] = False
-                symbolics_opt["rows"] = 1
-                symbolics_opt["cols"] = 128
-                #symbolics_opt["expire_thresh"] = 2
-                symbolics_opt["THRESH"] = 2
-        # get all possible non_resource vals
-        nr_vals = []
-        for nonresource in opt_info["optparams"]["non_resource"]:
-            nr_range = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
-            if opt_info["symbolicvals"]["bounds"][nonresource][1] not in nr_range:
-                nr_range.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
-            nr_vals.append(nr_range)
-        non_resource_sols = list(itertools.product(*nr_vals))
-
-        # start interpreter time
-        interpreter_start_time = time.time()
-        for sol_choice in solutions:
-            curr_iter = "evaling sol " + str(iterations) + " out of " + str(len(solutions))
-            print(curr_iter)
-            with open("progress.txt","w") as f:
-                f.write(curr_iter)
-            for sol in sol_choice:
-                node = bounds_tree.get_node(sol)
-                if node.tag=="root":
-                    continue
-                symbolics_opt[node.tag[0]] = node.tag[1]
-            # NOTE: this assumes that order of values generated as non_resource_sols is same as order on non_resource list in json
-            for nr_choice in non_resource_sols:
-                for nr_var in opt_info["optparams"]["non_resource"]:
-                    symbolics_opt[nr_var] = nr_choice[opt_info["optparams"]["non_resource"].index(nr_var)]
-                # once we choose all symbolics, set any rule-based symbolics
-                if "rules" in opt_info["symbolicvals"]:
-                    symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
-                print("SYMBOLICS TO EVAL", symbolics_opt)
-                if testing_eval:
-                    current_progress = {"evaling": symbolics_opt, "best eval": min(testing_eval), "best sol": testing_sols[testing_eval.index(min(testing_eval))]}
-                    with open("current.pkl", 'wb') as f:
-                        pickle.dump(current_progress, f)
-
-
-                if "struct" in opt_info["optparams"]:
-                    if opt_info["optparams"]["struct"] != "hash" and opt_info["optparams"]["struct"] != "precision":
-                        if "tables" in symbolics_opt and "entries" in symbolics_opt and "rows" in symbolics_opt and "cols" in symbolics_opt and "THRESH" in symbolics_opt:
-                            if symbolics_opt["tables"]*symbolics_opt["entries"] < 8192:
-                                continue
-                            if symbolics_opt["rows"] < 2 or symbolics_opt["cols"] > 8192:
-                                continue
-                            if "skew" in opt_info["optparams"]:
-                                if opt_info["optparams"]["skew"] == "less":
-                                    if symbolics_opt["THRESH"] < 3000 or symbolics_opt["expire_thresh"] < 95000000:
-                                        continue
-                                if opt_info["optparams"]["skew"] == "uniform":
-                                    if symbolics_opt["THRESH"] < 4000 or symbolics_opt["expire_thresh"] < 90000000:
-                                        continue
-
-                            # skewed
-                            elif symbolics_opt["THRESH"] < 2000 or symbolics_opt["expire_thresh"] < 90000000:
-                                continue
-                if opt_info["lucidfile"] == "starflow.dpt":
-                    if symbolics_opt["num_long"] + symbolics_opt["num_short"] < 15 or symbolics_opt["S_SLOTS"] < 16384 or symbolics_opt["L_SLOTS"] < 16384:
-                        iterations += 1
-                        continue
-                if opt_info["lucidfile"] == "stateful_firewall.dpt":
-                    if symbolics_opt["stages"] < 2 or symbolics_opt["entries"] < 65536 or symbolics_opt["timeout"] < 700000000 or symbolics_opt["interscan_delay"] < 800000000:
-                        iterations += 1
-                        continue
-
-                if "interp_traces" not in opt_info:
-                    cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
-                else:
-                    cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
-                tested_sols.append(copy.deepcopy(symbolics_opt))
-
-                testing_sols.append(copy.deepcopy(symbolics_opt))
-                testing_eval.append(cost)
-                iterations += 1
-        best_sols = [{}]
-        print("EXHAUSTIVE TIME", time.time() - interpreter_start_time)
-        print("NUM SOLS", len(testing_eval))
-        with open('final_testing_sols_ordered_exhaustive.pkl','wb') as f:
-            pickle.dump(testing_sols,f)
-        with open('final_testing_eval_ordered_exhaustive.pkl','wb') as f:
-            pickle.dump(testing_eval,f)
-
-    else:   # we're using one of our search strategies
-        strat = opt_info["optparams"]["strategy"]
-
-        if strat=="simannealing":
-            return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
-
-        # TODO: incorporate other params in opt_info (alpha, sigma, etc.)
-        elif strat=="neldermead":
-            return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=solutions, tree=bounds_tree)
-
-        elif strat=="bayesian":
-            return bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree)
-
-    interp_time = time.time()-interpreter_start_time
-    print("TOTAL INTERP TIME:", interp_time)
-    #print("TOTAL UB TIME:", ub_time)
-
-    return best_sols[0], best_cost
-
-
+    return sols
 
 
 

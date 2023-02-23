@@ -1,4 +1,4 @@
-.PHONY: opttest exhaustive optimize_timetest interp compile layout assemble test dfg preprocess_dfg
+.PHONY: opttest optimize_timetest interp compile layout assemble test dfg preprocess_dfg
 LUCID_DIR = .
 OPT_DIR = optimization_new/
 
@@ -11,9 +11,6 @@ preprocess_dfg:
 
 preprocess_efficient:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly
-
-exhaustive:
-	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:

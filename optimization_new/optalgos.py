@@ -87,7 +87,7 @@ def gen_next_simannealing(solutions, opt_info, symbolics_opt, curr, curr_index):
 #   step size is std dev --> 99% of all steps w/in 3*stepsize of curr var val
 #   ^ not exactly true, bc we have to do some rounding (can't have floats)
 def simulated_annealing(symbolics_opt, opt_info, o, timetest,
-                        bounds_tree=None, solutions=[]):
+                        solutions=[], bounds_tree=None):
 
     temp = opt_info["optparams"]["temp"]
     bounds = opt_info["symbolicvals"]["bounds"]
@@ -181,11 +181,6 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     candidate_index = all_solutions_symbolics.index(symbolics_opt)
 
 
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
-
-
     # generate and evaluate an initial point
     best_sols = [copy.deepcopy(symbolics_opt)]
     if "interp_traces" not in opt_info: # single trace for opt, named the same as dpt file
@@ -232,56 +227,42 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
@@ -344,49 +325,68 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_sa.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
 
     # return first sol in list of sols
-    return best_sols[0], best_cost, time_cost, num_sols_time, starting
+    return best_sols[0], best_cost
 
 # EXHAUSTIVE SEARCH
-# start from lower bound and go until upper bound
-# keep all variables but 1 static, do for all vars
-# note that this is impractical and shouldn't actually be used for optimization
-def exhaustive(symbolics_opt, opt_info, o, timetest):
-    print("EXHAUSTIVE, no preprocess")
+def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
+    print("EXHAUSTIVE")
+
     # get list of all possible sols, then iterate through them all
     all_solutions_symbolics = []
-    non_preprocess_ranges = {}
-    for bounds_var in opt_info["symbolicvals"]["bounds"]:
-        bound = opt_info["symbolicvals"]["bounds"][bounds_var]
-        if bounds_var in opt_info["symbolicvals"]["logs"].values():
-            #vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-            non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
-            continue
-        #vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-        non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+    if not solutions:   # no preprocessing
+        non_preprocess_ranges = {}
+        for bounds_var in opt_info["symbolicvals"]["bounds"]:
+            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
+            if bounds_var in opt_info["symbolicvals"]["logs"].values():
+                #vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
+                non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
+                continue
+            #vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+            non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
-    # get all possible solutions given bounds
-    # dict.keys() and dict.values() SHOULD be in same order according to documentation
-    # (as long as no changes are made to dict in between calls)
-    # itertools.product should return in the same order as lists that are passed to it
-    possible_sols = list(itertools.product(*list(non_preprocess_ranges.values())))
-    for sol in possible_sols:
-        symbolics = {}
-        sol_index = 0
-        for var in non_preprocess_ranges:
-            symbolics[var] = sol[sol_index]
-            sol_index += 1
-        if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
-            if symbolics["entries"]*symbolics["tables"] > 10000:
-                continue
-        if "rows" in symbolics and "cols" in symbolics:
-            if symbolics["rows"]*symbolics["cols"] > 10000:
-                continue
-        all_solutions_symbolics.append(symbolics)
+        # get all possible solutions given bounds
+        # dict.keys() and dict.values() SHOULD be in same order according to documentation
+        # (as long as no changes are made to dict in between calls)
+        # itertools.product should return in the same order as lists that are passed to it
+        possible_sols = list(itertools.product(*list(non_preprocess_ranges.values())))
+        for sol in possible_sols:
+            symbolics = {}
+            sol_index = 0
+            for var in non_preprocess_ranges:
+                symbolics[var] = sol[sol_index]
+                sol_index += 1
+            if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+                if symbolics["entries"]*symbolics["tables"] > 10000:
+                    continue
+            if "rows" in symbolics and "cols" in symbolics:
+                if symbolics["rows"]*symbolics["cols"] > 10000:
+                    continue
+            all_solutions_symbolics.append(symbolics)
+
+    else:
+        # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
+        for sol_choice in solutions:
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree, opt_info)))
+        for nonresource in opt_info["optparams"]["non_resource"]:
+                #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
+                new_sols = []
+                for sol_choice in all_solutions_symbolics:
+                    #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
+                    for v in vals:
+                        # update w/ new value
+                        sol_choice[nonresource] = v
+                        # append to new solution list
+                        new_sols.append(copy.deepcopy(sol_choice))
+
+                all_solutions_symbolics = new_sols
+
+
+    start_time = time.time()
 
     testing_sols = []
     testing_eval = []
@@ -406,10 +406,19 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
         elif cost == best_cost:
             best_sols.append(sol)
 
-    with open('nonpreprocess_testing_sols_exhaustive.pkl','wb') as f:
+        current_progress = {"evaling": sol, "best eval": min(testing_eval), "best sol": testing_sols[testing_eval.index(min(testing_eval))], "iteration": all_solutions_symbolics.index(sol), "total sols": len(all_solutions_symbolics)}
+        with open("progress.pkl", 'wb') as f:
+            pickle.dump(current_progress, f)
+
+
+    with open('testing_sols_exhaustive.pkl','wb') as f:
         pickle.dump(testing_sols,f)
-    with open('nonpreprocess_testing_eval_exhaustive.pkl','wb') as f:
+    with open('testing_eval_exhaustive.pkl','wb') as f:
         pickle.dump(testing_eval,f)
+
+
+    print("EXHAUSTIVE SEARCH TIME:", time.time()-start_time)
+    print("NUM SOLS:", len(all_solutions_symbolics))
 
     return best_sols[0], best_cost
 
@@ -554,10 +563,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     print("STARTING", candidate_index)
     print(symbolics_opt)
 
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
-
     # create starting numpy array and index_dict (index: var_name)
     # also create step and bounds arrays
     # step: look-around radius in initial step (1 val for each dimension)
@@ -674,56 +679,42 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
@@ -1010,10 +1001,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_nm.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
-    return best_sol, res[0][1], time_cost, num_sols_time, starting
+    return best_sol, res[0][1]
 
     
 # bayesian optimization
@@ -1141,8 +1129,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # we're including sample time in overall time
     start_time = time.time()
 
-    starting = sampled_sols[0]
-
     # step 1: create surrogate function
     # step 1.1: get cost for each sampled value
     sample_costs = []
@@ -1223,9 +1209,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     best_mu = []
     actual_eval = []
 
-    num_sols_time = {}
-    time_cost = {}
-
     iterations = 0
     while True:
         # check iter/time conditions
@@ -1245,56 +1228,42 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                     pickle.dump(best_sols,f)
                 with open('5min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["5min"] = len(best_sols)
-                time_cost["5min"] = copy.deepcopy(actual_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('10min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["10min"] = len(best_sols)
-                time_cost["10min"] = copy.deepcopy(actual_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('30min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["30min"] = len(best_sols)
-                time_cost["30min"] = copy.deepcopy(actual_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('45min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["45min"] = len(best_sols)
-                time_cost["45min"] = copy.deepcopy(actual_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('60min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["60min"] = len(best_sols)
-                time_cost["60min"] = copy.deepcopy(actual_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('90min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["90min"] = len(best_sols)
-                time_cost["90min"] = copy.deepcopy(actual_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('120min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["120min"] = len(best_sols)
-                time_cost["120min"] = copy.deepcopy(actual_eval)
                 break
 
 
@@ -1459,5 +1428,5 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("BEST SOL:", sampled_sols[best_index])
     print("BEST EVAL:", best_eval)
 
-    return sampled_sols[best_index], best_eval, time_cost, num_sols_time, starting
+    return sampled_sols[best_index], best_eval
 

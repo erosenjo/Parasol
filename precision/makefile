@@ -1,4 +1,4 @@
-i.PHONY: opttest interp compile layout assemble test exhaustive optimize_timetest dfg preprocess_dfg
+i.PHONY: opttest interp compile layout assemble test optimize_timetest dfg preprocess_dfg
 LUCID_DIR = .
 OPT_DIR = optimization_new/
 
@@ -11,10 +11,6 @@ preprocess_dfg:
 
 preprocess_efficient:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --preprocessingonly
-
-
-exhaustive:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --exhaustive --shortcut
 
 optimize_timetest:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --shortcut --timetest
