@@ -10,7 +10,7 @@ preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly
 
 
 exhaustive:

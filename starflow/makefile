@@ -10,14 +10,14 @@ preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --notrafficgen --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --notrafficgen --preprocessingonly
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --exhaustive --shortcut --efficient
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --timetest --shortcut --efficient
+	python3 $(OPT_DIR)/optimize.py starflowoptvars.json --timetest --shortcut
 
 # run interpreter
 interp: 

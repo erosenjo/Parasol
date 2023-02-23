@@ -10,7 +10,7 @@ preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --notrafficgen --preprocessingonly
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py cmsoptvars.json --exhaustive --shortcut

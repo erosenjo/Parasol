@@ -10,7 +10,7 @@ preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py rttoptvars.json --notrafficgen --preprocessingonly
 
 exhaustive:
 	python3 $(OPT_DIR)/optimize.py rttoptvars.json --exhaustive --pair --shortcut

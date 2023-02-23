@@ -10,10 +10,10 @@ preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly --efficient
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly
 
 exhaustive:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --exhaustive --shortcut --efficient
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --exhaustive --shortcut
 
 # run p4all optimizer, time test
 optimize_timetest:

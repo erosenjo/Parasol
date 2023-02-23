@@ -13,11 +13,7 @@ single_stg_mem_log2_pairarray = 65536
 # ONLY return upper bound for now, not resource usage
 def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
     # for memory, start @ ub; lb = 32, ub = whatever we find
-    # for non memory, either
-    #   start @ lb and increase by > 1 until > 12 stgs, then decrease by 1 (multiplicative incr, additive decr)
-    #   start at some ub and decrease by some value
-    #   --> start at some middle value and decide to incr/decr accordingly
-    # we only need to get resource usage for leaves of tree
+    # for non memory, start @ default and increase/decrease by 1 until = 12 stgs
 
     increasing = False
     decreasing = False
@@ -77,112 +73,6 @@ def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, ful
                 return symbolics_opt[var_to_opt]
 
 
-# start at 1 (or whatever lower bound is), keep increasing until we hit max num stgs used
-# compile to p4 each time to see how many stgs
-# we start at lower bound bc we know that we can't be < 1; harder to start at upper bound bc we don't really know that would be, unless user tells us (which forces them to reason a bit about resources)
-# this returns dictionary of either:
-#   {sol_tested: stgs_required} (full compile)
-#   {sol_tested: {resource: required} } (layout, dfg)
-def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
-    '''
-    # if we have a lower bound for var_to_opt, use it
-    # otherwise, it'll already be 1
-    if var_to_opt in opt_info["symbolicvals"]["bounds"]:
-        symbolics_opt[var_to_opt] = opt_info["symbolicvals"]["bounds"][var_to_opt][0]
-    else:
-        symbolics_opt[var_to_opt] = 1
-    '''
-
-    # while we're using < 12 stages, compile, increase val
-    # note that we could save time by doing the reverse for memory vals (bc we have hard upper bound)
-    # HOWEVER, we wouldn't know how many stgs each value uses if we do the reverse (start at upper bound, stop once stgs <=12)
-    # (this is bc we wouldn't compile for memory vals < upper bound, we'd stop once we hit 12 stgs)
-    # NOTE: we keep compiling once we hit stgs = 12 bc we could add more resources without using more stgs
-    # (this happens specifically w/ memory vars, but maybe could happen with others?) 
-    resources = {}  # resources used by each solution we try (FOR LAYOUT: this is ALL resources; FOR FULL COMPILE: this is JUST stgs)
-    while True:
-        print("SYM COMPILING:", symbolics_opt)
-        # compile it and get num stages used
-        if fullcompile:
-            stgs_used = compile_num_stages(symbolics_opt, opt_info)
-            resources_used = stgs_used
-        else:
-            if dfg: # use dataflow analysis
-                # if we're greater than user-defined bounds, quit
-                if var_to_opt in opt_info["symbolicvals"]["bounds"]:
-                    if symbolics_opt[var_to_opt] > opt_info["symbolicvals"]["bounds"][var_to_opt][1]:
-                        return opt_info["symbolicvals"]["bounds"][var_to_opt][1], resources
-                resources_used = dfg(symbolics_opt, opt_info)
-            else:   # use layout script
-                resources_used = layout(symbolics_opt, opt_info)
-            stgs_used = resources_used["stages"]
-        # incr if we still have more stages to use
-        if stgs_used == 0:   # this should only happen if there's no num_stages.txt file, or the program actually doesn't use any stages (which indicates an error somewhere)
-            sys.exit("lucid to p4 compiler returned 0 stages used")
-        elif stgs_used <= 12: # keep going! we (potentially) have more resources to use
-            '''
-            # if this is a memory variable, we only hit this case if the next highest value returns > 12 stgs
-            # so this is the best option without going over
-            if memory:
-                best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                return symbolics_opt[var_to_opt], best_stgs
-            # otherwise, we can keep going
-            '''
-            # if this is a memory var, then check if we've reached resource upper bound
-            # if yes, then stop bc we can't fit more onto the pipeline
-            # if we need log2 of this number, then just go to next multiple of 2
-            if log2:
-                #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                resources[symbolics_opt[var_to_opt]] = resources_used
-                # TODO: better sol for pair arrays
-                if pair:
-                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2_pairarray:
-                        return symbolics_opt[var_to_opt], resources
-                    symbolics_opt[var_to_opt] *= 2
-                else:
-                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2:
-                        #return symbolics_opt[var_to_opt], best_stgs
-                        return symbolics_opt[var_to_opt], resources
-                    symbolics_opt[var_to_opt] *= 2
-            else:
-                #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                resources[symbolics_opt[var_to_opt]] = resources_used
-                if memory and symbolics_opt[var_to_opt] == single_stg_mem:
-                    #return symbolics_opt[var_to_opt], best_stgs
-                    return symbolics_opt[var_to_opt], resources
-                symbolics_opt[var_to_opt] += 1
-
-        else:   # stages > 12, using too many stgs so go back to the previous value we tried
-            '''
-            # if memory, we need to decrease and try again (bc working backwards from upper bound)
-            # TODO: this assumes memory has to be power of 2 --> what to decrease by if not?
-            if memory:
-                symbolics_opt[var_to_opt] //= 2
-                continue
-            '''
-            # if this is supposed to be multiple of 2, then divide
-            if log2:
-                symbolics_opt[var_to_opt] //= 2
-            # otherwise, just decrement
-            else:
-                symbolics_opt[var_to_opt] -= 1
-            #return symbolics_opt[var_to_opt], best_stgs
-            return symbolics_opt[var_to_opt], resources
-
-        '''
-        elif stgs_used == 12:    # we hit the limit, this is the value we're using for upper bound
-            best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-            # if it's memory, we still want to keep going until we either hit ub or stgs > 12
-            if memory and log2 and symbolics_opt[var_to_opt] < single_stg_mem_log2:
-                symbolics_opt[var_to_opt] *= 2
-                continue
-            elif memory and not log2 and symbolics_opt[var_to_opt] < single_stg_mem:
-                symbolics_opt[var_to_opt] += 1
-                continue
-            # if it's not memory, return the upper bound
-            return symbolics_opt[var_to_opt], best_stgs
-        '''
-
 # TODO: is there a better way to do this??? 
 # basically we're building a tree
 # each node is a concrete choice for a var, and the children are possible choices for the var that's the next level down
@@ -200,107 +90,63 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
         # move down a level to choose a value for the next variable
         build_bounds_tree(tree, child.identifier, to_find, symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
 
-    if not efficient:
-        if not children:
-            # find the bounds for the next variable in the list, given the values for the previous
-            # first check if this needs to be a power of 2
-            # if yes, then make lower bound = 2 instead of 1
-            log2 = False
-            lb = 1
-            if to_find[0] in opt_info["symbolicvals"]["bounds"]:
-                lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-            if to_find[0] in opt_info["symbolicvals"]["logs"].values():
-                log2 = True
-                if lb < 2:  # if user gives us higher bound, don't overwrite it
-                    lb = 2
- 
-            # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
-            # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
-            # NOT starting from upper bound anymore; need to compile each solution to estimate stgs (starting at lb)
-            if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
-                #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
-                #else: symbolics_opt[to_find[0]] = single_stg_mem
-                symbolics_opt[to_find[0]] = lb
-                ub, stgs_used = get_max_val(symbolics_opt,to_find[0], opt_info, log2, True, fullcompile, pair, dfg)
-                #tree.create_node((to_find[0],ub), parent=root)
-            else:
-                # keep compiling until we hit max stgs, get ub 
-                #print("FIND BOUNDS")
-                symbolics_opt[to_find[0]] = lb
-                ub, stgs_used = get_max_val(symbolics_opt, to_find[0], opt_info, log2, False, fullcompile, pair, dfg)
-            # once we get the bounds, make a node for each possible value
-            for v in range(lb, ub+1):
-                # if we need multiple of 2, skip it if it's not
-                if log2 and not ((v & (v-1) == 0) and v != 0):
-                    continue
-                tree.create_node([to_find[0],v,stgs_used[v]], parent=root)
-            symbolics_opt[to_find[0]] = lb
-            tree.show()
-            # keep going if we have more variables (to_find[1:] not empty)
-            if not to_find[1:]: # we're done! we've found all vars for this path
-                return
-            else:   # we still have more variables to find bounds for, so keep going
-                build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
+    if not children:
+        # find the bounds for the next variable in the list, given the values for the previous
+        # first check if this needs to be a power of 2
+        # if yes, then make lower bound = 2 instead of 1
+        log2 = False
+        startbound = 4
+        lb = 1
+        # set lb for all left to find
+        for v in to_find:
+            symbolics_opt[v] = 1
+            if v in opt_info["symbolicvals"]["symbolics"]:  # memory
+                symbolics_opt[v] = 32
+            if v in opt_info["symbolicvals"]["bounds"]:
+                symbolics_opt[v] = opt_info["symbolicvals"]["bounds"][v][0]
 
-
-    else:
-        if not children:
-            # find the bounds for the next variable in the list, given the values for the previous
-            # first check if this needs to be a power of 2
-            # if yes, then make lower bound = 2 instead of 1
-            log2 = False
+        if to_find[0] in opt_info["symbolicvals"]["bounds"]:
+            startbound = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
+            lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
+        if to_find[0] in opt_info["symbolicvals"]["logs"].values():
+            log2 = True
+            if lb < 2:
+                lb = 2
+        if startbound < 4:  # if user gives us higher bound, don't overwrite it
             startbound = 4
-            lb = 1
-            # set lb for all left to find
-            for v in to_find:
-                symbolics_opt[v] = 1
-                if v in opt_info["symbolicvals"]["symbolics"]:  # memory
-                    symbolics_opt[v] = 32
-                if v in opt_info["symbolicvals"]["bounds"]:
-                    symbolics_opt[v] = opt_info["symbolicvals"]["bounds"][v][0]
 
-            if to_find[0] in opt_info["symbolicvals"]["bounds"]:
-                startbound = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-                lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-            if to_find[0] in opt_info["symbolicvals"]["logs"].values():
-                log2 = True
-                if lb < 2:
-                    lb = 2
-            if startbound < 4:  # if user gives us higher bound, don't overwrite it
-                startbound = 4
-
-            # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
-            # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
-            if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
-                #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
-                #else: symbolics_opt[to_find[0]] = single_stg_mem
-                if pair:
-                    symbolics_opt[to_find[0]] = single_stg_mem_log2_pairarray
-                else:
-                    symbolics_opt[to_find[0]] = single_stg_mem_log2
-                lb = 32
-                ub = get_max_val_efficient(symbolics_opt,to_find[0], opt_info, log2, True, fullcompile, pair, dfg)
-                #tree.create_node((to_find[0],ub), parent=root)
+        # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
+        # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
+        if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
+            #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
+            #else: symbolics_opt[to_find[0]] = single_stg_mem
+            if pair:
+                symbolics_opt[to_find[0]] = single_stg_mem_log2_pairarray
             else:
-                # keep compiling until we hit max stgs, get ub 
-                #print("FIND BOUNDS")
-                symbolics_opt[to_find[0]] = startbound
-                ub = get_max_val_efficient(symbolics_opt, to_find[0], opt_info, log2, False, fullcompile, pair, dfg)
-            # once we get the bounds, make a node for each possible value
-            for v in range(lb, ub+1):
-                # if we need multiple of 2, skip it if it's not
-                if log2 and not ((v & (v-1) == 0) and v != 0):
-                    continue
-                tree.create_node([to_find[0],v], parent=root)
-            symbolics_opt[to_find[0]] = lb
-            tree.show()
-            print("VAR", to_find[0])
-            print("LB", lb, "\n")
-            # keep going if we have more variables (to_find[1:] not empty)
-            if not to_find[1:]: # we're done! we've found all vars for this path
-                return
-            else:   # we still have more variables to find bounds for, so keep going
-                build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
+                symbolics_opt[to_find[0]] = single_stg_mem_log2
+            lb = 32
+            ub = get_max_val_efficient(symbolics_opt,to_find[0], opt_info, log2, True, fullcompile, pair, dfg)
+            #tree.create_node((to_find[0],ub), parent=root)
+        else:
+            # keep compiling until we hit max stgs, get ub 
+            #print("FIND BOUNDS")
+            symbolics_opt[to_find[0]] = startbound
+            ub = get_max_val_efficient(symbolics_opt, to_find[0], opt_info, log2, False, fullcompile, pair, dfg)
+        # once we get the bounds, make a node for each possible value
+        for v in range(lb, ub+1):
+            # if we need multiple of 2, skip it if it's not
+            if log2 and not ((v & (v-1) == 0) and v != 0):
+                continue
+            tree.create_node([to_find[0],v], parent=root)
+        symbolics_opt[to_find[0]] = lb
+        tree.show()
+        print("VAR", to_find[0])
+        print("LB", lb, "\n")
+        # keep going if we have more variables (to_find[1:] not empty)
+        if not to_find[1:]: # we're done! we've found all vars for this path
+            return
+        else:   # we still have more variables to find bounds for, so keep going
+            build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
 
 
 def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg, efficient):
