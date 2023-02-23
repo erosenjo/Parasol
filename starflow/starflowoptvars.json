@@ -27,7 +27,7 @@
     }
     },
     "optparams": {
-    "optalgo" : "ordered",
+    "optalgo" : "preprocess",
     "strategy": "exhaustive",
     "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],

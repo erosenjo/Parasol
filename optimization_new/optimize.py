@@ -1,4 +1,5 @@
 import time, importlib, argparse, os, sys
+from preprocess import *
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
 
@@ -83,16 +84,15 @@ def main():
     elif opt_info["optparams"]["optalgo"] == "neldermead":
         best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
 
-    # testing out ordered search
-    elif opt_info["optparams"]["optalgo"] == "ordered":
+    elif opt_info["optparams"]["optalgo"] == "preprocess":
         best_costs = []
         best_sols = []
         time_costs = []
         num_sols_time = []
         starting_sols = []
-        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
+        #best_sol, best_cost = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
         for i in range(1): # repeat once times
-            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg, args.efficient)
+            best_sol, best_cost, time_cost, num_sol, starting = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg, args.efficient)
             best_costs.append(best_cost)
             best_sols.append(best_sol)
             time_costs.append(time_cost)

@@ -16,7 +16,7 @@
     }
     },
     "optparams": {
-        "optalgo" : "ordered",
+        "optalgo" : "preprocess",
         "strategy" : "exhaustive",
         "stop_time" : 8000,
         "order_resource": ["fridge_size"],

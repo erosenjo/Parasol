@@ -20,7 +20,7 @@
     }
     },
     "optparams": {
-        "optalgo" : "ordered",
+        "optalgo" : "preprocess",
         "strategy" : "simannealing",
         "stop_time" : 8000,
         "order_resource" : ["stages", "entries"],

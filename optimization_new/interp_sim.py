@@ -236,8 +236,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
     '''
 
     # compile to p4 and check if stgs <= tofino
-    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
-    if searchtype != "ordered":
+    # if we didn't preprocess, compile to check stgs first
+    if searchtype != "preprocessed":
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]
@@ -261,8 +261,8 @@ def gen_cost_multitrace(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, sea
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
 
     # compile to p4 and check if stgs <= tofino
-    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
-    if searchtype != "ordered":
+    # if we didn't preprocess, compile to check stgs first
+    if searchtype != "preprocessed":
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]

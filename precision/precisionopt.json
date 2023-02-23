@@ -16,7 +16,7 @@
         }
     },
     "optparams": {
-        "optalgo" : "ordered",
+        "optalgo" : "preprocess",
         "strategy" : "neldermead",
         "stop_time" : 8000,
         "order_resource" : ["tables", "entries"],
