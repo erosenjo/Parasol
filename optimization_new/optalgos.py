@@ -52,6 +52,20 @@ def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
     return symbolics_opt
 
 
+# nelder-mead uses numpy arrays, so this function converts that to symbolics opt, so we can run interpreter
+# NOTE: "candidate_index" is reserved, can't use for variable name
+def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
+                               opt_info, solutions=[], tree=None):
+    sol_index = int(nparray[0])
+    symbolics_opt = solutions[sol_index]
+
+    # set any rule-based vars
+    if "rules" in opt_info["symbolicvals"]:
+        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
+
+    return symbolics_opt
+
+
 # NOTE: this is for BOTH preprocessed and non solutions
 def gen_next_simannealing(solutions, opt_info, symbolics_opt, curr, curr_index):
     # take a step for resource-related vars
@@ -429,19 +443,6 @@ def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 #   we're doing simulations, so we don't know if the function is differentiable or not
 #   we could try some strategies for differentiable obj functions, but putting that on the backburner to focus on strategies for simulation-based functions
 
-
-# nelder-mead uses numpy arrays, so this function converts that to symbolics opt, so we can run interpreter
-# NOTE: "candidate_index" is reserved, can't use for variable name
-def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt, 
-                               opt_info, solutions=[], tree=None):
-    sol_index = int(nparray[0])
-    symbolics_opt = solutions[sol_index]
-
-    # set any rule-based vars
-    if "rules" in opt_info["symbolicvals"]:
-        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
-
-    return symbolics_opt
 
 # nelder-mead simplex
 # direct search algo (can get stuck in local optima, so may benefit from trying different starting points)
@@ -1368,40 +1369,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
         iterations += 1
 
-    '''
-    print("PROB MIN VALUE")
-    print("PROB MU VALUE", mu[ix_prob])
-    print(np_acq_xvals[ix_prob])
-    sol_choice = solutions[np_acq_xvals[ix_prob, 0]]
-    # ARGMAX best values: 87,37
-    # ARGMIN best value: 151 (9 rows, 65536 cols) 
-    for sol in sol_choice:
-        node = bounds_tree.get_node(sol)
-        if node.tag=="root":
-            continue
-        print("var:", node.tag[0], "value:", node.tag[1])
-    '''
-
-    '''
-    print("ARGMIN")
-    print(np_acq_xvals[ix])
-
-    print("MU")
-    ix = np.argmin(mu)
-    print(np_acq_xvals[ix])
-    print("MU VALUE", mu[ix])
-    print(mu)
-
-    print("ACQ VALS")
-    print(np_acq_xvals)
-    '''
-
-    '''
-    print("PREDICT SOL", np_acq_xvals[test_index[1]])
-    print("PREDICT COST", mu[test_index[1]])
-    print("TEST SOL", test_index)
-    print("TEST COST", test_cost)
-    '''
 
     with open('mu.pkl','wb') as f:
         pickle.dump(mu_vals, f)
