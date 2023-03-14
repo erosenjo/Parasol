@@ -7,7 +7,7 @@ from statsmodels.distributions.empirical_distribution import ECDF
 import math
 import pickle
 import dpkt
-import statistics
+
 
 def i2Hex (n):
     hstr = str(hex(int(n)))
@@ -41,7 +41,6 @@ class Opt:
         starttime = 0
         syns = {}
         gt = []
-        ids_rtts = {}
         pkt_counter = 0
 
         for pkt_pcap in self.pkts:
@@ -138,7 +137,6 @@ class Opt:
                         if key in syns:
                             #print("MATCH!!")
                             gt.append(timestamp-syns[key])
-                            ids_rtts[key] = timestamp-syns[key]
 
                     '''
                     if len(events) > 0:
@@ -236,24 +234,12 @@ class Opt:
                     break
         '''
 
-        #print(len(gt))  
-        #print("SAMPLES", gt)      
+        print(len(gt))        
         print("EVENTS", len(events))
         # add a dummy packet
         args = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         p = {"name":"tcp_in", "args":args}
         events.append(p)
-
-        print("NUM SAMPLES", len(gt))
-        print("MIN RTT", min(gt))
-        print("MAX RTT", max(gt))
-        print("AVG RTT", sum(gt)/len(gt))
-        print("MED RTT", statistics.median(gt))
-        #exit()
-
-        pickle.dump(gt, open('gtsamples.pkl','wb'))
-        pickle.dump(ids_rtts, open('gtrttsids.pkl','wb'))
-
 
         info["events"] = events
         ecdf = ECDF([x/1000000 for x in gt])
@@ -276,8 +262,6 @@ class Opt:
             percentiles_x.append(self.cdf_xvals[probs_gt.index(z)])
 
 
-        pickle.dump(percentiles_x, open('gtpercentiles.pkl','wb'))
-
         self.ground_truth = percentiles_x
         info["events"] = events
         with open('fridge.json', 'w') as f:
@@ -286,11 +270,6 @@ class Opt:
     # measurement is dictionary of rtts and correction factors
     def calc_cost(self, measure):
         rtts = measure[0]
-        print("NUM SIM SAMPLES", len(rtts))
-        print("MIN RTT", min(rtts))
-        print("MAX RTT", max(rtts))
-        print("AVG RTT", sum(rtts)/len(rtts))
-        print("MED RTT", statistics.median(rtts))
 
         errs = []
 
@@ -324,8 +303,6 @@ class Opt:
         for y in percentiles_y:
             z = min(cdf_probs, key=lambda x:abs(x-y))
             sampled_percentiles_x.append(keys[cdf_probs.index(z)]/1000000)
-
-        pickle.dump(sampled_percentiles_x,open('samplepercentiles.pkl','wb'))
 
         # max horizontal distance
         for sv in range(len(sampled_percentiles_x)):
@@ -367,13 +344,11 @@ class Opt:
     def init_iteration(self, symbs):
         pass
 
-#o = Opt(["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt6.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt7.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt8.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt9.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt10.pcap"])
-#o = Opt(["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt2.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt3.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt4.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt5.pcap"])
-o = Opt(["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt11.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt12.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt13.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt14.pcap","/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt15.pcap"])
+#o = Opt("univ1_pt1.pcap")
 #o.gen_traffic()
 #m = pickle.load(open('rtt_correction.txt','rb'))
 #o.calc_cost([m])
-#'''
+'''
 o.gen_traffic()
 #exit("UPDATE DPT")
 cmd = ["make", "interp"]
@@ -384,5 +359,5 @@ outfiles = ["rtt_correction.pkl"]
 for out in outfiles:
     measurement.append(pickle.load(open(out,"rb")))
 o.calc_cost(measurement)
-#'''
+'''
 
