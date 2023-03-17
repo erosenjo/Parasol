@@ -1,12 +1,8 @@
-import math, json, sys, copy, time, itertools
-from random import randint, random, getrandbits, choice
-from interp_sim import gen_cost, compile_num_stages, layout, dfg, gen_cost_multitrace
+import math, copy, time, itertools, pickle
 import numpy as np
-#from scipy.optimize import basinhopping
-import pickle
-#from search_ilp import solve
+from random import choice
+from interp_sim import gen_cost, gen_cost_multitrace
 from treelib import Node, Tree
-from sklearn.gaussian_process import GaussianProcessRegressor
 from warnings import catch_warnings
 from warnings import simplefilter
 from scipy.stats import norm
@@ -14,52 +10,8 @@ from sklearn.gaussian_process import GaussianProcessRegressor, kernels
 from sklearn.linear_model import Ridge, LinearRegression
 from sklearn.kernel_ridge import KernelRidge
 
-# CONSTANTS
-single_stg_mem = 143360 # max number of elements for 32-bit array
-single_stg_mem_log2 = 131072 # closest power of 2 for single_stg_mem (most apps require num elements to be power of 2)
-single_stg_mem_log2_pairarray = 65536
-
-# helper funcs
 '''
-# narrow down best sols to 1, using priority
-# is there a better/simpler way to do this?????
-# NOTE: might want to save original list of solutions, in case one we choose doesn't compile to tofino (more sols to try before we're forced to rerun optimize)
-def prioritize(best_sols, opt_info):
-    prefs_sym = (opt_info["symbolicvals"]["priority"].keys())
-    if len(best_sols) > 1:  # multiple best sols, use priority prefs
-        best_sol = [best_sols[0],0]
-        for v in prefs_sym: # start w highest priority symbolic, narrow down best sols until we reach 1
-            if len(best_sols) == 1: # we've picked a single solution, no need to continue
-                break
-            to_remove = []
-            pref_direction = opt_info["symbolicvals"]["priority"][v]
-            for s in range(1,len(best_sols)):   # find solutions that are suboptimal according to priority (higher, lower)
-                if pref_direction == "higher":
-                    if best_sols[s][v] > best_sol[0][v]:
-                        to_remove.append(best_sol[1])
-                        best_sol = [best_sols[s],s]
-                        continue
-                    elif best_sols[s][v] < best_sol[0][v]:
-                        to_remove.append(s)
-                        continue
-                elif pref_direction == "lower":
-                    if best_sols[s][v] < best_sol[0][v]:
-                        to_remove.append(best_sol[1])
-                        best_sol = [best_sols[s],s]
-                        continue
-                    elif best_sols[s][v] > best_sol[0][v]:
-                        to_remove.append(s)
-                        continue
-                else:
-                    print("invalid preference, must be higher or lower")
-                    quit()
-
-            to_remove.sort(reverse=True)    # throw out solutions that don't match priority
-            to_remove=list(set(to_remove))  # get rid of duplicates
-            for i in to_remove:
-                best_sols.pop(i)
-            best_sol[1] = best_sols.index(best_sol[0])  # in case things get shuffled around after pops
-    return best_sol[0]
+HELPER FUNCTIONS
 '''
 # helper for sim annealing, rounds to closest power of 2
 # copied from: https://stackoverflow.com/questions/28228774/find-the-integer-that-is-closest-to-the-power-of-two
@@ -88,234 +40,31 @@ def set_rule_vars(opt_info, symbolics_opt):
     return symbolics_opt
 
 
-# RANDOM OPTIMIZATION
-# randomly choose, given some var
-def gen_next_random_nopreprocessing(symbolics_opt, logs, bounds, structchoice, structinfo, opt_info):
-    new_vars = {}
-    exclude = False
-    if structchoice:
-        new_vars[structinfo["var"]] = bool(getrandbits(1))
-        if str(new_vars[structinfo["var"]]) in structinfo:
-            exclude = True
-    for var in symbolics_opt:
-        if var not in bounds:   # it's a rule-based var (or we forgot to add bounds)
-            new_vars[var] = 0
+def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
+    for sol in sol_choice:
+        node = tree.get_node(sol)
+        if node.tag=="root":
             continue
-        if structchoice and var==structinfo["var"]: # we've handled this above, don't do it again
-            continue
-        if exclude and var in structinfo[str(new_vars[structinfo["var"]])]: # exlucding this var for struct
-            new_vars[var] = symbolics_opt[var]
-            continue
-        if var in logs.values(): # this var has to be multiple of 2
-            new_vars[var] = 2**randint(int(math.log2(bounds[var][0])),int(math.log2(bounds[var][1])))
-            continue
-        new_vars[var] = randint(bounds[var][0],bounds[var][1])
+        symbolics_opt[node.tag[0]] = node.tag[1]
+    # set rule vars
+    set_rule_vars(opt_info, symbolics_opt)
 
-    # set any rule-based vars
-    if "rules" in opt_info["symbolicvals"]:
-        new_vars = set_rule_vars(opt_info, new_vars)
-
-    return new_vars
+    return symbolics_opt
 
 
-def gen_next_random_preprocessed(tree, symbolics_opt, solutions, opt_info):
-    sol_choice = choice(solutions)
-    candidate_index = solutions.index(sol_choice)
-    symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)
-
-    # set non-resource vars
-    for nonresource in opt_info["optparams"]["non_resource"]:
-        symbolics_opt[nonresource] = choice(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+# nelder-mead uses numpy arrays, so this function converts that to symbolics opt, so we can run interpreter
+# NOTE: "candidate_index" is reserved, can't use for variable name
+def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt,
+                               opt_info, solutions=[], tree=None):
+    sol_index = int(nparray[0])
+    symbolics_opt = solutions[sol_index]
 
     # set any rule-based vars
     if "rules" in opt_info["symbolicvals"]:
         symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
 
+    return symbolics_opt
 
-    return symbolics_opt, candidate_index
-
-
-def random_opt(symbolics_opt, opt_info, o, timetest,
-               bounds_tree=None, solutions=[]):
-    # get total number of solutions, so we know if we've gone through them all
-    total_sols = 1
-    if not solutions:
-        for bounds_var in opt_info["symbolicvals"]["bounds"]:
-            bounds = opt_info["symbolicvals"]["bounds"][bounds_var]
-            if bounds_var in opt_info["symbolicvals"]["logs"].values():
-                vals = len(range(int(math.log2(bounds[0])), int(math.log2(bounds[1]))+1))
-                total_sols *= vals
-                continue
-            vals = len(range(bounds[0], bounds[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
-    else:   # we've preprocessed, used those solutions to calc total
-        for nonresource in opt_info["optparams"]["non_resource"]:
-            total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-        total_sols *= len(solutions)
-    print(total_sols)
-
-    # start w/ randomly chosen values
-    if not solutions:
-        symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-    else:
-        symbolics_opt,_ = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
-
-    iterations = 0
-    # init best solution as starting, and best cost as inf
-    best_sols = [copy.deepcopy(symbolics_opt)]
-    best_cost = float("inf")
-    # keep track of sols we've already tried so don't repeat
-    tested_sols = []
-    # we need bounds for random
-    bounds = {}
-    if "bounds" in opt_info["symbolicvals"]:    # not necessarily required for every opt, but def for random
-        bounds = opt_info["symbolicvals"]["bounds"]
-    else:
-        sys.exit("random opt requires bounds on symbolics")
-    # decide if we're stopping by time, iterations, or both (whichever reaches thresh first)
-    iters = False
-    simtime = False
-    iter_time = False
-    if "stop_iter" in opt_info["optparams"]:
-        iters = True
-    if "stop_time" in opt_info["optparams"]:
-        simtime = True
-    if iters and simtime:
-        iter_time = True
-
-    structchoice = False
-    structinfo = {}
-    if "structchoice" in opt_info:
-        structchoice = True
-        structinfo = opt_info["structchoice"]
-
-    testing_sols = []
-    testing_eval = []
-    # start loop
-    start_time = time.time()
-    while True:
-        # check iter/time conditions
-        if iters or iter_time:
-            if iterations >= opt_info["optparams"]["stop_iter"]:
-                break
-        if simtime or iter_time:
-            if (time.time()-start_time) >= opt_info["optparams"]["stop_time"]:
-                break
-
-        curr_time = time.time()
-        # TIME TEST (save sols/costs we've evaled up to this point)
-        if timetest:
-            # 5 min (< 10)
-            if 300 <= (curr_time - start_time) < 600:
-                with open('5min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('5min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
-            # 10 min (< 30)
-            if 600 <= (curr_time - start_time) < 1800:
-                with open('10min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('10min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
-            # 30 min
-            if 1800 <= (curr_time - start_time) < 2700:
-                with open('30min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('30min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
-            # 45 min
-            if 2700 <= (curr_time - start_time) < 3600:
-                with open('45min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('45min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
-            # 60 min
-            if 3600 <= (curr_time - start_time) < 5400:
-                with open('60min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('60min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
-            # 90 min
-            if 5400 <= (curr_time - start_time) < 7200:
-                with open('90min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('90min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
-            # 120  min (end)
-            if 7200 <= (curr_time - start_time):
-                with open('120min_testing_sols_rand.pkl','wb') as f:
-                    pickle.dump(testing_sols,f)
-                with open('120min_testing_eval_rand.pkl','wb') as f:
-                    pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
-                break
-
-        # get cost
-        if not solutions:
-            cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "random")
-        else:
-            cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
-
-        # add sol to tested_sols to count it as already evaluated
-        # is it stupid to do deepcopy here? can we be smarter about changing symbolics_opt to avoid this? or is it a wash?
-        tested_sols.append(copy.deepcopy(symbolics_opt))
-
-        testing_sols.append(copy.deepcopy(symbolics_opt))
-        testing_eval.append(cost)
-
-        # if new cost < best, replace best (if stgs <= tofino)
-        if cost < best_cost:
-            best_cost = cost
-            # not sure if this is slow, but these dicts are likely small (<10 items) so shouldn't be an issue
-            best_sols = [copy.deepcopy(symbolics_opt)]
-        elif cost == best_cost:
-            best_sols.append(copy.deepcopy(symbolics_opt))
-
-        # if we've tested every solution, quit
-        if len(tested_sols) == total_sols:
-            break
-
-        # get next values, but don't repeat one we've already tried
-        while symbolics_opt in tested_sols:
-            if not solutions:
-                symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], structchoice, structinfo, opt_info)
-            else:
-                symbolics_opt, _ = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            
-
-        # incr iterations
-        iterations += 1
-
-    # if we have multiple solutions equally as good, use priority from user to narrow it down to 1
-    #best_sol = prioritize(best_sols,opt_info)
-
-    with open('final_testing_sols_rand.pkl','wb') as f:
-        pickle.dump(testing_sols,f)
-    with open('final_testing_eval_rand.pkl','wb') as f:
-        pickle.dump(testing_eval,f)
-    
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
-    # return the first solution in list of acceptable sols
-    return best_sols[0], best_cost, time_cost, num_sols_time, starting
 
 # NOTE: this is for BOTH preprocessed and non solutions
 def gen_next_simannealing(solutions, opt_info, symbolics_opt, curr, curr_index):
@@ -352,7 +101,7 @@ def gen_next_simannealing(solutions, opt_info, symbolics_opt, curr, curr_index):
 #   step size is std dev --> 99% of all steps w/in 3*stepsize of curr var val
 #   ^ not exactly true, bc we have to do some rounding (can't have floats)
 def simulated_annealing(symbolics_opt, opt_info, o, timetest,
-                        bounds_tree=None, solutions=[]):
+                        solutions=[], bounds_tree=None):
 
     temp = opt_info["optparams"]["temp"]
     bounds = opt_info["symbolicvals"]["bounds"]
@@ -377,30 +126,8 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         structchoice = True
         structinfo = opt_info["structchoice"]
 
-    '''
-    # OLD, treating non-resource vars separate from resource sol index
-    # get total number of solutions, so we know if we've gone through them all
-    total_sols = 1
-    if not solutions:
-        for bounds_var in opt_info["symbolicvals"]["bounds"]:
-            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
-            if bounds_var in opt_info["symbolicvals"]["logs"].values():
-                vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
-                continue
-            vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
-    else:   # we've preprocessed, used those solutions to calc total
-        for nonresource in opt_info["optparams"]["non_resource"]:
-                total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-        total_sols *= len(solutions)
-
-    print("TOTAL_SOLS", total_sols)
-    '''
-
-    # NEW, enumerating all solutions, optimizing ONLY index value
+    # enumerating all solutions, optimizing ONLY index value
     #   (aka treating resource and non resource the same)
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -408,11 +135,9 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -458,31 +183,16 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
                 all_solutions_symbolics = new_sols
 
-        total_sols *= len(solutions)
-        # total_sols = len(all_solutions_symbolics)
+    total_sols = len(all_solutions_symbolics)
 
     # start time
     start_time = time.time()
 
 
     # start at randomly chosen values
-    '''
-    # OLD, treating non-resource vars separate from resource sol index
-    # if solutions is an empty list, then we haven't done preprocessing
-    if not solutions:
-        symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-    else:
-        # set resource vars
-        symbolics_opt, candidate_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-    '''
-    # NEW, only optimize index var
+    # only optimize index var
     symbolics_opt = choice(all_solutions_symbolics)
     candidate_index = all_solutions_symbolics.index(symbolics_opt)
-
-
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
 
 
     # generate and evaluate an initial point
@@ -492,12 +202,12 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         if not solutions:
             best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
         else:
-            best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
+            best_cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "preprocessed")
     else: # multiple training traces, arbitrary names
         if not solutions:
             best_cost = gen_cost_multitrace(symbolics_opt,symbolics_opt,opt_info, o,False, "simannealing")
         else:
-            best_cost = gen_cost_multitrace(symbolics_opt,symbolics_opt,opt_info, o,False, "ordered")
+            best_cost = gen_cost_multitrace(symbolics_opt,symbolics_opt,opt_info, o,False, "preprocessed")
 
     curr_index = candidate_index
 
@@ -531,61 +241,47 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_sa.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_sa.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
         # if we've tested every solution, quit
-        if len(tested_sols) == total_sols:
+        if len(list(set(tested_sols))) == total_sols:
             break
 
         # TODO: should we test repeated sols????
@@ -597,12 +293,12 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             if not solutions:
                 candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
             else:
-                candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                candidate_cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         else:
             if not solutions:
                 candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "simannealing")
             else:
-                candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         tested_sols.append(copy.deepcopy(symbolics_opt))
 
@@ -643,67 +339,68 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_sa.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
 
     # return first sol in list of sols
-    return best_sols[0], best_cost, time_cost, num_sols_time, starting
-
-'''
-# BASIN HOPPING (with scipy, like sim annealing)
-# scipy doesn't let us restrict to ints (not floats), and doesn't let us restrict to powers of 2
-def basin_hopping(symbolics_opt, opt_info, o):
-    # put symbolic vars in np array
-    x0 = np.empty(shape=(len(symbolics_opt)), dtype=int)
-    i = 0
-    for v in symbolics_opt:
-        x0[i] = symbolics_opt[v]
-        i+=1
-    # extra args that cost func needs
-    args ={'args':(symbolics_opt,opt_info, o, True)}
-    # as of python3.7, dicts are insertion order, so should be ok to rely on ordering
-    res = basinhopping(gen_cost, x0, minimizer_kwargs=args,niter=100)
-'''
+    return best_sols[0], best_cost
 
 # EXHAUSTIVE SEARCH
-# start from lower bound and go until upper bound
-# keep all variables but 1 static, do for all vars
-# note that this is impractical and shouldn't actually be used for optimization
-def exhaustive(symbolics_opt, opt_info, o, timetest):
-    print("EXHAUSTIVE, no preprocess")
+def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
+    print("EXHAUSTIVE")
+
     # get list of all possible sols, then iterate through them all
     all_solutions_symbolics = []
-    non_preprocess_ranges = {}
-    for bounds_var in opt_info["symbolicvals"]["bounds"]:
-        bound = opt_info["symbolicvals"]["bounds"][bounds_var]
-        if bounds_var in opt_info["symbolicvals"]["logs"].values():
-            #vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-            #total_sols *= vals
-            non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
-            continue
-        #vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-        #total_sols *= vals
-        non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+    if not solutions:   # no preprocessing
+        non_preprocess_ranges = {}
+        for bounds_var in opt_info["symbolicvals"]["bounds"]:
+            bound = opt_info["symbolicvals"]["bounds"][bounds_var]
+            if bounds_var in opt_info["symbolicvals"]["logs"].values():
+                #vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
+                non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
+                continue
+            #vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
+            non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
-    # get all possible solutions given bounds
-    # dict.keys() and dict.values() SHOULD be in same order according to documentation
-    # (as long as no changes are made to dict in between calls)
-    # itertools.product should return in the same order as lists that are passed to it
-    possible_sols = list(itertools.product(*list(non_preprocess_ranges.values())))
-    for sol in possible_sols:
-        symbolics = {}
-        sol_index = 0
-        for var in non_preprocess_ranges:
-            symbolics[var] = sol[sol_index]
-            sol_index += 1
-        if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
-            if symbolics["entries"]*symbolics["tables"] > 10000:
-                continue
-        if "rows" in symbolics and "cols" in symbolics:
-            if symbolics["rows"]*symbolics["cols"] > 10000:
-                continue
-        all_solutions_symbolics.append(symbolics)
+        # get all possible solutions given bounds
+        # dict.keys() and dict.values() SHOULD be in same order according to documentation
+        # (as long as no changes are made to dict in between calls)
+        # itertools.product should return in the same order as lists that are passed to it
+        possible_sols = list(itertools.product(*list(non_preprocess_ranges.values())))
+        for sol in possible_sols:
+            symbolics = {}
+            sol_index = 0
+            for var in non_preprocess_ranges:
+                symbolics[var] = sol[sol_index]
+                sol_index += 1
+            if opt_info["lucidfile"]=="caching.dpt" and "entries" in symbolics and "tables" in symbolics:
+                if symbolics["entries"]*symbolics["tables"] > 10000:
+                    continue
+            if "rows" in symbolics and "cols" in symbolics:
+                if symbolics["rows"]*symbolics["cols"] > 10000:
+                    continue
+            all_solutions_symbolics.append(symbolics)
+
+    else:
+        # TODO: create symbolics_opt from solutions and append to all_solutions_symbolics
+        for sol_choice in solutions:
+            all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree, opt_info)))
+        for nonresource in opt_info["optparams"]["non_resource"]:
+                #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
+                new_sols = []
+                for sol_choice in all_solutions_symbolics:
+                    #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
+                    vals.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
+                    for v in vals:
+                        # update w/ new value
+                        sol_choice[nonresource] = v
+                        # append to new solution list
+                        new_sols.append(copy.deepcopy(sol_choice))
+
+                all_solutions_symbolics = new_sols
+
+
+    start_time = time.time()
 
     testing_sols = []
     testing_eval = []
@@ -723,656 +420,22 @@ def exhaustive(symbolics_opt, opt_info, o, timetest):
         elif cost == best_cost:
             best_sols.append(sol)
 
-    with open('nonpreprocess_testing_sols_exhaustive.pkl','wb') as f:
+        current_progress = {"evaling": sol, "best eval": min(testing_eval), "best sol": testing_sols[testing_eval.index(min(testing_eval))], "iteration": all_solutions_symbolics.index(sol), "total sols": len(all_solutions_symbolics)}
+        with open("progress.pkl", 'wb') as f:
+            pickle.dump(current_progress, f)
+
+
+    with open('testing_sols_exhaustive.pkl','wb') as f:
         pickle.dump(testing_sols,f)
-    with open('nonpreprocess_testing_eval_exhaustive.pkl','wb') as f:
+    with open('testing_eval_exhaustive.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    return best_sols[0], best_cost
 
-
-# TODO: get resource usage for leaves of tree (ignore pruning for now)
-# ONLY return upper bound for now, not resource usage
-def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
-    # for memory, start @ ub; lb = 32, ub = whatever we find
-    # for non memory, either
-    #   start @ lb and increase by > 1 until > 12 stgs, then decrease by 1 (multiplicative incr, additive decr)
-    #   start at some ub and decrease by some value
-    #   --> start at some middle value and decide to incr/decr accordingly
-    # we only need to get resource usage for leaves of tree
-
-    increasing = False
-    decreasing = False
-
-    while True:
-        print("SYM COMPILING:", symbolics_opt)
-        # compile it and get num stages used
-        if fullcompile:
-            stgs_used = compile_num_stages(symbolics_opt, opt_info)
-        else:
-            if dfg: # use dataflow analysis
-                # if we're greater than user-defined bounds, quit
-                if var_to_opt in opt_info["symbolicvals"]["bounds"]:
-                    if symbolics_opt[var_to_opt] > opt_info["symbolicvals"]["bounds"][var_to_opt][1]:
-                        return opt_info["symbolicvals"]["bounds"][var_to_opt][1]
-                resources_used = dfg(symbolics_opt, opt_info)
-            else:   # use layout script
-                resources_used = layout(symbolics_opt, opt_info)
-            stgs_used = resources_used["stages"]
-        # incr if we still have more stages to use
-        if stgs_used == 0:   # this should only happen if there's no num_stages.txt file, or the program actually doesn't use any stages (which indicates an error somewhere)
-            sys.exit("lucid to p4 compiler returned 0 stages used")
-        elif stgs_used <= 12: # keep going! we (potentially) have more resources to use
-            # if this is a memory variable, we only hit this case if the next highest value returns > 12 stgs
-            # so this is the best option without going over
-            if memory:
-                return symbolics_opt[var_to_opt]
-            if not increasing and not decreasing:   # this is the first config we're compiling
-                increasing = True
-            if increasing:  # we started w/ lb, now we need to keep increasing until hit ub
-                # if we need log2 of this number, then just go to next multiple of 2
-                if log2:
-                    symbolics_opt[var_to_opt] *= 2
-                else:
-                    symbolics_opt[var_to_opt] += 1
-            else:   # we started w/ ub, so we found largest compiling value
-                return symbolics_opt[var_to_opt]
-
-        else:   # using more than 12 stgs
-            # if memory, we need to decrease and try again (bc working backwards from upper bound)
-            # TODO: this assumes memory has to be power of 2 --> what to decrease by if not?
-            if memory:
-                symbolics_opt[var_to_opt] //=2
-                if symbolics_opt[var_to_opt] < 32:
-                    sys.exit("can't fit at least 32 regs for var " + var_to_opt)
-                continue 
-            if not increasing and not decreasing:   # this is the first config we're compiling
-                decreasing = True
-            # if we need log2 of this number, then just go to next smallest multiple of 2
-            if log2:
-                symbolics_opt[var_to_opt] //= 2
-            else:
-                symbolics_opt[var_to_opt] -= 1
-            if decreasing: # we started w/ ub, keep decr until hit compiling config
-                continue
-            else:
-                return symbolics_opt[var_to_opt]
-                
-
-
-# start at 1 (or whatever lower bound is), keep increasing until we hit max num stgs used
-# compile to p4 each time to see how many stgs
-# we start at lower bound bc we know that we can't be < 1; harder to start at upper bound bc we don't really know that would be, unless user tells us (which forces them to reason a bit about resources)
-# this returns dictionary of either:
-#   {sol_tested: stgs_required} (full compile)
-#   {sol_tested: {resource: required} } (layout, dfg)
-def get_max_val(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
-    '''
-    # if we have a lower bound for var_to_opt, use it
-    # otherwise, it'll already be 1
-    if var_to_opt in opt_info["symbolicvals"]["bounds"]:
-        symbolics_opt[var_to_opt] = opt_info["symbolicvals"]["bounds"][var_to_opt][0]
-    else:
-        symbolics_opt[var_to_opt] = 1
-    '''
-
-    # while we're using < 12 stages, compile, increase val
-    # note that we could save time by doing the reverse for memory vals (bc we have hard upper bound)
-    # HOWEVER, we wouldn't know how many stgs each value uses if we do the reverse (start at upper bound, stop once stgs <=12)
-    # (this is bc we wouldn't compile for memory vals < upper bound, we'd stop once we hit 12 stgs)
-    # NOTE: we keep compiling once we hit stgs = 12 bc we could add more resources without using more stgs
-    # (this happens specifically w/ memory vars, but maybe could happen with others?) 
-    resources = {}  # resources used by each solution we try (FOR LAYOUT: this is ALL resources; FOR FULL COMPILE: this is JUST stgs)
-    while True:
-        print("SYM COMPILING:", symbolics_opt)
-        # compile it and get num stages used
-        if fullcompile:
-            stgs_used = compile_num_stages(symbolics_opt, opt_info)
-            resources_used = stgs_used
-        else:
-            if dfg: # use dataflow analysis
-                # if we're greater than user-defined bounds, quit
-                if var_to_opt in opt_info["symbolicvals"]["bounds"]:
-                    if symbolics_opt[var_to_opt] > opt_info["symbolicvals"]["bounds"][var_to_opt][1]:
-                        return opt_info["symbolicvals"]["bounds"][var_to_opt][1], resources
-                resources_used = dfg(symbolics_opt, opt_info)
-            else:   # use layout script
-                resources_used = layout(symbolics_opt, opt_info)
-            stgs_used = resources_used["stages"]
-        # incr if we still have more stages to use
-        if stgs_used == 0:   # this should only happen if there's no num_stages.txt file, or the program actually doesn't use any stages (which indicates an error somewhere)
-            sys.exit("lucid to p4 compiler returned 0 stages used")
-        elif stgs_used <= 12: # keep going! we (potentially) have more resources to use
-            '''
-            # if this is a memory variable, we only hit this case if the next highest value returns > 12 stgs
-            # so this is the best option without going over
-            if memory:
-                best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                return symbolics_opt[var_to_opt], best_stgs
-            # otherwise, we can keep going
-            '''
-            # if this is a memory var, then check if we've reached resource upper bound
-            # if yes, then stop bc we can't fit more onto the pipeline
-            # if we need log2 of this number, then just go to next multiple of 2
-            if log2:
-                #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                resources[symbolics_opt[var_to_opt]] = resources_used
-                # TODO: better sol for pair arrays
-                if pair:
-                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2_pairarray:
-                        return symbolics_opt[var_to_opt], resources
-                    symbolics_opt[var_to_opt] *= 2
-                else:
-                    if memory and symbolics_opt[var_to_opt] == single_stg_mem_log2:
-                        #return symbolics_opt[var_to_opt], best_stgs
-                        return symbolics_opt[var_to_opt], resources
-                    symbolics_opt[var_to_opt] *= 2
-            else:
-                #best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-                resources[symbolics_opt[var_to_opt]] = resources_used
-                if memory and symbolics_opt[var_to_opt] == single_stg_mem:
-                    #return symbolics_opt[var_to_opt], best_stgs
-                    return symbolics_opt[var_to_opt], resources
-                symbolics_opt[var_to_opt] += 1
-
-        else:   # stages > 12, using too many stgs so go back to the previous value we tried
-            '''
-            # if memory, we need to decrease and try again (bc working backwards from upper bound)
-            # TODO: this assumes memory has to be power of 2 --> what to decrease by if not?
-            if memory:
-                symbolics_opt[var_to_opt] //= 2
-                continue
-            '''
-            # if this is supposed to be multiple of 2, then divide
-            if log2:
-                symbolics_opt[var_to_opt] //= 2
-            # otherwise, just decrement
-            else:
-                symbolics_opt[var_to_opt] -= 1
-            #return symbolics_opt[var_to_opt], best_stgs
-            return symbolics_opt[var_to_opt], resources
-
-        '''
-        elif stgs_used == 12:    # we hit the limit, this is the value we're using for upper bound
-            best_stgs[symbolics_opt[var_to_opt]] = stgs_used
-            # if it's memory, we still want to keep going until we either hit ub or stgs > 12
-            if memory and log2 and symbolics_opt[var_to_opt] < single_stg_mem_log2:
-                symbolics_opt[var_to_opt] *= 2
-                continue
-            elif memory and not log2 and symbolics_opt[var_to_opt] < single_stg_mem:
-                symbolics_opt[var_to_opt] += 1
-                continue
-            # if it's not memory, return the upper bound
-            return symbolics_opt[var_to_opt], best_stgs
-        '''
-
-
-# TODO: is there a better way to do this??? 
-# basically we're building a tree
-# each node is a concrete choice for a var, and the children are possible choices for the var that's the next level down
-def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile, pair, efficient, dfg):
-    #print("ROOT:",root)
-    #print("TOFIND:", to_find)
-    #print("SYMBOLICSOPT:", symbolics_opt)
-    children = tree.children(root)
-    for child in children:
-        print("CHILD:", child.tag)
-        #if child.tag[0]=="C":
-        #    return
-        # set the value for this variable
-        symbolics_opt[child.tag[0]] = child.tag[1]
-        # move down a level to choose a value for the next variable
-        build_bounds_tree(tree, child.identifier, to_find, symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
-
-    if not efficient:
-        if not children:
-            # find the bounds for the next variable in the list, given the values for the previous
-            # first check if this needs to be a power of 2
-            # if yes, then make lower bound = 2 instead of 1
-            log2 = False
-            lb = 1
-            if to_find[0] in opt_info["symbolicvals"]["bounds"]:
-                lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-            if to_find[0] in opt_info["symbolicvals"]["logs"].values():
-                log2 = True
-                if lb < 2:  # if user gives us higher bound, don't overwrite it
-                    lb = 2
- 
-            # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
-            # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
-            # NOT starting from upper bound anymore; need to compile each solution to estimate stgs (starting at lb)
-            if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
-                #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
-                #else: symbolics_opt[to_find[0]] = single_stg_mem
-                symbolics_opt[to_find[0]] = lb
-                ub, stgs_used = get_max_val(symbolics_opt,to_find[0], opt_info, log2, True, fullcompile, pair, dfg)
-                #tree.create_node((to_find[0],ub), parent=root)
-            else:
-                # keep compiling until we hit max stgs, get ub 
-                #print("FIND BOUNDS")
-                symbolics_opt[to_find[0]] = lb
-                ub, stgs_used = get_max_val(symbolics_opt, to_find[0], opt_info, log2, False, fullcompile, pair, dfg)
-            # once we get the bounds, make a node for each possible value
-            for v in range(lb, ub+1):
-                # if we need multiple of 2, skip it if it's not
-                if log2 and not ((v & (v-1) == 0) and v != 0):
-                    continue
-                tree.create_node([to_find[0],v,stgs_used[v]], parent=root)
-            symbolics_opt[to_find[0]] = lb
-            tree.show()
-            # keep going if we have more variables (to_find[1:] not empty)
-            if not to_find[1:]: # we're done! we've found all vars for this path
-                return
-            else:   # we still have more variables to find bounds for, so keep going
-                build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
-
-
-    else:
-        if not children:
-            # find the bounds for the next variable in the list, given the values for the previous
-            # first check if this needs to be a power of 2
-            # if yes, then make lower bound = 2 instead of 1
-            log2 = False
-            startbound = 4
-            lb = 1
-            # set lb for all left to find
-            for v in to_find:
-                symbolics_opt[v] = 1
-                if v in opt_info["symbolicvals"]["symbolics"]:  # memory
-                    symbolics_opt[v] = 32
-                if v in opt_info["symbolicvals"]["bounds"]:
-                    symbolics_opt[v] = opt_info["symbolicvals"]["bounds"][v][0]
-                
-            if to_find[0] in opt_info["symbolicvals"]["bounds"]:
-                startbound = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-                lb = opt_info["symbolicvals"]["bounds"][to_find[0]][0]
-            if to_find[0] in opt_info["symbolicvals"]["logs"].values():
-                log2 = True
-                if lb < 2:
-                    lb = 2
-            if startbound < 4:  # if user gives us higher bound, don't overwrite it
-                startbound = 4
-
-            # if it's a memory variable, we're starting from the max memory avail for a single register array and then moving down
-            # we have a hard upper bound for memory, so it's faster to start from there (we don't have ub for other vars)
-            if to_find[0] in opt_info["symbolicvals"]["symbolics"]:
-                #if log2: symbolics_opt[to_find[0]] = single_stg_mem_log2
-                #else: symbolics_opt[to_find[0]] = single_stg_mem
-                if pair:
-                    symbolics_opt[to_find[0]] = single_stg_mem_log2_pairarray
-                else:
-                    symbolics_opt[to_find[0]] = single_stg_mem_log2
-                lb = 32
-                ub = get_max_val_efficient(symbolics_opt,to_find[0], opt_info, log2, True, fullcompile, pair, dfg)
-                #tree.create_node((to_find[0],ub), parent=root)
-            else:
-                # keep compiling until we hit max stgs, get ub 
-                #print("FIND BOUNDS")
-                symbolics_opt[to_find[0]] = startbound
-                ub = get_max_val_efficient(symbolics_opt, to_find[0], opt_info, log2, False, fullcompile, pair, dfg)
-            # once we get the bounds, make a node for each possible value
-            for v in range(lb, ub+1):
-                # if we need multiple of 2, skip it if it's not
-                if log2 and not ((v & (v-1) == 0) and v != 0):
-                    continue
-                tree.create_node([to_find[0],v], parent=root)
-            symbolics_opt[to_find[0]] = lb
-            tree.show()
-            print("VAR", to_find[0])
-            print("LB", lb, "\n")
-            # keep going if we have more variables (to_find[1:] not empty)
-            if not to_find[1:]: # we're done! we've found all vars for this path
-                return
-            else:   # we still have more variables to find bounds for, so keep going
-                build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
-
-
-def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
-    for sol in sol_choice:
-        node = tree.get_node(sol)
-        if node.tag=="root":
-            continue
-        symbolics_opt[node.tag[0]] = node.tag[1]
-    # set rule vars
-    set_rule_vars(opt_info, symbolics_opt)
-
-    return symbolics_opt
-
-
-
-def prune_fullcompile(solutions, opt_info, bounds_tree):
-    sols_by_mem = {}
-    sols_by_stgs = {}
-    sols_by_hash = {}
-    sols_by_regaccess = {}
-    mem_formula = opt_info["optparams"]["mem_formula"]
-    for sol in solutions:
-        mem_formula = opt_info["optparams"]["mem_formula"]
-        hash_formula = opt_info["optparams"]["hash_formula"]
-        regaccess_formula = opt_info["optparams"]["regaccess_formula"]
-        for n_identifier in sol:
-            # TODO: better way to do this?
-            node = bounds_tree.get_node(n_identifier)
-            if node.tag == "root":
-                continue
-            # replace var name with val of vars in formulas in json file
-            var_name = node.tag[0]
-            var_value = node.tag[1]
-            # replace string with val of var
-            mem_formula = mem_formula.replace(var_name, str(var_value))
-            hash_formula = hash_formula.replace(var_name, str(var_value))
-            regaccess_formula = regaccess_formula.replace(var_name, str(var_value))
-        # compute memory using formula string, add to data structure
-        mem_usage = eval(mem_formula)
-        if mem_usage in sols_by_mem:
-            sols_by_mem[mem_usage] += [sol]
-        else:
-            sols_by_mem[mem_usage] = [sol]
-        # compute stg usage (num stgs at leaf)
-        stg_usage = bounds_tree.get_node(sol[-1]).tag[2]
-        if stg_usage in sols_by_stgs:
-            sols_by_stgs[stg_usage] += [sol]
-        else:
-            sols_by_stgs[stg_usage] = [sol]
-        # compute (total) hash units used
-        hash_usage = eval(hash_formula)
-        if hash_usage in sols_by_hash:
-            sols_by_hash[hash_usage] += [sol]
-        else:
-            sols_by_hash[hash_usage] = [sol]
-        # compute (total) reg accesses
-        regaccess_usage = eval(regaccess_formula)
-        if regaccess_usage in sols_by_regaccess:
-            sols_by_regaccess[regaccess_usage] += [sol]
-        else:
-            sols_by_regaccess[regaccess_usage] = [sol]
-
-    return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
-
-def prune_layout(solutions, bounds_tree):
-    sols_by_mem = {}
-    sols_by_stgs = {}
-    sols_by_hash = {}
-    sols_by_regaccess = {}
-    for sol in solutions:
-        # resource usage for a solution = usage at leaf node
-        # mem usage (sram blocks)
-        mem_usage = bounds_tree.get_node(sol[-1]).tag[2]["sram"]
-        if mem_usage in sols_by_mem:
-            sols_by_mem[mem_usage] += [sol]
-        else:
-            sols_by_mem[mem_usage] = [sol]
-        # stg usage (num stgs at leaf)
-        stg_usage = bounds_tree.get_node(sol[-1]).tag[2]["stages"]
-        if stg_usage in sols_by_stgs:
-            sols_by_stgs[stg_usage] += [sol]
-        else:
-            sols_by_stgs[stg_usage] = [sol]
-        # hash usage
-        hash_usage = bounds_tree.get_node(sol[-1]).tag[2]["hash"]
-        if hash_usage in sols_by_hash:
-            sols_by_hash[hash_usage] += [sol]
-        else:
-            sols_by_hash[hash_usage] = [sol]
-        # reg accesses
-        regaccess_usage = bounds_tree.get_node(sol[-1]).tag[2]["regaccess"]
-        if regaccess_usage in sols_by_regaccess:
-            sols_by_regaccess[regaccess_usage] += [sol]
-        else:
-            sols_by_regaccess[regaccess_usage] = [sol]
-
-    return sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess
-
-# testing out ordered parameter search
-def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaustive, pair, preprocessingonly, shortcut, dfg, efficient):
-    opt_start_time = time.time()
-
-    # if we're shortcutting, we've already done the preprocessing, so load from preprocessed.pkl 
-    if shortcut:
-        sols = pickle.load(open('preprocessed.pkl','rb'))
-        bounds_tree = sols["tree"]
-        solutions = sols["all_sols"]
-        if not efficient:
-            best_mem_sols = sols["mem_sols"]
-            best_stgs_sols = sols["stgs_sols"]
-            best_hash_sols = sols["hash_sols"]
-            best_regaccess_sols = sols["regaccess_sols"]
-
-    else:
-        # STEP 1: reduce parameter space by removing solutions that don't compile
-        # get bounds for all variables
-        # aka explicitly define (resource) parameter space, excluding solutions that won't compile and that don't use all resources
-        bounds_tree = Tree()
-        bounds_tree.create_node("root","root")
-        # set everything to 1 to start with
-        symbolics_opt = dict.fromkeys(symbolics_opt, 1)
-        # if we have lower bounds for any of them, replace 1 with those bounds
-        for var in symbolics_opt:
-            if var in opt_info["symbolicvals"]["bounds"]:
-                symbolics_opt[var] = opt_info["symbolicvals"]["bounds"][var][0]
-            # if it's a mem var, set to 32
-            if var in opt_info["symbolicvals"]["symbolics"]:
-                symbolics_opt[var] = 32
-        # TODO: deal with this better
-        # if caching, just set to true (cms) and in theory do precision in parallel
-        if opt_info["lucidfile"] == "caching.dpt":
-            print("CACHING")
-            symbolics_opt["eviction"] = True
-            #symbolics_opt["rows"] = 1
-            #symbolics_opt["cols"] = 2
-        build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
-
-        print("UPPER BOUND TIME:", time.time()-opt_start_time)    
-
-        ub_time = time.time()-opt_start_time
-
-        # STEP 2: prune solutions found in step 1 by throwing out solutions that use less resources (memory, stgs) than others
-        # iterate through each path in tree
-        # need a formula for calculating total memory = x * y + j * k
-        # once we calc total resources, remove solutions that are < max
-        solutions = bounds_tree.paths_to_leaves()
-        if not efficient:
-            if fullcompile:
-                sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess = prune_fullcompile(solutions, opt_info, bounds_tree)
-            else:
-                sols_by_mem, sols_by_stgs, sols_by_hash, sols_by_regaccess = prune_layout(solutions, bounds_tree)
-
-            print("UB+PRUNE TIME:", time.time()-opt_start_time)
-
-            print("TOTAL SOLS:", len(solutions))
-            #print(sols_by_mem.keys())
-            #print("MAX MEM", max(list(sols_by_mem.keys())))
-            best_mem_sols = sols_by_mem[max(list(sols_by_mem.keys()))]
-            best_stgs_sols = sols_by_stgs[max(list(sols_by_stgs.keys()))]
-            best_hash_sols = sols_by_hash[max(list(sols_by_hash.keys()))]
-            best_regaccess_sols = sols_by_regaccess[max(list(sols_by_regaccess.keys()))]
-            print("MAX MEM SOLS", len(best_mem_sols))
-            print("MAX STGS SOLS", len(best_stgs_sols))
-            print("MAX HASH SOLS", len(best_hash_sols))
-            print("MAX REGACCESS SOLS", len(best_regaccess_sols))
-            #best_mem_stgs = [sol for sol in best_mem_sols if sol in best_stgs_sols]
-            #print("OVERLAP SOLS (MEM+STGS)", len(best_mem_stgs))
-
-    if preprocessingonly:
-        # dump all solutions to preprocessed.pkl
-        sols = {}
-        sols["all_sols"] = solutions
-        if not efficient:
-            sols["mem_sols"] = best_mem_sols
-            sols["stgs_sols"] = best_stgs_sols
-            sols["hash_sols"] = best_hash_sols
-            sols["regaccess_sols"] = best_regaccess_sols
-        sols["tree"] = bounds_tree
-        sols["time(s)"] = time.time()-opt_start_time
-        if dfg:
-            with open('preprocessed_dfg.pkl','wb') as f:
-                pickle.dump(sols, f)
-            exit()
-        if efficient:
-            with open('preprocessed_efficient.pkl','wb') as f:
-                pickle.dump(sols, f)
-            exit()
-        with open('preprocessed.pkl','wb') as f:
-            pickle.dump(sols, f)
-        exit()
-
-
-    if not efficient:
-        # if the user wants to prune, then let's discard extra sols
-        pruned_sols = []
-        if not nopruning:
-            for prune_res in opt_info["optparams"]["prune_res"]:
-                if prune_res=="memory":
-                    pruned_sols.extend(best_mem_sols)
-                elif prune_res=="stages":
-                    pruned_sols.extend(best_stgs_sols)
-                elif prune_res=="hash":
-                    pruned_sols.extend(best_hash_sols)
-                elif prune_res=="regaccess":
-                    pruned_sols.extend(best_regaccess_sols)
-                else:
-                    exit("invalid pruning resource; must be memory, stages, hash, and/or regaccess")
-            # remove any repeated sols in list
-            pruned_sols = list(set(pruned_sols))
-
-
-    #exit()
-
-    # run interpreter on ones w/ most memory first, then maybe next highest???
-    # STEP 3: run interpreter to get cost, optimize for non-resource parameters
-    # search through that parameter space, using interpreter to get cost
-    # pick resource params: pick one child from each level of tree (checking for logs as we go)
-    # pick non-resource param: some value w/in user-defined bounds
-    # set any rule-based variables
-    # run the interpreter!
-    #print("SYMBOLICS BEFORE:", symbolics_opt)
-
-    if exhaustive:  # evaluate all compiling solutions w/ interpreter
-        iterations = 1
-        tested_sols = []
-        testing_sols = []
-        testing_eval = []
-        if "struct" in opt_info["optparams"]:
-            if opt_info["optparams"]["struct"] == "cms":
-                symbolics_opt["eviction"] = True
-            elif opt_info["optparams"]["struct"] == "precision":
-                symbolics_opt["eviction"] = False
-                symbolics_opt["rows"] = 1
-                symbolics_opt["cols"] = 128
-                #symbolics_opt["expire_thresh"] = 2
-                symbolics_opt["THRESH"] = 2
-        # get all possible non_resource vals
-        nr_vals = []
-        for nonresource in opt_info["optparams"]["non_resource"]:
-            nr_range = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource]))
-            if opt_info["symbolicvals"]["bounds"][nonresource][1] not in nr_range:
-                nr_range.append(opt_info["symbolicvals"]["bounds"][nonresource][1])
-            nr_vals.append(nr_range)
-        non_resource_sols = list(itertools.product(*nr_vals))
-
-        # start interpreter time
-        interpreter_start_time = time.time()
-        for sol_choice in solutions:
-            curr_iter = "evaling sol " + str(iterations) + " out of " + str(len(solutions)) 
-            print(curr_iter)
-            with open("progress.txt","w") as f:
-                f.write(curr_iter)
-            for sol in sol_choice:
-                node = bounds_tree.get_node(sol)
-                if node.tag=="root":
-                    continue
-                symbolics_opt[node.tag[0]] = node.tag[1]
-            # NOTE: this assumes that order of values generated as non_resource_sols is same as order on non_resource list in json
-            for nr_choice in non_resource_sols:
-                for nr_var in opt_info["optparams"]["non_resource"]:
-                    symbolics_opt[nr_var] = nr_choice[opt_info["optparams"]["non_resource"].index(nr_var)]
-                # once we choose all symbolics, set any rule-based symbolics
-                if "rules" in opt_info["symbolicvals"]:
-                    symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
-                print("SYMBOLICS TO EVAL", symbolics_opt)
-                if testing_eval:
-                    current_progress = {"evaling": symbolics_opt, "best eval": min(testing_eval), "best sol": testing_sols[testing_eval.index(min(testing_eval))]}
-                    with open("current.pkl", 'wb') as f:
-                        pickle.dump(current_progress, f)
-                    
-
-                if "struct" in opt_info["optparams"]:
-                    if opt_info["optparams"]["struct"] != "hash" and opt_info["optparams"]["struct"] != "precision":
-                        if "tables" in symbolics_opt and "entries" in symbolics_opt and "rows" in symbolics_opt and "cols" in symbolics_opt and "THRESH" in symbolics_opt:
-                            if symbolics_opt["tables"]*symbolics_opt["entries"] < 8192:
-                                continue
-                            if symbolics_opt["rows"] < 2 or symbolics_opt["cols"] > 8192:
-                                continue
-                            if "skew" in opt_info["optparams"]:
-                                if opt_info["optparams"]["skew"] == "less":
-                                    if symbolics_opt["THRESH"] < 3000 or symbolics_opt["expire_thresh"] < 95000000:
-                                        continue
-                                if opt_info["optparams"]["skew"] == "uniform":
-                                    if symbolics_opt["THRESH"] < 4000 or symbolics_opt["expire_thresh"] < 90000000:
-                                        continue
-                    
-                            # skewed
-                            elif symbolics_opt["THRESH"] < 2000 or symbolics_opt["expire_thresh"] < 90000000:
-                                continue
-                if opt_info["lucidfile"] == "starflow.dpt":
-                    if symbolics_opt["num_long"] + symbolics_opt["num_short"] < 15 or symbolics_opt["S_SLOTS"] < 16384 or symbolics_opt["L_SLOTS"] < 16384:
-                        iterations += 1
-                        continue
-                if opt_info["lucidfile"] == "stateful_firewall.dpt":
-                    if symbolics_opt["stages"] < 2 or symbolics_opt["entries"] < 65536 or symbolics_opt["timeout"] < 700000000 or symbolics_opt["interscan_delay"] < 800000000:
-                        iterations += 1 
-                        continue
-
-                if "interp_traces" not in opt_info:
-                    cost = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
-                else:
-                    cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
-                tested_sols.append(copy.deepcopy(symbolics_opt))
-
-                testing_sols.append(copy.deepcopy(symbolics_opt))
-                testing_eval.append(cost)
-                iterations += 1
-        best_sols = [{}]
-        print("EXHAUSTIVE TIME", time.time() - interpreter_start_time)
-        print("NUM SOLS", len(testing_eval))
-        with open('final_testing_sols_ordered_exhaustive.pkl','wb') as f:
-            pickle.dump(testing_sols,f)
-        with open('final_testing_eval_ordered_exhaustive.pkl','wb') as f:
-            pickle.dump(testing_eval,f)
-
-    else:   # we're using one of our search strategies
-        strat = opt_info["optparams"]["strategy"]
-
-        if strat=="simannealing":
-            if nopruning:
-                return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
-            else:
-                return simulated_annealing(symbolics_opt, opt_info, o, timetest, bounds_tree, pruned_sols)
-
-        elif strat=="random":
-            if nopruning:
-                return random_opt(symbolics_opt, opt_info, o, timetest, bounds_tree, solutions)
-            else:
-                return random_opt(symbolics_opt, opt_info, o, timetest, bounds_tree, pruned_sols)
-
-        # TODO: incorporate other params in opt_info (alpha, sigma, etc.)
-        elif strat=="neldermead":
-            if nopruning:
-                return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=solutions, tree=bounds_tree)
-            else:
-                return nelder_mead(symbolics_opt, opt_info, o, timetest, solutions=pruned_sols, tree=bounds_tree)
-
-        elif strat=="bayesian":
-            if nopruning:
-                return bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree)
-            else:
-                return bayesian(symbolics_opt, opt_info, o, timetest, pruned_sols, bounds_tree)
-
-    interp_time = time.time()-interpreter_start_time
-    print("TOTAL INTERP TIME:", interp_time)
-    #print("TOTAL UB TIME:", ub_time)
+    print("EXHAUSTIVE SEARCH TIME:", time.time()-start_time)
+    print("NUM SOLS:", len(all_solutions_symbolics))
 
     return best_sols[0], best_cost
+
 
 
 # choosing more opt strategies
@@ -1380,19 +443,6 @@ def ordered(symbolics_opt, opt_info, o, timetest, nopruning, fullcompile, exhaus
 #   we're doing simulations, so we don't know if the function is differentiable or not
 #   we could try some strategies for differentiable obj functions, but putting that on the backburner to focus on strategies for simulation-based functions
 
-
-# nelder-mead uses numpy arrays, so this function converts that to symbolics opt, so we can run interpreter
-# NOTE: "candidate_index" is reserved, can't use for variable name
-def set_symbolics_from_nparray(nparray, index_dict, symbolics_opt, 
-                               opt_info, solutions=[], tree=None):
-    sol_index = int(nparray[0])
-    symbolics_opt = solutions[sol_index]
-
-    # set any rule-based vars
-    if "rules" in opt_info["symbolicvals"]:
-        symbolics_opt = set_rule_vars(opt_info, symbolics_opt)
-
-    return symbolics_opt
 
 # nelder-mead simplex
 # direct search algo (can get stuck in local optima, so may benefit from trying different starting points)
@@ -1450,7 +500,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     start_time = time.time()
 
     # NEW, only optimize for index val, treat resource and nonresource the same
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -1458,11 +507,9 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -1494,7 +541,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             all_solutions_symbolics.append(copy.deepcopy(set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info)))
         for nonresource in opt_info["optparams"]["non_resource"]:
                 #total_sols *= len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
-                total_sols *= (len(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1], opt_info["optparams"]["stepsize"][nonresource])) + 1)
                 new_sols = []
                 for sol_choice in all_solutions_symbolics:
                     #vals = list(range(opt_info["symbolicvals"]["bounds"][nonresource][0], opt_info["symbolicvals"]["bounds"][nonresource][1]+opt_info["optparams"]["stepsize"][nonresource], opt_info["optparams"]["stepsize"][nonresource]))
@@ -1508,8 +554,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
 
                 all_solutions_symbolics = new_sols
 
-        total_sols *= len(solutions)
-
+    total_sols = len(all_solutions_symbolics)
 
 
     # randomly generate starting solution
@@ -1518,10 +563,6 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     candidate_index = all_solutions_symbolics.index(symbolics_opt)
     print("STARTING", candidate_index)
     print(symbolics_opt)
-
-    starting = copy.deepcopy(symbolics_opt)
-    num_sols_time = {}
-    time_cost = {}
 
     # create starting numpy array and index_dict (index: var_name)
     # also create step and bounds arrays
@@ -1559,14 +600,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
             print("EVALED SOL", symbolics_opt)
-            prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+            prev_best = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
     else: # multiple traces, arbitrary name
         if not solutions:
             prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
         else:
             print("EVALED SOL", symbolics_opt)
-            prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+            prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
     no_improv = 0
     res = [[x_start, prev_best]]
     testing_sols.append(copy.deepcopy(symbolics_opt))
@@ -1592,14 +633,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL", symbolics_opt)
-                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         else: # multiple traces, arbitrary name
             if not solutions:
                 score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL", symbolics_opt)
-                score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(score)
@@ -1639,56 +680,42 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     pickle.dump(testing_sols,f)
                 with open('5min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["5min"] = len(testing_sols)
-                time_cost["5min"] = copy.deepcopy(testing_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('10min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["10min"] = len(testing_sols)
-                time_cost["10min"] = copy.deepcopy(testing_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('30min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["30min"] = len(testing_sols)
-                time_cost["30min"] = copy.deepcopy(testing_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('45min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["45min"] = len(testing_sols)
-                time_cost["45min"] = copy.deepcopy(testing_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('60min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["60min"] = len(testing_sols)
-                time_cost["60min"] = copy.deepcopy(testing_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('90min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["90min"] = len(testing_sols)
-                time_cost["90min"] = copy.deepcopy(testing_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_testing_sols_nm.pkl','wb') as f:
                     pickle.dump(testing_sols,f)
                 with open('120min_testing_eval_nm.pkl','wb') as f:
                     pickle.dump(testing_eval,f)
-                num_sols_time["120min"] = len(testing_sols)
-                time_cost["120min"] = copy.deepcopy(testing_eval)
                 break
 
 
@@ -1770,14 +797,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL", symbolics_opt)
-                rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                rscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         else: # multiple traces, arbitrary name
             if not solutions:
                 rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL AFTER REFLECTION", symbolics_opt)
-                rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(rscore)
         print("RES RELFECTION", res)
@@ -1828,14 +855,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL", symbolics_opt)
-                escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                escore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         else: # multiple traces, arbitrary name
             if not solutions:
                 escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL AFTER EXPANSION", symbolics_opt)
-                escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(escore)
             if escore < rscore:
@@ -1892,14 +919,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL", symbolics_opt)
-                cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                cscore = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
         else: # multiple traces, arbitrary name
             if not solutions:
                 cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
             else:
                 print("EVALED SOL AFTER CONTRACTION", symbolics_opt)
-                cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cscore)
         if cscore < res[-1][1]:
@@ -1950,14 +977,14 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
                 else:
                     print("EVALED SOL", symbolics_opt)
-                    score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                    score = gen_cost(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
             else: # multiple traces, arbitrary name
                 if not solutions:
                     score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "neldermead")
                 else:
                     print("EVALED SOL AFTER REDUCTION", symbolics_opt)
-                    score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "ordered")
+                    score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(score)
             nres.append([redx, score])
@@ -1975,10 +1002,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_nm.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    num_sols_time["final"] = len(testing_sols)
-    time_cost["final"] = copy.deepcopy(testing_eval)
-
-    return best_sol, res[0][1], time_cost, num_sols_time, starting
+    return best_sol, res[0][1]
 
     
 # bayesian optimization
@@ -2010,8 +1034,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # step 0: sample domain and get cost (to build surrogate model)
     # compute the total number of solutions we have
     # get total number of solutions, so we know if we've gone through them all
-    # TODO: simplify this, only need to count length of all_solutions_symbolics to get total_sols
-    total_sols = 1
     all_solutions_symbolics = []
     if not solutions:   # we didn't preprocess
         non_preprocess_ranges = {}
@@ -2019,11 +1041,9 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             bound = opt_info["symbolicvals"]["bounds"][bounds_var]
             if bounds_var in opt_info["symbolicvals"]["logs"].values():
                 vals = len(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))
-                total_sols *= vals
                 non_preprocess_ranges[bounds_var] = [2**var_val for var_val in list(range(int(math.log2(bound[0])), int(math.log2(bound[1]))+1))]
                 continue
             vals = len(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
-            total_sols *= vals
             non_preprocess_ranges[bounds_var] = list(range(bound[0], bound[1]+opt_info["optparams"]["stepsize"][bounds_var], opt_info["optparams"]["stepsize"][bounds_var]))
 
         # get all possible solutions given bounds
@@ -2072,7 +1092,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                 sol = set_rule_vars(opt_info, sol)
         #print(all_solutions_symbolics)
         #exit()
-        total_sols *= len(solutions)
 
     total_sols = len(all_solutions_symbolics)
     print("TOTAL_SOLS", total_sols)
@@ -2089,32 +1108,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     sample_xvals = []
 
 
-    '''
-    # randomly sample % of solutions
-    test_index = None
-    test_cost = None
-    while len(sampled_sols) < sample_size:
-        if not solutions:
-            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-            xvals = []
-        else:
-            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            if not test_index:
-                test_index = [copy.deepcopy(symbolics_opt),sample_index]
-            xvals = [sample_index]
-            #for resource in opt_info["optparams"]["order_resource"]:
-            #    xvals.append(symbolics_opt[resource])
-            for nonresource in opt_info["optparams"]["non_resource"]:
-                xvals.append(symbolics_opt[nonresource])       
- 
-        # don't allow repeat samples
-        if symbolics_opt in sampled_sols:
-            #print("REPEAT")
-            continue
-        sampled_sols.append(copy.deepcopy(symbolics_opt))
-        #print("ADDED", symbolics_opt)
-        sample_xvals.append(xvals)
-    '''
     # grid(ish) sampling
     # instead of random, sample every total_samples/sample_size samples
     sample_xvals = [[x] for x in range(0, len(all_solutions_symbolics), int(total_sols/sample_size))]
@@ -2146,13 +1139,13 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             if not solutions:
                 score = gen_cost(sample, sample, opt_info, o, False, "bayesian")
             else:
-                score = gen_cost(sample, sample, opt_info, o, False, "ordered")
+                score = gen_cost(sample, sample, opt_info, o, False, "preprocessed")
         # else, multi trace
         else:
             if not solutions:
                 score = gen_cost_multitrace(sample, sample, opt_info, o, False, "bayesian")
             else:
-                score = gen_cost_multitrace(sample, sample, opt_info, o, False, "ordered")
+                score = gen_cost_multitrace(sample, sample, opt_info, o, False, "preprocessed")
         sample_costs.append(score)
         '''
         if not test_cost:
@@ -2178,28 +1171,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # use index in sol list, not var value
     # pick min value, eval with gen_cost, refit model w/ actual, then repeat
     # keep track of current min
-    '''
-    acq_xsamples = []
-    acq_sample_size = int(0.5*total_sols) 
-    while len(acq_xsamples) < acq_sample_size:
-        if not solutions:
-            symbolics_opt = gen_next_random_nopreprocessing(symbolics_opt, opt_info["symbolicvals"]["logs"], opt_info["symbolicvals"]["bounds"], False, {}, opt_info)
-            xvals = []
-        else:
-            symbolics_opt,sample_index = gen_next_random_preprocessed(bounds_tree, symbolics_opt, solutions, opt_info)
-            xvals = [sample_index]
-            for nonresource in opt_info["optparams"]["non_resource"]:
-                xvals.append(symbolics_opt[nonresource])
-
-        # don't allow repeat samples
-        if xvals in acq_xsamples:
-            #print("REPEAT")
-            continue
-        #print("ADDED", symbolics_opt)
-        acq_xsamples.append(xvals)
-
-    np_acq_xvals = np.array(acq_xsamples)
-    '''
 
     # use var values directly, not index in sol list
     acq_xsamples = []
@@ -2239,9 +1210,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     best_mu = []
     actual_eval = []
 
-    num_sols_time = {}
-    time_cost = {}
-
     iterations = 0
     while True:
         # check iter/time conditions
@@ -2261,56 +1229,42 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                     pickle.dump(best_sols,f)
                 with open('5min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["5min"] = len(best_sols)
-                time_cost["5min"] = copy.deepcopy(actual_eval)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
                 with open('10min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('10min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["10min"] = len(best_sols)
-                time_cost["10min"] = copy.deepcopy(actual_eval)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
                 with open('30min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('30min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["30min"] = len(best_sols)
-                time_cost["30min"] = copy.deepcopy(actual_eval)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
                 with open('45min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('45min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["45min"] = len(best_sols)
-                time_cost["45min"] = copy.deepcopy(actual_eval)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
                 with open('60min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('60min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["60min"] = len(best_sols)
-                time_cost["60min"] = copy.deepcopy(actual_eval)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
                 with open('90min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('90min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["90min"] = len(best_sols)
-                time_cost["90min"] = copy.deepcopy(actual_eval)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
                 with open('120min_best_sols_bayesian.pkl','wb') as f:
                     pickle.dump(best_sols,f)
                 with open('120min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
-                num_sols_time["120min"] = len(best_sols)
-                time_cost["120min"] = copy.deepcopy(actual_eval)
                 break
 
 
@@ -2390,12 +1344,12 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
             if not solutions:
                 score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "bayesian")
             else:
-                score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "ordered")
+                score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "preprocessed")
         else:   # multiple traces, arbitrary names
             if not solutions:
                 score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "bayesian")
             else:
-                score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "ordered")
+                score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "preprocessed")
         print("ACTUAL VALUE:", score)
         actual_eval.append(score)
 
@@ -2415,40 +1369,6 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
         iterations += 1
 
-    '''
-    print("PROB MIN VALUE")
-    print("PROB MU VALUE", mu[ix_prob])
-    print(np_acq_xvals[ix_prob])
-    sol_choice = solutions[np_acq_xvals[ix_prob, 0]]
-    # ARGMAX best values: 87,37
-    # ARGMIN best value: 151 (9 rows, 65536 cols) 
-    for sol in sol_choice:
-        node = bounds_tree.get_node(sol)
-        if node.tag=="root":
-            continue
-        print("var:", node.tag[0], "value:", node.tag[1])
-    '''
-
-    '''
-    print("ARGMIN")
-    print(np_acq_xvals[ix])
-
-    print("MU")
-    ix = np.argmin(mu)
-    print(np_acq_xvals[ix])
-    print("MU VALUE", mu[ix])
-    print(mu)
-
-    print("ACQ VALS")
-    print(np_acq_xvals)
-    '''
-
-    '''
-    print("PREDICT SOL", np_acq_xvals[test_index[1]])
-    print("PREDICT COST", mu[test_index[1]])
-    print("TEST SOL", test_index)
-    print("TEST COST", test_cost)
-    '''
 
     with open('mu.pkl','wb') as f:
         pickle.dump(mu_vals, f)
@@ -2475,5 +1395,5 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("BEST SOL:", sampled_sols[best_index])
     print("BEST EVAL:", best_eval)
 
-
+    return sampled_sols[best_index], best_eval
 

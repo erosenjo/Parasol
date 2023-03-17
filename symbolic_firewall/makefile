@@ -1,6 +1,6 @@
-.PHONY: opttest interp compile layout assemble test exhaustive optimize_timetest dfg preprocess_dfg
-LUCID_DIR = /media/data/mh43/lucid
-OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
+.PHONY: opttest interp compile layout assemble test optimize_timetest dfg preprocess_dfg
+LUCID_DIR = .
+OPT_DIR = optimization_new/
 
 SOURCE := stateful_firewall
 # SOURCE := $(shell basename "*.dpt" .dpt)
@@ -18,17 +18,14 @@ opttest:
 	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen --nopruning --preprocessingonly --efficient
-
-exhaustive:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --notrafficgen --preprocessingonly
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py stateful_firewallopt.json --timetest --shortcut
 
 # run interpreter
 interp: 

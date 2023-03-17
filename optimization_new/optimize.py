@@ -1,4 +1,5 @@
 import time, importlib, argparse, os, sys
+from preprocess import *
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
 
@@ -38,14 +39,11 @@ def main():
     parser.add_argument("optfile", metavar="optfile", help="name of json file with optimization info")
     parser.add_argument("--timetest", help="time test, output results at benchmark times", action="store_true")
     parser.add_argument("--notrafficgen", help="don't call gen_traffic, this is just for testing", action="store_true")
-    parser.add_argument("--nopruning", help="don't do pruning phase of ordered search", action="store_true")
     parser.add_argument("--fullcompile", help="use lucid-p4 compiler instead of layout script", action="store_true")
-    parser.add_argument("--exhaustive", help="test every solution that compiles w interpreter", action="store_true")
     parser.add_argument("--pair", help="hacky solution to identify when we have pair arrays", action="store_true")
     parser.add_argument("--preprocessingonly", help="only do preprocessing, store sols in preprocessed.pkl", action="store_true")
     parser.add_argument("--shortcut", help="don't do preprocessing, load already preprocessed sols from preprocessed.pkl", action="store_true")
     parser.add_argument("--dfg", help="use dataflow analysis instead of layout in preprocessing", action="store_true")
-    parser.add_argument("--efficient", help="try new preprocessing", action="store_true")
     args = parser.parse_args()
 
     '''
@@ -62,58 +60,44 @@ def main():
     # initialize everything we need to run opt algo
     opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen, cwd)
 
+
+    bounds_tree = None
+    solutions = None
+
+    # check if we're doing preprocessing
+    if opt_info["optparams"]["optalgo"] == "preprocess":
+        sols = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.pair, args.shortcut, args.dfg)
+        bounds_tree = sols["tree"]
+        solutions = sols["all_sols"]
+
+        # TODO: save preprocessed sols every time???
+        if args.preprocessingonly:  # only preprocessing, no optimization
+            if args.dfg: # we used dataflow graph heuristic instead of layout
+                with open('preprocessed_dfg.pkl','wb') as f:
+                    pickle.dump(sols, f)
+                return
+            with open('preprocessed.pkl','wb') as f:
+                pickle.dump(sols, f)
+            return
+
     # optimize!
     start_time = time.time()
-    #basin_hopping(symbolics_opt, opt_info,o)
-    #quit()
     # TODO: allow user to pass in func
     if "optalgofile" in opt_info["optparams"]:   # only include field in json if using own algo
         # import module, require function to have standard name and arguments
         user = True
 
-
-    elif opt_info["optparams"]["optalgo"] == "random":    # if not using own, should for sure have optalgo field
-        best_sol, best_cost = random_opt(symbolics_opt, opt_info, o, args.timetest)
-
-    elif opt_info["optparams"]["optalgo"] == "simannealing":
-        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest)
+    elif opt_info["optparams"]["strategy"] == "simannealing":
+        best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
     elif opt_info["optparams"]["optalgo"] == "exhaustive":
-        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest)
+        best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-    elif opt_info["optparams"]["optalgo"] == "bayesian":
-        best_sol, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, [], None)
+    elif opt_info["optparams"]["strategy"] == "bayesian":
+        best_sol, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-    elif opt_info["optparams"]["optalgo"] == "neldermead":
-        best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
-
-    # testing out ordered search
-    elif opt_info["optparams"]["optalgo"] == "ordered":
-        best_costs = []
-        best_sols = []
-        time_costs = []
-        num_sols_time = []
-        starting_sols = []
-        #best_sol, best_cost = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg)
-        for i in range(1): # repeat once times
-            best_sol, best_cost, time_cost, num_sol, starting = ordered(symbolics_opt, opt_info, o, args.timetest, args.nopruning, args.fullcompile, args.exhaustive, args.pair, args.preprocessingonly, args.shortcut, args.dfg, args.efficient)
-            best_costs.append(best_cost)
-            best_sols.append(best_sol)
-            time_costs.append(time_cost)
-            num_sols_time.append(num_sol)
-            starting_sols.append(starting)
-
-        results = {}
-        results["best_costs"] = best_costs
-        results["best_sols"] = best_sols
-        results["time_costs"] = time_costs
-        results["num_sols_time"] = num_sols_time
-        results["starting_sols"] = starting_sols
-        with open("1iter_results.pkl",'wb') as f:
-            pickle.dump(results, f)
-
-    #elif opt_info["optparams"]["optalgo"] == "neldermead":
-    #    best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest)
+    elif opt_info["optparams"]["strategy"] == "neldermead":
+        best_sol, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest, solutions=solutions, tree=bounds_tree)
 
 
     end_time = time.time()
@@ -173,7 +157,7 @@ json fields:
         True: if var==True, list any symbolic vars the corresponding struct doesn't use
         False: if var==False, ^
     optparams: (any info related to optimization algo)
-        optalgo: if using one of our provided functions, tell us the name (random, simannealing)
+        optalgo: if using one of our provided functions, tell us the name (simannealing, bayesian, neldermead)
         optalgofile: if using your own, tell us where to find it (python file)
         stop_iter: num iterations to stop at
         stop_time: time to stop at (in seconds)

@@ -1,23 +1,19 @@
-i.PHONY: opttest interp compile layout assemble test exhaustive optimize_timetest dfg preprocess_dfg
-LUCID_DIR = /media/data/mh43/lucid
-OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
+i.PHONY: opttest interp compile layout assemble test optimize_timetest dfg preprocess_dfg
+LUCID_DIR = .
+OPT_DIR = optimization_new/
 
 # run optimization process (using layout, no traffic gen)
 opttest:
 	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --nopruning --preprocessingonly --efficient
-
-
-exhaustive:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --exhaustive --shortcut
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --notrafficgen --preprocessingonly
 
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py precisionopt.json --nopruning --shortcut --timetest
+	python3 $(OPT_DIR)/optimize.py precisionopt.json --shortcut --timetest
 
 # run interpreter
 interp: 

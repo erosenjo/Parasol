@@ -18,7 +18,7 @@
     "optparams": {
         "order_resource" : ["rows", "cols"],
         "non_resource" : [],
-        "optalgo" : "ordered",
+        "optalgo" : "preprocess",
         "strategy" : "bayesian",
 	    "stop_time" : 8000,
 	    "temp" : 10,

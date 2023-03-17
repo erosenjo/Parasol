@@ -1,5 +1,4 @@
 import subprocess, json, math, pickle, time, os, re
-#from optalgos import *
 
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
 def interp_sim(lucidfile,outfiles,tracefile=None):
@@ -22,95 +21,7 @@ def interp_sim(lucidfile,outfiles,tracefile=None):
     for out in outfiles:
         measurement.append(pickle.load(open(out,"rb")))
 
-    '''
-    # OLD
-    # get the measurement output by interpreter (reg array)
-    measurement = []
-    lastline = ""
-    pipeline = False
-    with open('output.txt','r') as datafile:
-        # skip until we get to the Pipeline line
-        # for cms example, we always want the last reg in the pipeline
-        lines = datafile.readlines()
-        for line in lines:
-            if "Pipeline" in line:
-                pipeline = True
-                lastline = line
-                continue
-            if pipeline:
-                if line.strip()=="]":   # end of reg output, so the last line has the measurement reg
-                    measurement=ast.literal_eval(lastline.split(':')[1].replace(';',',').replace("u32","").strip())
-                    break
-                lastline=line
-
-    '''
     return measurement
-
-'''
-# we need both of these for simulated annealing
-# (not necessary to use sim annealing, can use any optimization)
-# new represents the concretes/measurements from most recent test
-# curr is used to choose next solution, we set curr = new w/ some probability based on the costs
-# (^ specific to simulated annealing)
-curr_cost = 0
-new_cost = 0
-curr_sol = best_sol
-new_sol = best_sol
-# sim annealing params
-temp=100
-# bounds and step_size determine how far we move each iteration
-bounds=[1,5]
-step_size=[1,1]
-# keep track of top x (2) solutions to see if they compile
-top_sols = [best_sol, best_sol]
-
-while True:
-    # sim annealing
-    # we need at least 2 data points for sim annealing, so if it's first iteration just randomly choose next one
-    if iterations < 1:
-        best_cost = new_cost
-        curr_cost = new_cost
-        cols,rows = sim_move()
-        new_sol = [rows,cols]
-        write_symb(rows,cols)
-        # let's keep this list sorted by total memory used (rows*cols)
-        if rows*cols <= best_sol[0]*best_sol[1]:
-            top_sols[0] = new_sol
-        else:
-            top_sols[1] = new_sol
-        iterations += 1
-        continue
-    # we have at least 2 data points, so can do sim annealing
-    curr_sol, curr_cost, new_sol, best_sol, best_cost, temp = simulated_annealing_step(curr_sol,curr_cost,new_sol,new_cost,best_sol,best_cost,temp,iterations,step_size,bounds)
-    write_symb(new_sol[0],new_sol[1])
-    # if the best solution uses less total mem than what's stored in top_sols, replace (or add)
-    if best_sol[0]*best_sol[1] < top_sols[0][0]*top_sols[0][1]:
-        top_sols[1] = top_sols[0]
-        top_sols[0] = best_sol
-    elif best_sol[0]*best_sol[1] < top_sols[1][0]*top_sols[1][1]:
-        top_sols[1] = best_sol
-    iterations += 1
-    # random
-    if iterations < 1:
-        best_cost = new_cost
-        while (rows,cols) in tested_sols:   # don't test the same sols
-            cols,rows = sim_move()
-        best_sol = [rows,cols]
-        write_symb(rows,cols)
-        iterations += 1
-        continue
-
-    #if (new_cost < best_cost) or (new_cost==best_cost and rows*cols <= best_sol[0]*best_sol[1]):
-    if (new_cost < best_cost) or (new_cost==best_cost and cols <= best_sol[1]):
-        best_cost = new_cost
-        best_sol = [rows,cols]
-
-    while (rows,cols) in tested_sols:   # don't test the same sols
-        cols,rows = sim_move()
-    tested_sols.append((rows,cols))
-    write_symb(rows,cols)
-    iterations += 1
-    '''
 
 
 def write_symb(sizes, symbolics, logs, symfile, opt_info):
@@ -236,8 +147,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
     '''
 
     # compile to p4 and check if stgs <= tofino
-    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
-    if searchtype != "ordered":
+    # if we didn't preprocess, compile to check stgs first
+    if searchtype != "preprocessed":
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]
@@ -261,8 +172,8 @@ def gen_cost_multitrace(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, sea
     write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
 
     # compile to p4 and check if stgs <= tofino
-    # if we're not doing ordered search (w/ preprocessing), compile to check stgs first
-    if searchtype != "ordered":
+    # if we didn't preprocess, compile to check stgs first
+    if searchtype != "preprocessed":
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]
