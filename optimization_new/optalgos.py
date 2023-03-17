@@ -281,7 +281,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
 
         # if we've tested every solution, quit
-        if len(list(set(tested_sols))) == total_sols:
+        if len(tested_sols) == total_sols:
             break
 
         # TODO: should we test repeated sols????
@@ -300,7 +300,8 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
             else:
                 candidate_cost = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
 
-        tested_sols.append(copy.deepcopy(symbolics_opt))
+        if symbolics_opt not in tested_sols:
+            tested_sols.append(copy.deepcopy(symbolics_opt))
 
         # incr iteration
         iterations += 1
@@ -808,7 +809,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(rscore)
         print("RES RELFECTION", res)
-        if res[0][1] <= rscore < res[-2][1]:
+        if res[0][1] <= rscore < res[-1][1]:
             del res[-1]
             res.append([xr, rscore])
             if res[0][0] == res[1][0]:
@@ -863,22 +864,22 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             else:
                 print("EVALED SOL AFTER EXPANSION", symbolics_opt)
                 escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
-            testing_sols.append(copy.deepcopy(symbolics_opt))
-            testing_eval.append(escore)
-            if escore < rscore:
-                del res[-1]
-                res.append([xe, escore])
-                if res[0][0] == res[1][0]:
-                    print("SAME, expansion1")
-                    break
-                continue
-            else:
-                del res[-1]
-                res.append([xr, rscore])
-                if res[0][0] == res[1][0]:
-                    print("SAME, expansion2")
-                    break
-                continue
+        testing_sols.append(copy.deepcopy(symbolics_opt))
+        testing_eval.append(escore)
+        if escore < rscore:
+            del res[-1]
+            res.append([xe, escore])
+            if res[0][0] == res[1][0]:
+                print("SAME, expansion1")
+                break
+            continue
+        else:
+            del res[-1]
+            res.append([xr, rscore])
+            if res[0][0] == res[1][0]:
+                print("SAME, expansion2")
+                break
+            continue
 
         # contraction
         xc = x0 + rho*(x0 - res[-1][0])
@@ -994,6 +995,12 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
             print("SAME, reduction")
             break
 
+
+    print("TESTED SOLS", testing_sols)
+    print("TESTED EVALS", testing_eval)
+    print("BEST EVAL", min(testing_eval))
+    print("BEST SOL", testing_sols[testing_eval.index(min(testing_eval))])
+    print("RES", res)
 
     # NEW, only optimize for index val
     best_sol = set_symbolics_from_nparray(res[0][0], index_dict, symbolics_opt, opt_info, all_solutions_symbolics, tree)
