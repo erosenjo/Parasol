@@ -76,7 +76,7 @@ def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, ful
 # TODO: is there a better way to do this??? 
 # basically we're building a tree
 # each node is a concrete choice for a var, and the children are possible choices for the var that's the next level down
-def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile, pair, efficient, dfg):
+def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile, pair, dfg):
     #print("ROOT:",root)
     #print("TOFIND:", to_find)
     #print("SYMBOLICSOPT:", symbolics_opt)
@@ -88,7 +88,7 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
         # set the value for this variable
         symbolics_opt[child.tag[0]] = child.tag[1]
         # move down a level to choose a value for the next variable
-        build_bounds_tree(tree, child.identifier, to_find, symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
+        build_bounds_tree(tree, child.identifier, to_find, symbolics_opt, opt_info, fullcompile, pair, dfg)
 
     if not children:
         # find the bounds for the next variable in the list, given the values for the previous
@@ -146,10 +146,10 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
         if not to_find[1:]: # we're done! we've found all vars for this path
             return
         else:   # we still have more variables to find bounds for, so keep going
-            build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
+            build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, dfg)
 
 
-def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut, dfg, efficient):
+def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut, dfg):
     opt_start_time = time.time()
 
     # if we're shortcutting, we've already done the preprocessing, so load from preprocessed.pkl 
@@ -157,11 +157,6 @@ def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut
         sols = pickle.load(open('preprocessed.pkl','rb'))
         bounds_tree = sols["tree"]
         solutions = sols["all_sols"]
-        if not efficient:
-            best_mem_sols = sols["mem_sols"]
-            best_stgs_sols = sols["stgs_sols"]
-            best_hash_sols = sols["hash_sols"]
-            best_regaccess_sols = sols["regaccess_sols"]
 
     else:
         # STEP 1: reduce parameter space by removing solutions that don't compile
@@ -185,7 +180,7 @@ def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut
             symbolics_opt["eviction"] = True
             #symbolics_opt["rows"] = 1
             #symbolics_opt["cols"] = 2
-        build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair, efficient, dfg)
+        build_bounds_tree(bounds_tree,"root", opt_info["optparams"]["order_resource"], symbolics_opt, opt_info, fullcompile, pair, dfg)
 
         print("UPPER BOUND TIME:", time.time()-opt_start_time)
 

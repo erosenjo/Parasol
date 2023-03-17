@@ -1,4 +1,4 @@
-import time, importlib, argparse, os, sys
+import time, importlib, argparse, os, sys, json
 from preprocess import *
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
