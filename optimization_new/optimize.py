@@ -90,7 +90,7 @@ def main():
     elif opt_info["optparams"]["strategy"] == "simannealing":
         best_sol, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-    elif opt_info["optparams"]["optalgo"] == "exhaustive":
+    elif opt_info["optparams"]["strategy"] == "exhaustive":
         best_sol, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
     elif opt_info["optparams"]["strategy"] == "bayesian":
