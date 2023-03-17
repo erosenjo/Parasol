@@ -1,0 +1,50 @@
+{
+    "symbolicvals" : {
+        "sizes": {
+            "max_short_idx" : 1,
+            "num_long" : 4,
+            "log_s_slots" : 13,
+            "log_l_slots" : 12,
+            "num_short" : 2
+        },
+        "symbolics": {
+            "S_SLOTS" : 8192,
+            "L_SLOTS" : 32
+        },
+        "logs": {
+            "dummy_var" : "num_short",
+            "log_s_slots" : "S_SLOTS",
+            "log_l_slots": "L_SLOTS"
+        },
+        "bounds" : {
+            "S_SLOTS" : [32,131072],
+            "L_SLOTS" : [32,131072],
+            "num_long": [1,20],
+            "num_short" : [2,32]
+        },
+        "rules": {
+            "max_short_idx" : "num_short - 1"
+        }
+    },
+    "optparams": {
+        "optalgo" : "preprocess",
+        "strategy": "exhaustive",
+        "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
+        "non_resource" : [],
+        "stop_time" : 8000,
+        "samplesize" : 0.002,
+        "temp" : 1000,
+        "stepsize": {
+            "max_short_idx" : 3,
+            "num_long" : 3,
+            "S_SLOTS" : 5000,
+            "L_SLOTS" : 5000
+        }
+    },
+    "symfile" : "starflow.symb",
+    "lucidfile" : "starflow.dpt",
+    "outputfiles" : ["total.pkl"],
+    "optmodule" : "starflowopt",
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap"]
+
+}

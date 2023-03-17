@@ -1,45 +1,45 @@
 {
     "symbolicvals" : {
-	"sizes": {
-        "LOG_CQ_H": 2,
-	    "H": 4,
-        "LOG_CQ_C": 5,
-        "R": 2,
-        "LOG_CQ_T": 4,
-        "T": 1
-	},
-	"symbolics": {
-	    "C": 32
-	},
-	"logs" : {
-	    "LOG_CQ_H" : "H",
-        "LOG_CQ_C" : "C"
-	},
-    "bounds" : {
-        "H" : [4,32],
-        "R" : [1,20],
-        "C" : [32, 131072]
-	},
-    "rules" : {
-        "T" : "LOG_CQ_H - 1",
-        "LOG_CQ_T" : "21"
-    }
+	    "sizes": {
+            "LOG_CQ_H": 2,
+            "H": 4,
+            "LOG_CQ_C": 5,
+            "R": 2,
+            "LOG_CQ_T": 4,
+            "T": 1
+    	},
+	    "symbolics": {
+	        "C": 32
+    	},
+	    "logs" : {
+            "LOG_CQ_H" : "H",
+            "LOG_CQ_C" : "C"
+        },
+        "bounds" : {
+            "H" : [4,32],
+            "R" : [1,20],
+            "C" : [32, 131072]
+        },
+        "rules" : {
+            "T" : "LOG_CQ_H - 1",
+            "LOG_CQ_T" : "21"
+        }
     },
     "optparams": {
-    "optalgo" : "preprocess",
-    "strategy" : "exhaustive",
-	"stop_time" : 8000,
-    "order_resource" : ["H", "R", "C"],
-    "non_resource" : [],
-	"temp" : 1000,
-    "maxcost" : 1,
-	"stepsize": {
-	    "H" : 1,
-	    "C" : 20,
-        "R" :1,
-        "LOG_CQ_T": 1,
-        "T" : 1
-	}
+        "optalgo" : "preprocess",
+        "strategy" : "exhaustive",
+        "stop_time" : 8000,
+        "order_resource" : ["H", "R", "C"],
+        "non_resource" : [],
+        "temp" : 1000,
+        "maxcost" : 1,
+        "stepsize": {
+            "H" : 1,
+            "C" : 20,
+            "R" :1,
+            "LOG_CQ_T": 1,
+            "T" : 1
+        }
     },
     "symfile" : "conquest.symb",
     "lucidfile" : "conquest.dpt",

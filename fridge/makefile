@@ -1,24 +1,24 @@
 .PHONY: opttest optimize_timetest interp compile layout assemble test layout dfg preprocess_dfg
-LUCID_DIR = .
-OPT_DIR = optimization_new/
+LUCID_DIR = /media/data/mh43/lucid
+OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --preprocessingonly
 
 preprocess_dfg:
-	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly --dfg
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --preprocessingonly --dfg
 
 preprocess_efficient:
-	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --nopruning --preprocessingonly
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --notrafficgen --preprocessingonly 
 
 # run p4all optimizer, time test
 optimize_timetest:
-	python3 $(OPT_DIR)/optimize.py fridgeopt.json --timetest --nopruning --shortcut
+	python3 $(OPT_DIR)/optimize.py fridgeopt.json --timetest --shortcut
 
 # run interpreter
 interp: 
-	$(LUCID_DIR)/dpt --suppress-final-state fridge.dpt --spec fridge.json
+	$(LUCID_DIR)/dpt --suppress-final-state fridge.dpt 
 
 # compile Lucid to P4
 compile: 

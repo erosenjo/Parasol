@@ -17,23 +17,25 @@
         "log_l_slots": "L_SLOTS"
     },
     "bounds" : {
-        "S_SLOTS" : [32,131072],
-        "L_SLOTS" : [32,131072],
-        "num_long": [1,20],
-        "num_short" : [2,32]
+        "num_long" : [1,16],
+        "num_short" : [2, 16],
+        "S_SLOTS" : [32, 131072],
+        "L_SLOTS" : [32, 131072]
     },
     "rules": {
         "max_short_idx" : "num_short - 1"
     }
     },
     "optparams": {
-    "optalgo" : "preprocess",
-    "strategy": "exhaustive",
+    "optalgo" : "ordered",
+    "strategy": "neldermead",
     "prune_res": [],
     "order_resource": ["num_short", "num_long", "S_SLOTS", "L_SLOTS"],
     "non_resource" : [],
+    "mem_formula" : "(num_short*S_SLOTS)+(num_long*L_SLOTS)",
+    "hash_formula" : "num_short + num_long",
+    "regaccess_formula" : "num_short + num_long",
     "stop_time" : 8000,
-    "samplesize" : 0.002,
     "temp" : 1000,
     "stepsize": {
        "max_short_idx" : 3,
@@ -46,6 +48,6 @@
     "lucidfile" : "starflow.dpt",
     "outputfiles" : ["total.pkl"],
     "optmodule" : "starflowopt",
-    "trafficpcap" : ["pcap"]
+    "trafficpcap" : "univ1_pt1.pcap"
 
 }

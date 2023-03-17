@@ -33,6 +33,6 @@
     "lucidfile" : "precision.dpt",
     "outputfiles" : ["counts.pkl"],
     "optmodule" : "precisionopt",
-    "trafficpcap" : "pcap_file"
+    "trafficpcap" : "/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
 
 }

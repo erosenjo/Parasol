@@ -2,7 +2,7 @@
     "symbolicvals" : {
 	    "sizes": {
             "logcols": 5,
-	        "rows": 1
+            "rows": 1
 	    },
 	    "symbolics": {
 	        "cols": 32
@@ -20,11 +20,11 @@
         "non_resource" : [],
         "optalgo" : "preprocess",
         "strategy" : "bayesian",
-	    "stop_time" : 8000,
-	    "temp" : 10,
+        "stop_time" : 8000,
+        "temp" : 10,
         "maxcost" : 50000, 
         "samplesize": 0.01, 
-	    "stepsize": {
+        "stepsize": {
 	        "cols" : 5000,
 	        "rows" : 1
 	    }
@@ -33,6 +33,6 @@
     "lucidfile" : "cms_sym.dpt",
     "outputfiles" : ["test.pkl"],
     "optmodule" : "cmsopt",
-    "trafficpcap" : "pcap_file"
+    "trafficpcap" : "/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
 
 }

@@ -1,10 +1,10 @@
 .PHONY: opttest interp compile layout assemble test preprocess_dfg optimize_timetest dfg
-LUCID_DIR = .
-OPT_DIR = optimization_new/
+LUCID_DIR = /media/data/mh43/lucid
+OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
-	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --shortcut --nopruning
+	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --shortcut
 
 preprocess_dfg:
 	python3 $(OPT_DIR)/optimize.py conquestopt.json --notrafficgen --preprocessingonly --dfg

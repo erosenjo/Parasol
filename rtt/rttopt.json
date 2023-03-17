@@ -35,6 +35,6 @@
     "lucidfile" : "rtt.dpt",
     "outputfiles" : ["numsamples.pkl"],
     "optmodule" : "rttopt",
-    "trafficpcap" : ["pcap"]
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap"]
 
 }

@@ -1,23 +1,23 @@
 {
     "symbolicvals" : {
-    "sizes": {
-        "logentries": 4,
-        "stages":2
-    },
-    "symbolics": {
-        "entries": 128,
-        "timeout" : 100000000,
-        "interscan_delay" : 10000000
-    },
-    "logs" : {
-        "logentries" : "entries"
-    },
-    "bounds" : {
-        "stages": [1,20],
-        "entries": [32, 131072],
-        "timeout": [1000000,1000000000],
-        "interscan_delay" : [100000000,1000000000]
-    }
+        "sizes": {
+            "logentries": 4,
+            "stages":2
+        },
+        "symbolics": {
+            "entries": 128,
+            "timeout" : 100000000,
+            "interscan_delay" : 10000000
+        },
+        "logs" : {
+            "logentries" : "entries"
+        },
+        "bounds" : {
+            "stages": [1,20],
+            "entries": [32, 131072],
+            "timeout": [1000000,1000000000],
+            "interscan_delay" : [100000000,1000000000]
+        }
     },
     "optparams": {
         "optalgo" : "preprocess",
@@ -30,7 +30,7 @@
         "samplesize": 0.002,
         "stepsize": {
             "stages": 1,
-	        "entries": 512,
+            "entries": 512,
             "timeout": 50000000,
             "interscan_delay": 100000000
         }
@@ -39,6 +39,6 @@
     "lucidfile" : "stateful_firewall.dpt",
     "outputfiles" : ["stateful_firewall_out_trace.pkl"],
     "optmodule" : "stateful_firewallopt",
-    "trafficpcap" : ["pcap"]
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap"]
 
 }

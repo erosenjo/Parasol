@@ -11,7 +11,7 @@
             "cols": 128,
             "eviction": true,
             "expire_thresh": 50000000,
-        	"THRESH" : 50
+            "THRESH" : 50
         },
         "logs" : {
             "logentries": "entries",
@@ -23,7 +23,7 @@
             "rows" : [1,20],
             "cols" : [32, 131072],
             "expire_thresh": [500000,50000000],
-        	"THRESH" : [5000, 100000]
+            "THRESH" : [5000, 100000]
         },
         "rules" : {
             "eviction": "True"
@@ -48,7 +48,7 @@
             "cols" : 5000,
             "rows" : 2,
             "expire_thresh": 5000000,
-	        "THRESH": 30000
+            "THRESH": 30000
         }
     },
     "symfile" : "caching.symb",

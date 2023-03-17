@@ -1,0 +1,38 @@
+{
+    "symbolicvals" : {
+        "sizes": {
+            "log_flowlets": 5
+        },
+        "symbolics": {
+            "flowlets" : 32,
+            "IPG_thresh": 60000000
+        },
+        "logs" : {
+            "log_flowlets" : "flowlets"
+        },
+        "bounds" : {
+            "flowlets" : [32,131072],
+            "IPG_thresh" : [1000000, 100000000]
+        }
+    },
+    "optparams": {
+        "order_resource" : ["flowlets"],
+        "non_resource" : ["IPG_thresh"],
+        "optalgo" : "preprocess",
+        "strategy" : "exhaustive",
+        "stop_time" : 8000,
+        "temp" : 10,
+        "samplesize": 0.1,
+        "maxcost": 100,
+        "stepsize": {
+            "flowlets" : 100,
+            "IPG_thresh" : 10000000
+        }
+    },
+    "symfile" : "flowletswitching.symb",
+    "lucidfile" : "flowletswitching.dpt",
+    "outputfiles" : ["pkthops.pkl"],
+    "optmodule" : "flowletswitchingopt",
+    "trafficpcap" : "/media/data/mh43/Lucid4All/traces/equinix-chicago.dirA.20160121-125911.UTC.anon.pcap"
+
+}

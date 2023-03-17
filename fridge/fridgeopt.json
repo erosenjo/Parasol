@@ -1,23 +1,23 @@
 {
     "symbolicvals" : {
-    "sizes": {
-        "log_fridge": 10,
-        "ENTRY_PROB_LOG2": 5
-    },
-    "symbolics": {
-	    "fridge_size" : 32
-    },
-    "logs" : {
-        "log_fridge" : "fridge_size"
-    },
-    "bounds" : {
-        "ENTRY_PROB_LOG2": [1,15],
-	    "fridge_size" : [32, 131072]
-    }
+        "sizes": {
+            "log_fridge": 10,
+            "ENTRY_PROB_LOG2": 5
+        },
+        "symbolics": {
+            "fridge_size" : 32
+        },
+        "logs" : {
+            "log_fridge" : "fridge_size"
+        },
+        "bounds" : {
+            "ENTRY_PROB_LOG2": [1,15],
+            "fridge_size" : [32, 131072]
+        }
     },
     "optparams": {
         "optalgo" : "preprocess",
-        "strategy" : "exhaustive",
+        "strategy" : "neldermead",
         "stop_time" : 8000,
         "order_resource": ["fridge_size"],
         "non_resource" : ["ENTRY_PROB_LOG2"],
@@ -26,13 +26,13 @@
         "maxcost": 100,
         "stepsize": {
             "ENTRY_PROB_LOG2": 1,
-	        "fridge_size": 100
+            "fridge_size": 100
         }
     },
     "symfile" : "fridge.symb",
     "lucidfile" : "fridge.dpt",
     "outputfiles" : ["rtt_correction.pkl"],
     "optmodule" : "fridgeopt",
-    "trafficpcap" : ["pcap_file"]
+    "trafficpcap" : ["/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt1.pcap", "/media/data/mh43/Lucid4All/traces/univ_pcap/univ1_pt2.pcap"]
 
 }
