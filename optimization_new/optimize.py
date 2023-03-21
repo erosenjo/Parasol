@@ -149,7 +149,7 @@ def main():
 
         end_time = time.time()
         # write symb with final sol
-        update_sym_sizes(best_sol, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
+        update_sym_sizes(best_sols[0], opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
         write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], opt_info["symbolicvals"]["logs"], opt_info["symfile"], opt_info)
 
 

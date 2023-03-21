@@ -1172,6 +1172,9 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     #exit()
 
 
+    best_sols = []
+    best_cost = float('inf')
+
     # we're including sample time in overall time
     start_time = time.time()
 
@@ -1196,6 +1199,11 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         if not test_cost:
             test_cost = score
         '''
+        if score < best_cost:
+            best_cost = score
+            best_sols = [copy.deepcopy(sample)]
+        elif score == best_cost:
+            best_sols.append(copy.deepcopy(sample))
 
     np_yvals = np.array(sample_costs)
 
@@ -1251,7 +1259,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
      
     mu_vals = []
-    best_sols = []
+    testing_sols = []
     best_mu = []
     actual_eval = []
 
@@ -1270,44 +1278,44 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
         if timetest:
             # 5 min (< 10)
             if 300 <= (curr_time - start_time) < 600:
-                with open('5min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('5min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('5min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 10 min (< 30)
             if 600 <= (curr_time - start_time) < 1800:
-                with open('10min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('10min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('10min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 30 min
             if 1800 <= (curr_time - start_time) < 2700:
-                with open('30min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('30min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('30min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 45 min
             if 2700 <= (curr_time - start_time) < 3600:
-                with open('45min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('45min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('45min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 60 min
             if 3600 <= (curr_time - start_time) < 5400:
-                with open('60min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('60min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('60min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 90 min
             if 5400 <= (curr_time - start_time) < 7200:
-                with open('90min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('90min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('90min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
             # 120  min (end)
             if 7200 <= (curr_time - start_time):
-                with open('120min_best_sols_bayesian.pkl','wb') as f:
-                    pickle.dump(best_sols,f)
+                with open('120min_testing_sols_bayesian.pkl','wb') as f:
+                    pickle.dump(testing_sols,f)
                 with open('120min_actual_eval_bayesian.pkl','wb') as f:
                     pickle.dump(actual_eval,f)
                 break
@@ -1384,7 +1392,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
 
         # eval best choice, fit model w/ new value
         #symbolics_opt = set_symbolics_from_tree_solution(sol_choice, symbolics_opt, bounds_tree)
-        best_sols.append(copy.deepcopy(sol_choice))
+        testing_sols.append(copy.deepcopy(sol_choice))
         if "interp_traces" not in opt_info: # single trace, same name as dpt file
             if not solutions:
                 score = gen_cost(sol_choice, sol_choice, opt_info, o, False, "bayesian")
@@ -1397,6 +1405,12 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
                 score = gen_cost_multitrace(sol_choice, sol_choice, opt_info, o, False, "preprocessed")
         print("ACTUAL VALUE:", score)
         actual_eval.append(score)
+
+        if score < best_cost:
+            best_cost = score
+            best_sols = [copy.deepcopy(sol_choice)]
+        elif score == best_cost:
+            best_sols.append(copy.deepcopy(sol_choice))
 
         # udpate w/ new value (np_acq_xvals[ix], score)
         # check if we've already evaluated this one (if not, add)
@@ -1424,8 +1438,8 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     with open('final_actual_eval.pkl','wb') as f:
         pickle.dump(actual_eval,f)
 
-    with open('final_best_sols.pkl','wb') as f:
-        pickle.dump(best_sols,f)
+    with open('final_testing_sols.pkl','wb') as f:
+        pickle.dump(testing_sols,f)
 
     with open('final_testing_sols.pkl','wb') as f:
         pickle.dump(sampled_sols, f)
@@ -1440,5 +1454,5 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("BEST SOL:", sampled_sols[best_index])
     print("BEST EVAL:", best_eval)
 
-    return sampled_sols[best_index], best_eval
+    return best_sols, best_cost
 
