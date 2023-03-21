@@ -135,9 +135,11 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
         symbolics_opt = symbolics_opt_vars
 
 
-    # generate symbolic file
-    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
-    write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
+    # if this is trace version, we only need to write symbolic once at the beginning
+    if searchtype != "trace":
+        # generate symbolic file
+        update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"]) # python passes dicts as reference, so this is fine
+        write_symb(opt_info["symbolicvals"]["sizes"],opt_info["symbolicvals"]["symbolics"],opt_info["symbolicvals"]["logs"],opt_info["symfile"], opt_info)
 
     '''
     # moving generation of symbolic file to compile_num_stages function
@@ -148,7 +150,8 @@ def gen_cost(symbolics_opt_vars,syms_opt, opt_info, o, scipyalgo, searchtype):
 
     # compile to p4 and check if stgs <= tofino
     # if we didn't preprocess, compile to check stgs first
-    if searchtype != "preprocessed":
+    # if this is the trace version, assume that we've already verified it compiles
+    if searchtype != "preprocessed" and searchtype != "trace":
         res = layout(symbolics_opt, opt_info)
         if res["stages"] > 12:  # we won't fit on the switch
             return opt_info["optparams"]["maxcost"]

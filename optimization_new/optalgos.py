@@ -342,7 +342,7 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
 
 
     # return first sol in list of sols
-    return best_sols[0], best_cost
+    return best_sols, best_cost
 
 # EXHAUSTIVE SEARCH
 def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
@@ -436,7 +436,7 @@ def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("EXHAUSTIVE SEARCH TIME:", time.time()-start_time)
     print("NUM SOLS:", len(all_solutions_symbolics))
 
-    return best_sols[0], best_cost
+    return best_sols, best_cost
 
 
 
@@ -610,6 +610,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         else:
             print("EVALED SOL", symbolics_opt)
             prev_best = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
+
+    best_sols = [copy.deepcopy(symbolics_opt)]
+    best_cost = prev_best
+
     no_improv = 0
     res = [[x_start, prev_best]]
     testing_sols.append(copy.deepcopy(symbolics_opt))
@@ -648,6 +652,11 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
         testing_eval.append(score)
         res.append([x, score])
 
+        if score < best_cost:
+            best_cost = score
+            best_sols = [copy.deepcopy(symbolics_opt)]
+        elif score==best_cost:
+            best_sols.append(copy.deepcopy(symbolics_opt)) 
 
     print("RES AFTER FIRST 2", res)
 
@@ -809,6 +818,13 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 rscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(rscore)
+
+        if rscore < best_cost:
+            best_cost = rscore
+            best_sols = [copy.deepcopy(symbolics_opt)]
+        elif rscore==best_cost:
+            best_sols.append(copy.deepcopy(symbolics_opt))
+
         print("RES RELFECTION", res)
         if res[0][1] <= rscore < res[-1][1]:
             del res[-1]
@@ -867,6 +883,13 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 escore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(escore)
+
+        if escore < best_cost:
+            best_cost = escore
+            best_sols = [copy.deepcopy(symbolics_opt)]
+        elif escore==best_cost:
+            best_sols.append(copy.deepcopy(symbolics_opt))
+
         if escore < rscore:
             del res[-1]
             res.append([xe, escore])
@@ -931,6 +954,13 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                 cscore = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
         testing_sols.append(copy.deepcopy(symbolics_opt))
         testing_eval.append(cscore)
+
+        if cscore < best_cost:
+            best_cost = cscore
+            best_sols = [copy.deepcopy(symbolics_opt)]
+        elif cscore==best_cost:
+            best_sols.append(copy.deepcopy(symbolics_opt))
+
         if cscore < res[-1][1]:
             del res[-1]
             res.append([xc, cscore])
@@ -989,6 +1019,13 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
                     score = gen_cost_multitrace(symbolics_opt, symbolics_opt, opt_info, o, False, "preprocessed")
             testing_sols.append(copy.deepcopy(symbolics_opt))
             testing_eval.append(score)
+
+            if score < best_cost:
+                best_cost = score
+                best_sols = [copy.deepcopy(symbolics_opt)]
+            elif score==best_cost:
+                best_sols.append(copy.deepcopy(symbolics_opt))
+
             nres.append([redx, score])
             print("new redx reduction, redx")
         res = nres
@@ -1010,7 +1047,7 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_nm.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    return best_sol, res[0][1]
+    return best_sols, best_cost
 
     
 # bayesian optimization
