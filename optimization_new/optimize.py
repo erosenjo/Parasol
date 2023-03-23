@@ -78,113 +78,87 @@ def main():
     # get current working directory
     cwd = os.getcwd()
 
-    # TODO: this duplicates what's already in init_opt, either remove it from the function or remove it here
-    opt_info = json.load(open(args.optfile))
+    # initialize everything we need to run opt algo
+    opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen, cwd)
 
-    '''
-    OPTIMIZE TRACE: keep symbolic values/struct configuration the same; change attributes of the input trace each iteration
-    '''
-    if opt_info["optparams"]["optalgo"] == "trace":
-        opt_info, symbolics_opt, o, trace_params, trace_bounds = init_opt_trace(args.optfile, cwd)
-        # write symbolic file w/ vals given in json
-        update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
-        write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], [], opt_info["symfile"], opt_info)
+    bounds_tree = None
+    solutions = None
 
-        # TODO: put this in a loop/function outside of optimize.py (e.g., optalgos.py)
-        if opt_info["optparams"]["strategy"] == "random":
-            # generate trace
-            o.gen_traffic(trace_params)
-            # get cost
-            cost = gen_cost(symbolics_opt,symbolics_opt,opt_info, o,False, "trace")
-            print(cost)
-        else:
-            exit("input strategy is not implemented for trace version of parasol")
+    # check if we're doing preprocessing
+    if "optalgo" in opt_info["optparams"] and opt_info["optparams"]["optalgo"] == "preprocess":
+        sols = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.pair, args.shortcut, args.dfg)
+        bounds_tree = sols["tree"]
+        solutions = sols["all_sols"]
 
-    else:
-        '''
-        OPTIMIZE SYMBOLICS: original parasol, each iteration tests different data structure configuration
-        '''
-        # initialize everything we need to run opt algo
-        opt_info,symbolics_opt, o = init_opt(args.optfile, args.notrafficgen, cwd)
-
-        bounds_tree = None
-        solutions = None
-
-        # check if we're doing preprocessing
-        if "optalgo" in opt_info["optparams"] and opt_info["optparams"]["optalgo"] == "preprocess":
-            sols = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.pair, args.shortcut, args.dfg)
-            bounds_tree = sols["tree"]
-            solutions = sols["all_sols"]
-
-            # TODO: save preprocessed sols every time???
-            if args.preprocessingonly:  # only preprocessing, no optimization
-                if args.dfg: # we used dataflow graph heuristic instead of layout
-                    with open('preprocessed_dfg.pkl','wb') as f:
-                        pickle.dump(sols, f)
-                    return
-                with open('preprocessed.pkl','wb') as f:
+        # TODO: save preprocessed sols every time???
+        if args.preprocessingonly:  # only preprocessing, no optimization
+            if args.dfg: # we used dataflow graph heuristic instead of layout
+                with open('preprocessed_dfg.pkl','wb') as f:
                     pickle.dump(sols, f)
                 return
+            with open('preprocessed.pkl','wb') as f:
+                pickle.dump(sols, f)
+            return
 
 
-        # optimize!
-        start_time = time.time()
-        # TODO: allow user to pass in func
-        if "optalgofile" in opt_info["optparams"]:   # only include field in json if using own algo
-            # import module, require function to have standard name and arguments
-            user = True
+    # optimize!
+    start_time = time.time()
+    # TODO: allow user to pass in func
+    if "optalgofile" in opt_info["optparams"]:   # only include field in json if using own algo
+        # import module, require function to have standard name and arguments
+        user = True
 
-        elif opt_info["optparams"]["strategy"] == "simannealing":
-            best_sols, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+    elif opt_info["optparams"]["strategy"] == "simannealing":
+        best_sols, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-        elif opt_info["optparams"]["strategy"] == "exhaustive":
-            best_sols, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+    elif opt_info["optparams"]["strategy"] == "exhaustive":
+        best_sols, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-        elif opt_info["optparams"]["strategy"] == "bayesian":
-            best_sols, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+    elif opt_info["optparams"]["strategy"] == "bayesian":
+        best_sols, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
-        elif opt_info["optparams"]["strategy"] == "neldermead":
-            best_sols, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest, solutions=solutions, tree=bounds_tree)
-
-
-        end_time = time.time()
-        # write symb with final sol
-        update_sym_sizes(best_sols[0], opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
-        write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], opt_info["symbolicvals"]["logs"], opt_info["symfile"], opt_info)
+    elif opt_info["optparams"]["strategy"] == "neldermead":
+        best_sols, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest, solutions=solutions, tree=bounds_tree)
 
 
-
-        '''
-        # try compiling to tofino?
-        # we could test the top x solutions to see if they compile --> if they do, we're done!
-        # else, we can repeat optimization, excluding solutions we now know don't compile
-        # (we have to have a harness p4 file for this step, but not for interpreter)
-        # NOTE: use vagrant vm to compile
-        for sol in top_sols:
-            write_symb(sol[0],sol[1])
-            # compile lucid to p4
-            cmd_lp4 = ["../../dptc cms_sym.dpt ip_harness.p4 linker_config.json cms_sym_build --symb cms_sym.symb"]
-            ret_lp4 = subprocess.run(cmd_lp4, shell=True)
-            # we shouldn't have an issue compiling to p4, but check anyways
-            if ret_lp4.returncode != 0:
-                print("error compiling lucid code to p4")
-                break
-            # compile p4 to tofino
-            cmd_tof = ["cd cms_sym_build; make build"]
-            ret_tof = subprocess.run(cmd_tof, shell=True)
-            # return value of make build will always be 0, even if it fails to compile
-            # how can we check if it compiles????
-
-            # if compiles, break bc we've found a soluion
-        '''
+    end_time = time.time()
+    # write symb with final sol
+    update_sym_sizes(best_sols[0], opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
+    write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], opt_info["symbolicvals"]["logs"], opt_info["symfile"], opt_info)
 
 
-        print("BEST:")
-        print(best_sols[0])
-        print("BEST COST:")
-        print(best_cost)
-        print("TIME(s):")
-        print(end_time-start_time)
+
+    '''
+    # try compiling to tofino?
+    # we could test the top x solutions to see if they compile --> if they do, we're done!
+    # else, we can repeat optimization, excluding solutions we now know don't compile
+    # (we have to have a harness p4 file for this step, but not for interpreter)
+    # NOTE: use vagrant vm to compile
+    for sol in top_sols:
+        write_symb(sol[0],sol[1])
+        # compile lucid to p4
+        cmd_lp4 = ["../../dptc cms_sym.dpt ip_harness.p4 linker_config.json cms_sym_build --symb cms_sym.symb"]
+        ret_lp4 = subprocess.run(cmd_lp4, shell=True)
+        # we shouldn't have an issue compiling to p4, but check anyways
+        if ret_lp4.returncode != 0:
+            print("error compiling lucid code to p4")
+            break
+        # compile p4 to tofino
+        cmd_tof = ["cd cms_sym_build; make build"]
+        ret_tof = subprocess.run(cmd_tof, shell=True)
+        # return value of make build will always be 0, even if it fails to compile
+        # how can we check if it compiles????
+
+        # if compiles, break bc we've found a soluion
+    '''
+
+
+    print("BEST:")
+    print(best_sols[0])
+    print("BEST COST:")
+    print(best_cost)
+    print("TIME(s):")
+    print(end_time-start_time)
 
 
 

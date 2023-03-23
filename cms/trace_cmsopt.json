@@ -21,7 +21,6 @@
         "rate" : [1000, 2000]
     },
     "optparams": {
-        "optalgo" : "trace",
         "strategy" : "random",
         "stop_time" : 8000,
         "temp" : 10,
