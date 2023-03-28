@@ -44,11 +44,15 @@ def start_interactive_simulation():
 # sends the next set of packets
 # returns the corresponding measurement taken
 def send_next_events(process, events, outfiles):
+    '''
     for e in events:
         process.stdin.write(e)
         process.stdin.flush()
         # we need some pause in between writing events (until lucid allows us to pass in list of events)
         time.sleep(0.0001)
+    '''
+    process.stdin.write(events)
+    process.stdin.flush()
     # TODO: wait some amount of time? for events to process and write to file?
     # wait until file is in directory
     # delete the file after we grab the measurement

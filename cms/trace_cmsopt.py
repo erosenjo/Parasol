@@ -65,8 +65,8 @@ class Opt:
 
 
 
-        events_bytes = [(json.dumps(p)+'\n').encode('utf-8') for p in events]
-        #events_bytes = (json.dumps(events)+'\n').encode('utf-8')
+        #events_bytes = [(json.dumps(p)+'\n').encode('utf-8') for p in events]
+        events_bytes = (json.dumps(events)+'\n').encode('utf-8')
         #print(self.iteration_ground_truth)
 
         # add a control event that cleans entire sketch
