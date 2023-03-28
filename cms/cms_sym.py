@@ -17,3 +17,5 @@ def write_to_file():
     with open("test.pkl",'wb') as f:
         pickle.dump(interp_measure, f)
 
+    interp_measure.clear()
+

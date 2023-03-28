@@ -1,4 +1,5 @@
 import subprocess, json, math, pickle, time, os, re
+import pexpect
 
 # this function runs interpreter with whatever symb file is in directory and returns measurement of interest
 def interp_sim(lucidfile,outfiles,tracefile=None):
@@ -7,6 +8,8 @@ def interp_sim(lucidfile,outfiles,tracefile=None):
         cmd = ["make", "interp"]
     else:               # mult trace files, name does NOT have to be same as dpt file
         cmd = ["/media/data/mh43/lucid/dpt", "--suppress-final-state", lucidfile, "--spec", tracefile]
+
+
 
     #with open('output.txt','w') as outfile:
     #    ret = subprocess.run(cmd, stdout=outfile, shell=True)

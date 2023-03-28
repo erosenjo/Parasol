@@ -1,4 +1,4 @@
-.PHONY: opttest optimize_timetest interp compile layout assemble test dfg preprocess_dfg
+.PHONY: opttest optimize_timetest trace_optimize interp compile interactive layout assemble test dfg preprocess_dfg
 LUCID_DIR = /media/data/mh43/lucid
 OPT_DIR = /media/data/mh43/Lucid4All/optimization_new
 
@@ -16,9 +16,17 @@ preprocess_efficient:
 optimize_timetest:
 	python3 $(OPT_DIR)/optimize.py cmsopt.json --timetest --shortcut
 
+# trace optimize w/ constant symbolics
+trace_optimize:
+	python3 $(OPT_DIR)/trace_optimize.py trace_cmsopt.json
+
 # run interpreter
 interp: 
 	$(LUCID_DIR)/dpt --suppress-final-state cms_sym.dpt
+
+# run interpreter in interactive mode
+interactive:
+	$(LUCID_DIR)/dpt -i --suppress-final-state cms_sym.dpt
 
 # compile Lucid to P4
 compile: 

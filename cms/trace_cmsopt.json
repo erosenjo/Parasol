@@ -9,7 +9,7 @@
         }
     },
     "traceparams" : {
-        "numpkts" : 100000,
+        "numpkts" : 10,
         "numflows" : 1000,
         "distribution" : "random",
         "rate" : 1000
