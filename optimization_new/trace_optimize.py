@@ -97,15 +97,18 @@ def main():
         cost = 0
         sim_process = start_interactive_simulation()
         time.sleep(5)
-        prev_timestamp = 0
+        counter = 0
         while True:
             # generate trace
-            events = o.gen_traffic(trace_params, prev_timestamp)
+            events = o.gen_traffic(trace_params)
             measurement = send_next_events(sim_process, events, opt_info["outputfiles"])
             cost = o.calc_cost(measurement)
             print(cost)
             # SEND COST/REWARD BACK TO RL AGENT, GEN NEXT SET OF PACKETS
-            break
+            #break
+            counter += 1
+            if counter >= 2:
+                break
         end_simulation(sim_process)
     else:
         exit("input strategy is not implemented for trace version of parasol")
@@ -125,15 +128,6 @@ json fields:
         sizes: symbolic sizes and starting vals
         symbolics: symbolic vals (ints, bools) and starting vals
         logs: which (if any) symbolics are log2(another symbolic)
-        bounds: [lower,upper] bounds for symbolics, inclusive (don't need to include logs, bc they're calculated from other syms)
-    optparams: (any info related to optimization algo)
-        optalgo: if using one of our provided functions, tell us the name (simannealing, bayesian, neldermead)
-        optalgofile: if using your own, tell us where to find it (python file)
-        stop_iter: num iterations to stop at
-        stop_time: time to stop at (in seconds)
-        temp: initial temp for simannealing (init temps are almost arbitrary??)
-        stepsize: stddev for simannealing (per symbolic? or single?
-        maxcost: cost to return if solution uses too many stages
     symfile: file to write symbolics to
     lucidfile: dpt file
     outputfiles: list of files that output is stored in (written to by externs)

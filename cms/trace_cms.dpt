@@ -1,0 +1,103 @@
+/* 2 rotating sketches */
+/* every x interval, we rotate the sketch that we're writing or cleaning
+    -we have a single register that lets us know which cms we're writing to
+    -when the dummy_bytes field = 1, we flip the bit in the register to rotate
+    -cleaning is handled by the control plane, but mimics data plane cleaning (see Conquest)
+    -for every packet we see, we clean 1 register in a sketch
+*/
+
+
+// symbolics - these can be held constant during trace optimization
+symbolic int cols;
+symbolic size rows; 
+symbolic size logcols;
+
+// register that keeps track of what sketch we're writing to
+global Array.t<<32>> interval_tracker = Array.create(1);
+
+// cms structure (keeping reg width fixed for now)
+global Array.t<<32>>[rows] cms0 = [Array.create(cols) for i<rows];
+global Array.t<<32>>[rows] cms1 = [Array.create(cols) for i<rows];
+
+
+/* Events */
+// pkt in switch
+//entry event ip_in (int src, int dst);
+entry event ip_in (int src, int dst, int dummy_bytes);
+// end of lucid program, send back to switch
+exit event ip_out ();
+
+
+/* Externs */
+extern update_count(int x, int y, int z);
+extern update_bits_set(int cms_num, int row_num, int<<logcols>> idx);
+extern write_to_file();
+
+/* Memops */
+memop incr(int memval, int incrval) {
+	return memval + incrval;
+}
+
+memop compute_min(int memval, int minval) {
+	if (memval + 1 < minval) {
+		return memval+1;
+	} else {
+		return minval;
+	}
+}
+
+memop flip(int memval, int dummy) {
+    if (dummy==1) {
+        return 1-memval;
+    } else {
+        return memval;
+    }
+}
+
+memop getval(int memval, int dummy) {
+    return memval;
+}
+
+/* Handlers */
+//handle ip_in (int src, int dst) {
+handle ip_in (int src, int dst, int dummy_bytes) {
+    // if dummy_bytes == 1, flip the bit in the interval tracker
+    int interval = Array.update(interval_tracker, 0, getval, 0, flip, dummy_bytes);
+
+	/* cms */
+	// init values
+	int min = 0xffffffff;
+
+    // using the same hash/indexes for both sketches
+    int<<logcols>>[rows] idxes = [hash<<logcols>>(size_to_int(i),src,dst) for i<rows];
+	for (i < rows) {
+		// incr value and calc min as we go
+		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
+		// if we use a conditional to compare, it breaks up the comparison and takes mult stages
+        if (interval==0) {  // writing to cms0, cleaning cms1
+    		min = Array.update(cms0[i], idxes[i], compute_min, min, incr, 1);
+            update_bits_set(0, size_to_int(i), idxes[i]);
+        }
+	}
+
+    // silly hack for getting around lucid compiler errors
+    // if we try an if/else contained in a single for loop, compiler complains about out of order arrays
+    for (i < rows) {
+        if (interval==1) {  // writing to cms1, cleaning cms0
+            min = Array.update(cms1[i], idxes[i], compute_min, min, incr, 1);
+            update_bits_set(1, size_to_int(i), idxes[i]);
+
+        }
+    }
+
+
+	/* measurement stuff */
+	// we're keeping track of (min) counts from the sketch in python code
+	// python function call here to update the count for a specific flow
+	update_count(src, dst, min);
+
+    if (dummy_bytes==1) {
+        write_to_file();
+    }
+	generate ip_out();
+}

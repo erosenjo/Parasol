@@ -1,11 +1,11 @@
 {
     "symbolicvals" : {
         "sizes": {
-            "logcols": 5,
-            "rows": 1
+            "logcols": 7,
+            "rows": 2
         },
         "symbolics": {
-	        "cols": 32
+	        "cols": 128
         }
     },
     "traceparams" : {
@@ -27,9 +27,9 @@
         "maxcost" : 50000, 
         "samplesize": 0.01
     },
-    "symfile" : "cms_sym.symb",
-    "lucidfile" : "cms_sym.dpt",
-    "outputfiles" : ["test.pkl"],
+    "symfile" : "trace_cms.symb",
+    "lucidfile" : "trace_cms.dpt",
+    "outputfiles" : ["estimated_counts.pkl"],
     "optmodule" : "trace_cmsopt"
 
 }

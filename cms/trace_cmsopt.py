@@ -29,7 +29,7 @@ class Opt:
 
     # this gets called before each iteration
     # we can adjust the attributes of a trace by changing arguments
-    def gen_traffic(self, traceparams, prev_timestamp):
+    def gen_traffic(self, traceparams):
         # reset ground truth for this iteration
         self.iteration_ground_truth = {}
         numpkts = traceparams["numpkts"]
@@ -45,10 +45,12 @@ class Opt:
             #       if rate = 1000, then we send pkts every 1000ns (set timestamp = p*rate)
             if distribution == "random":
                 ip_int = random.randint(1,numflows)
-                timestamp = prev_timestamp+((p+1)*rate)
-                args = [128, ip_int, ip_int, 0]
-                p = {"name":"ip_in", "args":args, "timestamp":timestamp}
-                events.append(p)
+                #timestamp = prev_timestamp+((p+1)*rate)
+                args = [ip_int, ip_int, 0]
+                # NOTE: lucid interpreter acts weird if we don't specify a timestamp
+                # it apparently matters how we set it????? not sure the general rule, but this seems to work for now
+                pkt = {"name":"ip_in", "args":args, "timestamp": 100+((p+1)*rate)}
+                events.append(pkt)
                 if str(ip_int)+str(ip_int) not in self.ground_truth:
                     self.ground_truth[str(ip_int)+str(ip_int)] = 1
                 else:
@@ -62,8 +64,6 @@ class Opt:
         # update last dummy byte, this helps us identify the last pkt
         # (we call different extern on last pkt to write counts to file)
         events[-1]["args"][-1] = 1
-
-
 
         #events_bytes = [(json.dumps(p)+'\n').encode('utf-8') for p in events]
         events_bytes = (json.dumps(events)+'\n').encode('utf-8')
@@ -106,11 +106,11 @@ class Opt:
         info = {}
         info["switches"] = 1
         info["max time"] = maxpkts*1000
-        info["default input gap"] = 100
+        info["default input gap"] = 1000
         info["random seed"] = 0
-        info["python file"] = "cms_sym.py"
+        info["python file"] = "trace_cms.py"
         info["events"] = []
-        with open('cms_sym.json', 'w') as f:
+        with open('trace_cms.json', 'w') as f:
             json.dump(info, f, indent=4)
         pass
 

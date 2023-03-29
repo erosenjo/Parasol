@@ -26,7 +26,7 @@ interp:
 
 # run interpreter in interactive mode
 interactive:
-	$(LUCID_DIR)/dpt -i --suppress-final-state cms_sym.dpt
+	$(LUCID_DIR)/dpt -i --suppress-final-state trace_cms.dpt
 
 # compile Lucid to P4
 compile: 
