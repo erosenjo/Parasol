@@ -5,7 +5,9 @@ interp_measure = {}
 clean_counter = [0]
 # NOTE: hard coding number of bits in cms for now, [0]*cols*rows for each cms
 #   need to be careful to update if size of sketch changes
-cms_bits = [[0]*128*2, [0]*128*2]
+cms_rows = 2
+cms_cols = 128
+cms_bits = [[0]*cms_cols*cms_rows, [0]*cms_cols*cms_rows]
 
 def update_count(src, dst, count):
     interp_measure[str(src)+str(dst)] = count
@@ -19,15 +21,17 @@ def update_count(src, dst, count):
 def update_bits_set(cms_write, row, index):
     cms_clean = 1-cms_write
     # sketch we're writing to (set bits to 1)
-    write_bit = 128*row+index
+    write_bit = cms_cols*row+index
     cms_bits[cms_write][write_bit] = 1
     # sketch we're cleaning (set bits to 0)
-    cms_bits[cms_clean][clean_counter[0]] = 0
+    if clean_counter[0] < cms_cols*cms_rows:
+        cms_bits[cms_clean][clean_counter[0]] = 0
 
 def write_to_file():
     with open("estimated_counts.pkl",'wb') as f:
         pickle.dump(interp_measure, f)
     interp_measure.clear()
+
 
     bits_set = [sum(bits) for bits in cms_bits]
     with open("bits_set.pkl", 'wb') as f:

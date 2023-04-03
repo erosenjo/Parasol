@@ -9,19 +9,24 @@ def init_opt_trace(optfile, cwd):
     # import json file
     opt_info = json.load(open(optfile))
 
-    # import opt class that has funcs we need to get traffic, cost
-    # NOTE: module has to be in current working directory
-    optmod = importlib.import_module(opt_info["optmodule"])
-    o = optmod.Opt()
-
-    o.init_simulation(100)
-
+    # get config of symbolics
     symbolics_opt = {}
     # is there a better way to merge? quick solution for now
     for var in opt_info["symbolicvals"]["sizes"]:
         symbolics_opt[var] = opt_info["symbolicvals"]["sizes"][var]
     for var in opt_info["symbolicvals"]["symbolics"]:
         symbolics_opt[var] = opt_info["symbolicvals"]["symbolics"][var]
+
+    trace_params = opt_info["traceparams"]
+    trace_bounds = opt_info["tracebounds"]
+
+
+    # import opt class that has funcs we need to get traffic, cost
+    # NOTE: module has to be in current working directory
+    optmod = importlib.import_module(opt_info["optmodule"])
+    o = optmod.Opt(symbolics_opt)
+
+    o.init_simulation(opt_info["optparams"]["maxpkts"])
 
     trace_params = opt_info["traceparams"]
     trace_bounds = opt_info["tracebounds"]
@@ -53,11 +58,10 @@ def send_next_events(process, events, outfiles):
     '''
     process.stdin.write(events)
     process.stdin.flush()
-    # TODO: wait some amount of time? for events to process and write to file?
     # wait until file is in directory
     # delete the file after we grab the measurement
     while not os.path.isfile(outfiles[0]):
-        time.sleep(5)
+        time.sleep(1)
     measurement = []
     for out in outfiles:
         measurement.append(pickle.load(open(out,"rb")))
@@ -105,9 +109,10 @@ def main():
             cost = o.calc_cost(measurement)
             print(cost)
             # SEND COST/REWARD BACK TO RL AGENT, GEN NEXT SET OF PACKETS
-            #break
+            # rl agent should adjust something in trace_params to adjust trace
+
             counter += 1
-            if counter >= 2:
+            if counter >= 5:
                 break
         end_simulation(sim_process)
     else:

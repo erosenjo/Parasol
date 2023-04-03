@@ -9,8 +9,8 @@
         }
     },
     "traceparams" : {
-        "numpkts" : 10,
-        "numflows" : 1000,
+        "numpkts" : 260,
+        "numflows" : 100,
         "distribution" : "random",
         "rate" : 1000
     },
@@ -25,11 +25,12 @@
         "stop_time" : 8000,
         "temp" : 10,
         "maxcost" : 50000, 
-        "samplesize": 0.01
+        "samplesize": 0.01,
+        "maxpkts": 100
     },
     "symfile" : "trace_cms.symb",
     "lucidfile" : "trace_cms.dpt",
-    "outputfiles" : ["estimated_counts.pkl"],
+    "outputfiles" : ["estimated_counts.pkl", "bits_set.pkl"],
     "optmodule" : "trace_cmsopt"
 
 }

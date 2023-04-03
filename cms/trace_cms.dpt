@@ -61,15 +61,14 @@ memop getval(int memval, int dummy) {
 /* Handlers */
 //handle ip_in (int src, int dst) {
 handle ip_in (int src, int dst, int dummy_bytes) {
-    // if dummy_bytes == 1, flip the bit in the interval tracker
+    // if dummy_bytes==0, flip the bit in the interval tracker
     int interval = Array.update(interval_tracker, 0, getval, 0, flip, dummy_bytes);
 
 	/* cms */
 	// init values
 	int min = 0xffffffff;
 
-    // using the same hash/indexes for both sketches
-    int<<logcols>>[rows] idxes = [hash<<logcols>>(size_to_int(i),src,dst) for i<rows];
+    int<<logcols>>[rows] idxes = [hash<<logcols>>(size_to_int(i)+interval,src,dst) for i<rows];
 	for (i < rows) {
 		// incr value and calc min as we go
 		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
