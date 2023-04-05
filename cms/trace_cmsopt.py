@@ -6,6 +6,7 @@ from scapy.all import *
 import pickle
 import time
 import random
+import numpy as np
 
 # helpers
 def i2Hex (n):
@@ -38,34 +39,46 @@ class Opt:
     def gen_traffic(self, traceparams):
         # reset ground truth for each interval
         self.interval_ground_truth.clear()
+        # NOTE: we only use numpkts for random distribution, but could probably remove it altogether
         numpkts = traceparams["numpkts"]
         numflows = traceparams["numflows"]
         distribution = traceparams["distribution"]
         rate = traceparams["rate"]
         events = []
+        # numpy can give us ints that are too large, so map them to smaller numbers
+        skew_keys = {}
 
         # generate packets
         for p in range(numpkts):
             # for each packet, generate its header fields according to input arguments
             # e.g., if distribution = random, then we randomly select from numflows to set IPs
             #       if rate = 1000, then we send pkts every 1000ns (set timestamp = p*rate)
-            if distribution == "random":
+            if distribution == "random":  # generate trace w/ uniform header distribution
                 ip_int = random.randint(1,numflows)
-                #timestamp = prev_timestamp+((p+1)*rate)
-                args = [ip_int, ip_int, 0]
-                # NOTE: lucid interpreter acts weird if we don't specify a timestamp
-                # it apparently matters how we set it????? not sure the general rule, but this seems to work for now
-                pkt = {"name":"ip_in", "args":args, "timestamp": 100+((p+1)*rate)}
-                events.append(pkt)
-                if str(ip_int)+str(ip_int) not in self.ground_truth:
-                    self.ground_truth[str(ip_int)+str(ip_int)] = 1
-                else:
-                    self.ground_truth[str(ip_int)+str(ip_int)] += 1
-                if str(ip_int)+str(ip_int) not in self.interval_ground_truth:
-                    self.interval_ground_truth[str(ip_int)+str(ip_int)] = 1
-                else:
-                    self.interval_ground_truth[str(ip_int)+str(ip_int)] += 1
+            elif distribution == "skew":    # generate trace w/ skewed zipfian header distr
+                # TODO: setting default to distr 1.3 skew, can add this as a trace param later
+                #   distr must be > 1, higher means more skewed
+                ip_int = np.random.zipf(1.3)
+                if ip_int not in skew_keys:
+                    skew_keys[ip_int] = max(skew_keys.values(), default=0) + 1
+                ip_int = skew_keys[ip_int]
+            else:
+                exit("distribution not implemented")
 
+            #timestamp = prev_timestamp+((p+1)*rate)
+            args = [ip_int, ip_int, 0]
+            # NOTE: lucid interpreter acts weird if we don't specify a timestamp
+            # it apparently matters how we set it????? not sure the general rule, but this seems to work for now
+            pkt = {"name":"ip_in", "args":args, "timestamp": 100+((p+1)*rate)}
+            events.append(pkt)
+            if str(ip_int)+str(ip_int) not in self.ground_truth:
+                self.ground_truth[str(ip_int)+str(ip_int)] = 1
+            else:
+                self.ground_truth[str(ip_int)+str(ip_int)] += 1
+            if str(ip_int)+str(ip_int) not in self.interval_ground_truth:
+                self.interval_ground_truth[str(ip_int)+str(ip_int)] = 1
+            else:
+                self.interval_ground_truth[str(ip_int)+str(ip_int)] += 1
 
         # update last dummy byte, this helps us identify the last pkt
         # (we call different extern on last pkt to write counts to file)

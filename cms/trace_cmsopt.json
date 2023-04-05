@@ -10,18 +10,17 @@
     },
     "traceparams" : {
         "numpkts" : 260,
-        "numflows" : 100,
-        "distribution" : "random",
+        "numflows" : 300,
+        "distribution" : "skew",
         "rate" : 1000
     },
     "tracebounds" : {
         "numpkts" : [100000, 200000],
         "numflows" : [1000, 20000],
-        "distribution" : ["random"],
+        "distribution" : ["skew", "random"],
         "rate" : [1000, 2000]
     },
     "optparams": {
-        "strategy" : "random",
         "stop_time" : 8000,
         "temp" : 10,
         "maxcost" : 50000, 
