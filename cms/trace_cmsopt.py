@@ -80,6 +80,10 @@ class Opt:
             else:
                 self.interval_ground_truth[str(ip_int)+str(ip_int)] += 1
 
+        # dummy pkt, so we still write results to file
+        if numpkts <= 0:
+            events.append({"name": "ip_in", "args": [0,0,1], "timestamp": 101+rate})
+
         # update last dummy byte, this helps us identify the last pkt
         # (we call different extern on last pkt to write counts to file)
         events[-1]["args"][-1] = 1
@@ -135,6 +139,8 @@ class Opt:
             #print("ERR!!!")
             #quit()
         #print(sum(s)/len(s))
+        if len(s) == 0:
+            return 0
         return sum(s)/len(s)
 
     # called before every interp run

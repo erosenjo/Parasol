@@ -74,8 +74,10 @@ handle ip_in (int src, int dst, int dummy_bytes) {
 		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
 		// if we use a conditional to compare, it breaks up the comparison and takes mult stages
         if (interval==0) {  // writing to cms0, cleaning cms1
-    		min = Array.update(cms0[i], idxes[i], compute_min, min, incr, 1);
-            update_bits_set(0, size_to_int(i), idxes[i]);
+            if (src >= 1) { // skip dummy pkt
+        		min = Array.update(cms0[i], idxes[i], compute_min, min, incr, 1);
+                update_bits_set(0, size_to_int(i), idxes[i]);
+            }
         }
 	}
 
@@ -83,9 +85,10 @@ handle ip_in (int src, int dst, int dummy_bytes) {
     // if we try an if/else contained in a single for loop, compiler complains about out of order arrays
     for (i < rows) {
         if (interval==1) {  // writing to cms1, cleaning cms0
-            min = Array.update(cms1[i], idxes[i], compute_min, min, incr, 1);
-            update_bits_set(1, size_to_int(i), idxes[i]);
-
+            if (src >= 1) { // skip dummy pkt
+                min = Array.update(cms1[i], idxes[i], compute_min, min, incr, 1);
+                update_bits_set(1, size_to_int(i), idxes[i]);
+            }
         }
     }
 
@@ -93,7 +96,9 @@ handle ip_in (int src, int dst, int dummy_bytes) {
 	/* measurement stuff */
 	// we're keeping track of (min) counts from the sketch in python code
 	// python function call here to update the count for a specific flow
-	update_count(src, dst, min);
+    if (src >= 1) { // skip dummy pkt
+    	update_count(src, dst, min);
+    }
 
     if (dummy_bytes==1) {
         write_to_file();
