@@ -1,3 +1,12 @@
+'''
+script to run lucid interpreter in interactive mode and periodically feed it traces
+
+to use with RL agent: (see main function as example)
+    - call init_simulation(optfile) to start up simulation, where optfile is json with sketch params
+    - call send_pkts(numpkts, opt_info, o, sim_process) for each iterval to get bits set and error after the interval
+    - call end_simulation(sim_process) to kill interpreter
+'''
+
 import time, importlib, argparse, os, sys, json
 import subprocess
 import pickle
@@ -77,6 +86,49 @@ def end_simulation(process):
     return
 
 
+# start simulation of rotating cms, given params specified in optfile
+#   optfile is the json file with params for layout of sketch
+# this returns 
+#   opt_info (optfile contents)
+#   o (object that we use to generate traces and calc cost of an iteration)
+#   sim_process (object for interpreter process)
+def init_simulation(optfile):
+    # get current working directory
+    cwd = os.getcwd()
+
+    opt_info, symbolics_opt, o, trace_params, trace_bounds = init_opt_trace(optfile, cwd)
+    # write symbolic file w/ vals given in json
+    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
+    write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], [], opt_info["symfile"], opt_info)
+
+    sim_process = start_interactive_simulation()
+    # add a bit of a buffer period before we starting sending pkts
+    # TODO: remove this?
+    time.sleep(1)
+
+    return opt_info, o, sim_process
+
+# this represents one interval of a rotating cms application
+# takes as input
+#   number of pkts to send
+#   opt_info (json file content)
+#   o (same object returned from init_simulation)
+#   sim_process (same object returned from init_simulation
+def send_pkts(numpkts, opt_info, o, sim_process):
+    # generate lucid events
+    opt_info["traceparams"]["numpkts"] = numpkts 
+    events = o.gen_traffic(opt_info["traceparams"])
+
+    # interpret trace, get measurements
+    measurement = send_next_events(sim_process, events, opt_info["outputfiles"])
+
+    # calc cost
+    cost = o.calc_cost(measurement)
+
+    # return bits set for each sketch and avg error for all flows in the iteration
+    # NOTE: this returns avg error, but we can also return gt and estimated counts for each flow instead
+    return measurement[1], cost
+
 # usage: python3 optimize.py <json opt info file>
 def main():
     parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python, default uses layout script instead of compiler")
@@ -86,12 +138,25 @@ def main():
     #opt_info = json.load(open(sys.argv[1]))
     #print(opt_info)
 
+
+    # start the interpreter
+    opt_info, o, sim_process = init_simulation(args.optfile)
+    
+    counter = 0
+    while True:
+        # generate a trace w/ 260 pkts
+        bits_set, avg_err = send_pkts(260, opt_info, o, sim_process)
+        print(bits_set, avg_err)
+        counter += 1
+        if counter >= 5:
+            break
+
+    end_simulation(sim_process)
+
+    '''
     # get current working directory
     cwd = os.getcwd()
 
-    '''
-    OPTIMIZE TRACE: keep symbolic values/struct configuration the same; change attributes of the input trace each iteration
-    '''
     opt_info, symbolics_opt, o, trace_params, trace_bounds = init_opt_trace(args.optfile, cwd)
     # write symbolic file w/ vals given in json
     update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
@@ -114,7 +179,7 @@ def main():
         if counter >= 5:
             break
     end_simulation(sim_process)
-
+    '''
 
 
 if __name__ == "__main__":
