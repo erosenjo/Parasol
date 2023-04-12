@@ -3,6 +3,7 @@ from preprocess import *
 from optalgos import *
 from interp_sim import update_sym_sizes, write_symb
 
+# grab optimization parameters, generate traffic trace if necessary, create dict of symbolic values to optimize
 def init_opt(optfile, notraffic, cwd):
     sys.path.append(cwd)
     # NOTE: assuming optfile is in current working directory
@@ -31,29 +32,6 @@ def init_opt(optfile, notraffic, cwd):
 
     return opt_info,symbolics_opt, o
 
-def init_opt_trace(optfile, cwd):
-    sys.path.append(cwd)
-    # NOTE: assuming optfile is in current working directory
-    # import json file
-    opt_info = json.load(open(optfile))
-
-    # import opt class that has funcs we need to get traffic, cost
-    # NOTE: module has to be in current working directory
-    optmod = importlib.import_module(opt_info["optmodule"])
-    o = optmod.Opt()
-
-    symbolics_opt = {}
-    # is there a better way to merge? quick solution for now
-    for var in opt_info["symbolicvals"]["sizes"]:
-        symbolics_opt[var] = opt_info["symbolicvals"]["sizes"][var]
-    for var in opt_info["symbolicvals"]["symbolics"]:
-        symbolics_opt[var] = opt_info["symbolicvals"]["symbolics"][var]
-
-    trace_params = opt_info["traceparams"]
-    trace_bounds = opt_info["tracebounds"]
-
-    return opt_info,symbolics_opt, o, trace_params, trace_bounds
-
 # usage: python3 optimize.py <json opt info file>
 def main():
     parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python, default uses layout script instead of compiler")
@@ -67,14 +45,6 @@ def main():
     parser.add_argument("--dfg", help="use dataflow analysis instead of layout in preprocessing", action="store_true")
     args = parser.parse_args()
 
-    '''
-    if len(sys.argv) < 2:
-        print("usage: python3 optimize.py <json opt info file>")
-        quit()
-    '''
-    #opt_info = json.load(open(sys.argv[1]))
-    #print(opt_info)
-
     # get current working directory
     cwd = os.getcwd()
 
@@ -85,13 +55,14 @@ def main():
     solutions = None
 
     # check if we're doing preprocessing
+    # if we're not, then we rely on user-provided bounds to define our search space
     if "optalgo" in opt_info["optparams"] and opt_info["optparams"]["optalgo"] == "preprocess":
         sols = preprocess(symbolics_opt, opt_info, o, args.timetest, args.fullcompile, args.pair, args.shortcut, args.dfg)
         bounds_tree = sols["tree"]
         solutions = sols["all_sols"]
 
         # TODO: save preprocessed sols every time???
-        if args.preprocessingonly:  # only preprocessing, no optimization
+        if args.preprocessingonly:  # only preprocessing, no optimization (save bounds tree and quit)
             if args.dfg: # we used dataflow graph heuristic instead of layout
                 with open('preprocessed_dfg.pkl','wb') as f:
                     pickle.dump(sols, f)
@@ -104,6 +75,7 @@ def main():
     # optimize!
     start_time = time.time()
     # TODO: allow user to pass in func
+    # built-in strategies are: simannealing, bayesian, neldermead simplex, exhaustive
     if "optalgofile" in opt_info["optparams"]:   # only include field in json if using own algo
         # import module, require function to have standard name and arguments
         user = True
@@ -174,18 +146,17 @@ json fields:
         symbolics: symbolic vals (ints, bools) and starting vals
         logs: which (if any) symbolics are log2(another symbolic)
         bounds: [lower,upper] bounds for symbolics, inclusive (don't need to include logs, bc they're calculated from other syms)
-    structchoice: (tells us if we're choosing between structs)
-        var: which of the symbolic vars corresponds to struct choice (boolean)
-        True: if var==True, list any symbolic vars the corresponding struct doesn't use
-        False: if var==False, ^
     optparams: (any info related to optimization algo)
-        optalgo: if using one of our provided functions, tell us the name (simannealing, bayesian, neldermead)
+        order_resource: list of symbolics that affect resources
+        non_resource: list of symbolics that don't affect resources
+        optalgo: "preprocess" if doing preprocessing, exclude if not doing preprocessing
+        strategy: if using one of our provided functions, tell us the name (simannealing, bayesian, neldermead, exhaustive)
         optalgofile: if using your own, tell us where to find it (python file)
         stop_iter: num iterations to stop at
         stop_time: time to stop at (in seconds)
         temp: initial temp for simannealing (init temps are almost arbitrary??)
-        stepsize: stddev for simannealing (per symbolic? or single?
-        maxcost: cost to return if solution uses too many stages
+        stepsize: stddev for simannealing (per symbolic), only include if NOT preprocessing
+        maxcost: cost to return if solution uses too many stages, only include if NOT preprocessing
     symfile: file to write symbolics to
     lucidfile: dpt file
     outputfiles: list of files that output is stored in (written to by externs)

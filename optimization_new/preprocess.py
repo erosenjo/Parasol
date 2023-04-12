@@ -3,14 +3,16 @@ from treelib import Node, Tree
 from interp_sim import gen_cost, compile_num_stages, layout, dfg, gen_cost_multitrace
 
 '''
-CONSTANTS
+CONSTANTS (hardcoded for single target)
 '''
 single_stg_mem = 143360 # max number of elements for 32-bit array
 single_stg_mem_log2 = 131072 # closest power of 2 for single_stg_mem (most apps require num elements to be power of 2)
 single_stg_mem_log2_pairarray = 65536
 
 
-# ONLY return upper bound for now, not resource usage
+# get the max value for a single symbolic value, when all others are constant
+# if we start at the upper bound of a value (memory), keep decreasing until w/in stage limit
+# otherwise, we do a sort of binary search (start at middle value, increase/decrease as needed)
 def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, fullcompile, pair, dfg):
     # for memory, start @ ub; lb = 32, ub = whatever we find
     # for non memory, start @ default and increase/decrease by 1 until = 12 stgs
@@ -73,8 +75,9 @@ def get_max_val_efficient(symbolics_opt, var_to_opt, opt_info, log2, memory, ful
                 return symbolics_opt[var_to_opt]
 
 
-# TODO: is there a better way to do this??? 
-# basically we're building a tree
+# enumerate the space of solutions which compiles to the target 
+# (aka find upper bounds for all symbolics)
+# we build a tree, where each level is the possible values of a single symbolic
 # each node is a concrete choice for a var, and the children are possible choices for the var that's the next level down
 def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile, pair, dfg):
     #print("ROOT:",root)
@@ -148,7 +151,9 @@ def build_bounds_tree(tree, root, to_find, symbolics_opt, opt_info, fullcompile,
         else:   # we still have more variables to find bounds for, so keep going
             build_bounds_tree(tree, root, to_find[1:], symbolics_opt, opt_info, fullcompile, pair, dfg)
 
-
+# find upper bounds for all (resource-related) symbolics
+# if we've previously found bounds, load file and return the stored tree
+# otherwise, build the bounds tree and return it
 def preprocess(symbolics_opt, opt_info, o, timetest, fullcompile, pair, shortcut, dfg):
     opt_start_time = time.time()
 

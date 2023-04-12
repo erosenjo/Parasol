@@ -13,7 +13,7 @@ from sklearn.kernel_ridge import KernelRidge
 '''
 HELPER FUNCTIONS
 '''
-# helper for sim annealing, rounds to closest power of 2
+# helper for when optimizing w/o preprocessing, rounds to closest power of 2
 # copied from: https://stackoverflow.com/questions/28228774/find-the-integer-that-is-closest-to-the-power-of-two
 def closest_power(x):
     possible_results = math.floor(math.log2(x)), math.ceil(math.log2(x))
@@ -40,6 +40,8 @@ def set_rule_vars(opt_info, symbolics_opt):
     return symbolics_opt
 
 
+# use this when we've preprocessed, the sol_choice is an index to a list of tree paths
+# this function gets values from the tree, given the chosen path
 def set_symbolics_from_tree_solution(sol_choice, symbolics_opt, tree, opt_info):
     for sol in sol_choice:
         node = tree.get_node(sol)
@@ -119,12 +121,6 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         simtime = True
     if iters and simtime:
         iter_time = True
-
-    structchoice = False
-    structinfo = {}
-    if "structchoice" in opt_info:
-        structchoice = True
-        structinfo = opt_info["structchoice"]
 
     # enumerating all solutions, optimizing ONLY index value
     #   (aka treating resource and non resource the same)
@@ -1210,6 +1206,7 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     # step 1.2: define the model (gaussian process regression)
     # TODO: try something other than gp regressor model????
     #kernel = kernels.ConstantKernel(2.0, (1e-1, 1e3)) * kernels.RBF(2.0, (1e-3, 1e3))
+    # NOTE: we choose this model based on empirical testing; this fit all apps reasonably well
     kernel_rbf = 1.0 * kernels.RBF(length_scale=10.0, length_scale_bounds=(5, 1e2))
     kernel_exp = kernels.ExpSineSquared(length_scale=0.5, periodicity=10)
     kernel = kernel_rbf+kernel_exp
