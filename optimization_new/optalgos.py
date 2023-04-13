@@ -337,8 +337,11 @@ def simulated_annealing(symbolics_opt, opt_info, o, timetest,
         pickle.dump(testing_eval,f)
 
 
+    all_evaled = dict(zip(testing_sols, testing_eval))     
+    all_evaled_sols_sorted = sorted(all_evaled, key=all_evaled.get)
+
     # return first sol in list of sols
-    return best_sols, best_cost
+    return best_sols, best_cost, all_evaled, all_evaled_sols_sorted
 
 # EXHAUSTIVE SEARCH
 def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
@@ -432,7 +435,11 @@ def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("EXHAUSTIVE SEARCH TIME:", time.time()-start_time)
     print("NUM SOLS:", len(all_solutions_symbolics))
 
-    return best_sols, best_cost
+
+    all_evaled = dict(zip(testing_sols, testing_eval))
+    all_evaled_sols_sorted = sorted(all_evaled, key=all_evaled.get)
+
+    return best_sols, best_cost, all_evaled, all_evaled_sols_sorted
 
 
 
@@ -1043,7 +1050,10 @@ def nelder_mead(symbolics_opt, opt_info, o, timetest,
     with open('final_testing_eval_nm.pkl','wb') as f:
         pickle.dump(testing_eval,f)
 
-    return best_sols, best_cost
+    all_evaled = dict(zip(testing_sols, testing_eval))
+    all_evaled_sols_sorted = sorted(all_evaled, key=all_evaled.get)
+
+    return best_sols, best_cost, all_evaled, all_evaled_sols_sorted
 
     
 # bayesian optimization
@@ -1451,5 +1461,8 @@ def bayesian(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     print("BEST SOL:", sampled_sols[best_index])
     print("BEST EVAL:", best_eval)
 
-    return best_sols, best_cost
+    all_evaled = dict(zip(sample_sols, sample_costs)) 
+    all_evaled_sols_sorted = sorted(all_evaled, key=all_evaled.get)
+
+    return best_sols, best_cost, all_evaled, all_evaled_sols_sorted
 

@@ -81,16 +81,16 @@ def main():
         user = True
 
     elif opt_info["optparams"]["strategy"] == "simannealing":
-        best_sols, best_cost = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+        best_sols, best_cost, all_evaled, all_evaled_sols_sorted = simulated_annealing(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
     elif opt_info["optparams"]["strategy"] == "exhaustive":
-        best_sols, best_cost = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+        best_sols, best_cost, all_evaled, all_evaled_sols_sorted = exhaustive(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
     elif opt_info["optparams"]["strategy"] == "bayesian":
-        best_sols, best_cost = bayesian(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
+        best_sols, best_cost, all_evaled, all_evaled_sols_sorted = bayesian(symbolics_opt, opt_info, o, args.timetest, solutions, bounds_tree)
 
     elif opt_info["optparams"]["strategy"] == "neldermead":
-        best_sols, best_cost = nelder_mead(symbolics_opt, opt_info, o, args.timetest, solutions=solutions, tree=bounds_tree)
+        best_sols, best_cost, all_evaled, all_evaled_sols_sorted = nelder_mead(symbolics_opt, opt_info, o, args.timetest, solutions=solutions, tree=bounds_tree)
 
 
     end_time = time.time()
@@ -100,35 +100,63 @@ def main():
 
 
 
-    '''
-    # try compiling to tofino?
-    # we could test the top x solutions to see if they compile --> if they do, we're done!
-    # else, we can repeat optimization, excluding solutions we now know don't compile
-    # (we have to have a harness p4 file for this step, but not for interpreter)
-    # NOTE: use vagrant vm to compile
-    for sol in top_sols:
-        write_symb(sol[0],sol[1])
-        # compile lucid to p4
-        cmd_lp4 = ["../../dptc cms_sym.dpt ip_harness.p4 linker_config.json cms_sym_build --symb cms_sym.symb"]
-        ret_lp4 = subprocess.run(cmd_lp4, shell=True)
-        # we shouldn't have an issue compiling to p4, but check anyways
-        if ret_lp4.returncode != 0:
-            print("error compiling lucid code to p4")
-            break
-        # compile p4 to tofino
-        cmd_tof = ["cd cms_sym_build; make build"]
-        ret_tof = subprocess.run(cmd_tof, shell=True)
-        # return value of make build will always be 0, even if it fails to compile
-        # how can we check if it compiles????
+    # try compiling best sol to tofino
+    # 1 - check if we even have bf sde installed (check env vars)
+    if not os.environ.get('SDE') or not os.environ.get('SDE_INSTALL'):
+        print("cannot compile to tofino, environment variables (SDE, SDE_INSTALL) are not set")
+        print("returning best solution as determined by lucid compiler and optimization")
+        print("BEST:")
+        print(best_sols[0])
+        print("BEST COST:")
+        print(best_cost)
+        print("TIME(s):")
+        print(end_time-start_time)
+        return
 
-        # if compiles, break bc we've found a soluion
-    '''
+    best_compiling_sol = None
+    best_compiling_eval = None
+    for sol in all_evaled_sols_sorted:
+        # gen symbolic file
+        update_sym_sizes(sol, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
+        write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], opt_info["symbolicvals"]["logs"], opt_info["symfile"], opt_info)
+        # 2 - compile best sol w/ lucid compiler
+        print("COMPILING LUCID TO P4")
+        cmd = ["make", "compile"]
+        ret = subprocess.run(cmd)
+        if ret.returncode != 0: # stop if there's an error running compiler
+            exit("lucid compiler error")
+        # 3 - compile to tofino
+        print("COMPILING TO TOFINO")
+        cmd = ["make", "assemble"]
+        ret = subprocess.run(cmd)
+        if ret.returncode != 0: # stop if there's an error running compiler
+            exit("tofino compiler error")
+        # 4 - check for manifest.json file (compiled field)
+        tof_file = os.getcwd()+"/build/lucid/manifest.json"
+        try:
+            manifest = json.load(open(tof_file,'r'))
+        except:
+            exit("tofino compilation did not generate manifest.json. in build/makefile, make sure build command uses 'build', NOT 'build_quiet'. otherwise, this is probably a compiler error")
+        # 5 - if compiles, return
+        if manifest["compilation_succeeded"]:
+            print("tofino compilation successful!")
+            best_compiling_sol = sol
+            best_compiling_eval = all_evaled[sol]
+        #   if not, then try next best sol? (check return of optalgos) 
+        else:
+            print("failed to compile to tofino, trying next solution")
+            continue
 
 
-    print("BEST:")
-    print(best_sols[0])
-    print("BEST COST:")
-    print(best_cost)
+    if not best_compiling_sol:
+        print("no evaluated configurations compiled to tofino. this is likely the result of a PHV allocation issue that must be fixed manually.")
+    else:
+        print("BEST:")
+        print(best_compiling_sol)
+        print("BEST COST:")
+        print(best_compiling_eval)
+
+
     print("TIME(s):")
     print(end_time-start_time)
 
