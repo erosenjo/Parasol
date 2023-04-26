@@ -10,7 +10,51 @@ to use with RL agent: (see main function as example)
 import time, importlib, argparse, os, sys, json
 import subprocess
 import pickle
-from interp_sim import update_sym_sizes, write_symb
+
+def update_sym_sizes(symbolics_opt, sizes, symbolics):
+    for var in symbolics_opt:
+        if var in sizes:
+            sizes[var] = symbolics_opt[var]
+            continue
+        if var in symbolics:
+            symbolics[var] = symbolics_opt[var]
+
+    return sizes, symbolics
+
+def write_symb(sizes, symbolics, logs, symfile, opt_info):
+    # we often have symbolics that should = log2(some other symbolic)
+    # in that case, we compute it here
+    for var in logs:
+        if logs[var] in sizes:
+            log = int(math.log2(sizes[logs[var]]))
+        else:
+            log = int(math.log2(symbolics[logs[var]]))
+        if var in sizes:
+            sizes[var] = log
+        else:
+            symbolics[var] = log
+    if "rules" in opt_info["symbolicvals"]:
+        for rulevar in opt_info["symbolicvals"]["rules"]:
+            rule = opt_info["symbolicvals"]["rules"][rulevar].split()
+            for v in range(len(rule)):
+                if rule[v] in opt_info["symbolicvals"]["symbolics"]:
+                    rule[v] = str(symbolics[rule[v]])
+                elif rule[v] in opt_info["symbolicvals"]["sizes"]:
+                    rule[v] = str(sizes[rule[v]])
+            if rulevar in sizes:
+                sizes[rulevar] = eval(''.join(rule))
+            else:
+                symbolics[rulevar] = eval(''.join(rule))
+
+
+    concretes = {}
+    concretes["sizes"] = sizes
+    concretes["symbolics"] = symbolics
+    with open(symfile, 'w') as f:
+        json.dump(concretes, f, indent=4)
+    print("SYMB FILE SIZES", sizes)
+    print("SYMB FILE SYMBOLICS", symbolics)
+
 
 def init_opt_trace(optfile, cwd):
     sys.path.append(cwd)

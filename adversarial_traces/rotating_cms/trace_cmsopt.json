@@ -21,10 +21,6 @@
         "rate" : [1000, 2000]
     },
     "optparams": {
-        "stop_time" : 8000,
-        "temp" : 10,
-        "maxcost" : 50000, 
-        "samplesize": 0.01,
         "maxpkts": 100
     },
     "symfile" : "trace_cms.symb",
