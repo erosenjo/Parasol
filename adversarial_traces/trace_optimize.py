@@ -197,34 +197,6 @@ def main():
 
     end_simulation(sim_process)
 
-    '''
-    # get current working directory
-    cwd = os.getcwd()
-
-    opt_info, symbolics_opt, o, trace_params, trace_bounds = init_opt_trace(args.optfile, cwd)
-    # write symbolic file w/ vals given in json
-    update_sym_sizes(symbolics_opt, opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"])
-    write_symb(opt_info["symbolicvals"]["sizes"], opt_info["symbolicvals"]["symbolics"], [], opt_info["symfile"], opt_info)
-
-    cost = 0
-    sim_process = start_interactive_simulation()
-    time.sleep(5)
-    counter = 0
-    while True:
-        # generate trace
-        events = o.gen_traffic(trace_params)
-        measurement = send_next_events(sim_process, events, opt_info["outputfiles"])
-        cost = o.calc_cost(measurement)
-        print(cost)
-        # SEND COST/REWARD BACK TO RL AGENT, GEN NEXT SET OF PACKETS
-        # rl agent should adjust something in trace_params to adjust trace
-
-        counter += 1
-        if counter >= 5:
-            break
-    end_simulation(sim_process)
-    '''
-
 
 if __name__ == "__main__":
     main()
