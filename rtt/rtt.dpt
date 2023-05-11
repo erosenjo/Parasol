@@ -16,22 +16,22 @@ symbolic size log_tables;
 symbolic int TS_EXPIRE_THRESHOLD;
 /* consts */
 // tcp flags
-const int<<8>> TCP_FLAGS_F = 1; // fin
-const int<<8>> TCP_FLAGS_S = 2; // syn
-const int<<8>> TCP_FLAGS_R = 4; // rst
-const int<<8>> TCP_FLAGS_P = 8; // psh
-const int<<8>> TCP_FLAGS_A = 16; // ack
-//const int<<8>> tcp_s_a = TCP_FLAGS_S+TCP_FLAGS_A;
-const int<<8>> tcp_s_a = 18;
-//const int<<8>> tcp_a_p = TCP_FLAGS_A + TCP_FLAGS_P;
-const int<<8>> tcp_a_p = 24;
+const int<8> TCP_FLAGS_F = 1; // fin
+const int<8> TCP_FLAGS_S = 2; // syn
+const int<8> TCP_FLAGS_R = 4; // rst
+const int<8> TCP_FLAGS_P = 8; // psh
+const int<8> TCP_FLAGS_A = 16; // ack
+//const int<8> tcp_s_a = TCP_FLAGS_S+TCP_FLAGS_A;
+const int<8> tcp_s_a = 18;
+//const int<8> tcp_a_p = TCP_FLAGS_A + TCP_FLAGS_P;
+const int<8> tcp_a_p = 24;
 //const int TS_EXPIRE_THRESHOLD = 50000000;  // 50ms, 50*1000*1000
 const int TS_LEGITIMATE_THRESHOLD = 2000000000; // 2000*1000*1000
 /* Arrays */
-global PairArray.t<<32>>[tables] pkt_tables = [PairArray.create(table_size) for i<tables];
+global PairArray.t<32>[tables] pkt_tables = [PairArray.create(table_size) for i<tables];
 /* Events */
-entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp);
-exit event tcp_out(int<<1>> pkt_type, int<<7>> dummy_bytes, int rtt);
+entry event tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp);
+exit event tcp_out(int<1> pkt_type, int<7> dummy_bytes, int rtt);
 exit event dropped();
 /* Externs */
 extern log_collision();
@@ -56,7 +56,7 @@ memop insert(int memval1, int memval2, int newval1, int newval2) {
         return cell2;
     }
 }
-memop read(int memval1, int memval2, int newval1, int newval2) {
+memop readval(int memval1, int memval2, int newval1, int newval2) {
     bool current_entry_matched = memval1 == newval1;
     bool timestamp_legitimate = (newval2 - memval2)<TS_LEGITIMATE_THRESHOLD;
     if (current_entry_matched && timestamp_legitimate) {
@@ -69,34 +69,34 @@ memop read(int memval1, int memval2, int newval1, int newval2) {
         return memval2;
     }
 }
-fun void drop() {
+fun void drops() {
     generate dropped();
 }
-const int<<26>> zero26b = 0;
-const int<<2>> zero2b = 0;
-const int<<16>> zero16b = 0;
+const int<26> zero26b = 0;
+const int<2> zero2b = 0;
+const int<16> zero16b = 0;
 // compute eack for syn cases
-fun int precompute_eack(int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no) {
-    int<<32>> tmp_1t=hash<<32>>(1,zero26b, ihl, zero2b);
-    int<<32>> tmp_2t=hash<<32>>(1,zero26b, data_offset, zero2b);
-    int<<32>> tmp_3t=hash<<32>>(1, zero16b, len);
-    // int<<32>> tmp_3t=zero16b ^ len;
+fun int precompute_eack(int<16> len, int<4> ihl, int<4> data_offset, int seq_no) {
+    int<32> tmp_1t=hash<32>(1,zero26b, ihl, zero2b);
+    int<32> tmp_2t=hash<32>(1,zero26b, data_offset, zero2b);
+    int<32> tmp_3t=hash<32>(1, zero16b, len);
+    // int<32> tmp_3t=zero16b ^ len;
     // stage 2
-    int<<32>> tmp_4t=tmp_1t+tmp_2t;
+    int<32> tmp_4t=tmp_1t+tmp_2t;
     // stage 3
-    int<<32>> tmp_5t=tmp_3t-tmp_4t;
-    // int<<32>> tmp_1=hash<<32>>(1,(int<<26>>)0 ^ ihl ^ (int<<2>>)0);
-    // int<<32>> tmp_2=hash<<32>>(1,(int<<26>>)0 ^ data_offset ^ (int<<2>>)0);
-    // int<<32>> tmp_3=(int<<16>>)0 ^ len;
-    // int<<32>> tmp_4=tmp_1+tmp_2;
-    // int<<32>> tmp_5=tmp_3-tmp_4;
+    int<32> tmp_5t=tmp_3t-tmp_4t;
+    // int<32> tmp_1=hash<32>(1,(int<26>)0 ^ ihl ^ (int<2>)0);
+    // int<32> tmp_2=hash<32>(1,(int<26>)0 ^ data_offset ^ (int<2>)0);
+    // int<32> tmp_3=(int<16>)0 ^ len;
+    // int<32> tmp_4=tmp_1+tmp_2;
+    // int<32> tmp_5=tmp_3-tmp_4;
     // int expected_ack = seq_no+tmp_5;
     // stage 4
     return seq_no+tmp_5t;
 }
-handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp) {
+handle tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp) {
     // decide if syn or ack
-    int<<2>> pkt_type = 0;  // true is syn, false is ack
+    int<2> pkt_type = 0;  // true is syn, false is ack
     // precompute eack for syn case to reduce the number of hash units used.
     int syn_eack = precompute_eack(len, ihl, data_offset, seq_no);
     match (tcp_flags, len) with
@@ -116,12 +116,12 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
     | _,0b0000010********* -> {pkt_type=2; }
     | _,0b0000011000****** -> {pkt_type=2; }
     | _,0b0000011001000000 -> {pkt_type=2; }
-    | TCP_FLAGS_R, _ -> {drop();}
-    | TCP_FLAGS_F, _ -> {drop();}
+    | TCP_FLAGS_R, _ -> {drops();}
+    | TCP_FLAGS_F, _ -> {drops();}
     | _,_ -> {pkt_type=0;}
     if (pkt_type==0) { // ack pkt
-        int pkt_signature = hash<<32>>(10398247, dstAddr, srcAddr, dstPort, srcPort, ack_no);
-        int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no) for i < tables];
+        int pkt_signature = hash<32>(10398247, dstAddr, srcAddr, dstPort, srcPort, ack_no);
+        int<log_tables>[tables] idxes = [hash<log_tables>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no) for i < tables];
         //printf("ACK: %d", ack_no);
         //printf("SIG %d", pkt_signature);
         int rtt = 0;
@@ -129,10 +129,10 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
         int short_time = timestamp[31:0];
          for (i < tables) {
             if (rtt==0) {
-                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
-                //int<<log_tables>> hashed_location_1 = hash<<log_tables>>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no);
+                //int<log_tables> hashed_location_1 = hash<log_tables>(polynomials[i], dstAddr, srcAddr, dstPort, srcPort, ack_no);
+                //int<log_tables> hashed_location_1 = hash<log_tables>(size_to_int(i+2), dstAddr, srcAddr, dstPort, srcPort, ack_no);
             
-                rtt = PairArray.update(pkt_tables[i], idxes[i], read, pkt_signature, short_time, 0);
+                rtt = PairArray.update(pkt_tables[i], idxes[i], readval, pkt_signature, short_time, 0);
             
             }
         }
@@ -148,10 +148,10 @@ else {
         if (pkt_type==1) {  // syn pkt
             syn_eack = syn_eack+1;
         }
-        int pkt_signature = hash<<32>>(10398247, srcAddr, dstAddr, srcPort, dstPort, syn_eack);
+        int pkt_signature = hash<32>(10398247, srcAddr, dstAddr, srcPort, dstPort, syn_eack);
         //printf("EACK: %d", syn_eack);
         //printf("SIG %d", pkt_signature);
-        int<<log_tables>>[tables] idxes = [hash<<log_tables>>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, syn_eack) for i < tables];
+        int<log_tables>[tables] idxes = [hash<log_tables>(size_to_int(i+2), srcAddr, dstAddr, srcPort, dstPort, syn_eack) for i < tables];
         int rtt = 0;
         int short_time = timestamp[31:0];
         for (i < tables) {

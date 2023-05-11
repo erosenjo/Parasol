@@ -22,7 +22,7 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc fridge.dpt build --symb fridge.symb --silent
+	$(LUCID_DIR)/dptc fridge.dpt --symb fridge.symb --silent
 
 layout:
 	$(LUCID_DIR)/bin/layout.py fridge.dpt --symb fridge.symb
@@ -33,8 +33,8 @@ dfg:
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd build; make test ../fridge_test.json
+	cd lucid_tofino_build; make test ../fridge_test.json

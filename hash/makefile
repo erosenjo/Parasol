@@ -37,8 +37,8 @@ compile:
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd build; make test ../hashmodule_test.json
+	cd lucid_tofino_build; make test ../hashmodule_test.json

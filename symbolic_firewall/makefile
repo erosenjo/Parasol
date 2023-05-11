@@ -37,7 +37,7 @@ ccompile:
 
 # compile Lucid to P4 with symbolics
 compile: 
-	$(LUCID_DIR)/dptc $(SOURCE).dpt build --symb $(SOURCE).symb --silent
+	$(LUCID_DIR)/dptc $(SOURCE).dpt --symb $(SOURCE).symb --silent
 
 #layout
 layout:
@@ -49,8 +49,8 @@ dfg:
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd build; make test ../$(SOURCE)_asictest.json
+	cd lucid_tofino_build; make test ../$(SOURCE)_asictest.json

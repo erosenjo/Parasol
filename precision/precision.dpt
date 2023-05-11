@@ -20,23 +20,23 @@ symbolic size tables;
 // TODO: INTS ARE UNSIGNED
 
 /* consts */
-const int<<12>> zero12b = 0;
+const int<12> zero12b = 0;
 
 
 /* record for symbolic arrays that are interleaved in loop */
 // we have to break up flow id bc we don't get long enough regs in tofino
 // dummy array to compute min/compare 2 32-bit numbers (size is 32w32 in precision p4 code)
 // precision p4 code has 32 entries, but we don't need more than 1?
-type precisionregs<<'a>> = {
-    Array.t<<'a>> fid_3;
-    Array.t<<'a>> fid_1;
-    Array.t<<'a>> fid_2;
-//    Array.t<<'a>> fid_4;
-    Array.t<<'a>> counter;
+type precisionregs<'a> = {
+    Array.t<'a> fid_3;
+    Array.t<'a> fid_1;
+    Array.t<'a> fid_2;
+//    Array.t<'a> fid_4;
+    Array.t<'a> counter;
     int pos;
 }
 
-constr precisionregs<<'a>> create_precisionregs(int ent, int pos) = {
+constr precisionregs<'a> create_precisionregs(int ent, int pos) = {
     fid_1 = Array.create(ent);
     fid_2 = Array.create(ent);
     fid_3 = Array.create(ent);
@@ -46,14 +46,14 @@ constr precisionregs<<'a>> create_precisionregs(int ent, int pos) = {
 };
 
 // create symbolic arrays
-global precisionregs<<32>>[tables] arrs = [create_precisionregs(entries,size_to_int(i+1)) for i<tables];
+global precisionregs<32>[tables] arrs = [create_precisionregs(entries,size_to_int(i+1)) for i<tables];
 
 
 /* Events */
 // input: ipv4 src/dst addr, ipv4.protocol, vlan.vlan_id, tcp/udp src/dst ports, resubmit
-entry event ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes);
+entry event ip_in (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes);
 // ip_out input: resubmit, routing info?
-// event add_val (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes);
+// event add_val (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes);
 
 exit event ip_out ();
 
@@ -128,7 +128,7 @@ memop counter_incr_read_complex(int memval, int minval, int maxint) {
 }
 
 
-memop read(int stored, int dummy){
+memop readval(int stored, int dummy){
   return stored;
 }
 
@@ -137,21 +137,21 @@ memop write(int stored, int newval){
 }
 
 /* extern */
-extern log_count(int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int fid3, int count, int oldsrc, int olddst, int oldfid3);
+extern log_count(int srcaddr, int dstaddr, int<16> sport, int<16> dport, int fid3, int count, int oldsrc, int olddst, int oldfid3);
 extern write_to_file();
 
-event add_val_new (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int stage, int<<16>> idx) {
-    int<<logentries>> resubmitted_idx = (int<<logentries>>)idx;
-    int<<logentries>>[tables] idxes = [(int<<logentries>>)idx for i < tables];
-    // int<<logentries>>[tables] idxes = [hash<<logentries>>(size_to_int(i+3),srcaddr,dstaddr,sport, dport) for i < tables];
-    int fid_3var = hash<<32>>(1,sport,dport);
-    int<<8>> always_zero = 0;
+event add_val_new (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int stage, int<16> idx) {
+    int<logentries> resubmitted_idx = (int<logentries>)idx;
+    int<logentries>[tables] idxes = [(int<logentries>)idx for i < tables];
+    // int<logentries>[tables] idxes = [hash<logentries>(size_to_int(i+3),srcaddr,dstaddr,sport, dport) for i < tables];
+    int fid_3var = hash<32>(1,sport,dport);
+    int<8> always_zero = 0;
     for (i < tables) {
         if (stage==arrs[i]#pos) {
             //printf("HASH: %d",idxes[i]);
-            int oldfid_3var = Array.update(arrs[i]#fid_3,resubmitted_idx, read, 0, write, fid_3var);
-            int oldsrcaddr = Array.update(arrs[i]#fid_1,resubmitted_idx, read, 0, write, srcaddr);
-            int olddstaddr = Array.update(arrs[i]#fid_2,resubmitted_idx, read, 0, write, dstaddr);
+            int oldfid_3var = Array.update(arrs[i]#fid_3,resubmitted_idx, readval, 0, write, fid_3var);
+            int oldsrcaddr = Array.update(arrs[i]#fid_1,resubmitted_idx, readval, 0, write, srcaddr);
+            int olddstaddr = Array.update(arrs[i]#fid_2,resubmitted_idx, readval, 0, write, dstaddr);
 //            Array.set(arrs[i]#fid_4,idxes[i],fid_4var);
             int count = Array.update(arrs[i]#counter,idxes[i],incr,1,incr,1);
             log_count(srcaddr,dstaddr,sport, dport, oldfid_3var,count,oldsrcaddr,olddstaddr,oldfid_3var);
@@ -168,18 +168,18 @@ event add_val_new (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, i
 
 }
 
-// handle add_val (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes) {
+// handle add_val (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes) {
 //     // placeholder for carried index
-//     int<<logentries>> resubmitted_idx = (int<<logentries>>)srcaddr;
-//     // int<<logentries>>[tables] idxes = [hash<<logentries>>(size_to_int(i+3),srcaddr,dstaddr,sport, dport) for i < tables];
-//     int fid_3var = hash<<32>>(1,sport,dport);
+//     int<logentries> resubmitted_idx = (int<logentries>)srcaddr;
+//     // int<logentries>[tables] idxes = [hash<logentries>(size_to_int(i+3),srcaddr,dstaddr,sport, dport) for i < tables];
+//     int fid_3var = hash<32>(1,sport,dport);
 
 //     for (i < tables) {
 //         if (resubmitted_min_stage==arrs[i]#pos) {
 //             //printf("HASH: %d",idxes[i]);
-//             int oldsrcaddr = Array.update(arrs[i]#fid_1,resubmitted_idx, read, 0, write, srcaddr);
-//             int olddstaddr = Array.update(arrs[i]#fid_2,resubmitted_idx, read, 0, write, dstaddr);
-//             int oldfid_3var = Array.update(arrs[i]#fid_3,resubmitted_idx, read, 0, write, fid_3var);
+//             int oldsrcaddr = Array.update(arrs[i]#fid_1,resubmitted_idx, readval, 0, write, srcaddr);
+//             int olddstaddr = Array.update(arrs[i]#fid_2,resubmitted_idx, readval, 0, write, dstaddr);
+//             int oldfid_3var = Array.update(arrs[i]#fid_3,resubmitted_idx, readval, 0, write, fid_3var);
 // //            Array.set(arrs[i]#fid_4,idxes[i],fid_4var);
 //             int count = Array.update(arrs[i]#counter,resubmitted_idx,incr,1,incr,1);
 
@@ -191,7 +191,7 @@ event add_val_new (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, i
     
 // }
 
-handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1>> resubmit, int resubmitted_min_stage, int<<7>> dummy_bytes) {
+handle ip_in (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes) {
 
 
     // dummy packet
@@ -211,13 +211,13 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
     // part 1 is ipv4 srcaddr, 2 is dstaddr
     // 3 is ports concatenated, [15:0] = src, [31:16] = dst
     // 4 is ipv4.protocol, vlan.vlan_id, concat w identity hash
-//    int fidvar_4 = hash<<32>>(1, proto, vlan_id, zero12b);
+//    int fidvar_4 = hash<32>(1, proto, vlan_id, zero12b);
 
 
 
     // precompute hashes
-    int fidvar_3 = hash<<32>>(1,sport,dport);
-    int<<logentries>>[tables] idxes = [hash<<logentries>>(size_to_int(i+3),srcaddr, dstaddr, fidvar_3) for i < tables];
+    int fidvar_3 = hash<32>(1,sport,dport);
+    int<logentries>[tables] idxes = [hash<logentries>(size_to_int(i+3),srcaddr, dstaddr, fidvar_3) for i < tables];
     
 
     // add matched var that we set to 1 if match anywhere, then we can skip the work for rest of arrays
@@ -226,9 +226,9 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
     int min_val = 0xffffff;	// signed ints? set this to max value
 
     int min_stg_to_set = 0;
-    int<<16>> min_stg_idx = 0;
+    int<16> min_stg_idx = 0;
     int c_or_maxint = 0;
-    int<<1>> matched = 0;
+    int<1> matched = 0;
     int max_int = 0xffffffff;
 
     for (i < tables) {
@@ -263,7 +263,7 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
              //printf("TESTCOUNT %d", c_or_maxint);
              //printf("TESTSTG %d", size_to_int(i));
              min_stg_to_set = size_to_int(i+1);
-             min_stg_idx = (int<<16>>)idxes[i];
+             min_stg_idx = (int<16>)idxes[i];
              min_val = c_or_maxint;
          }
 
@@ -278,7 +278,7 @@ handle ip_in (int srcaddr, int dstaddr, int<<16>> sport, int<<16>> dport, int<<1
         // if they're w/in some range, then we decide to recirc
         // entries are predetermined, takes into account min count
         int entropy_long = Sys.random();
-        int<<12>> entropy_short = (int<<12>>)Sys.random();
+        int<12> entropy_short = (int<12>)Sys.random();
 
 
         //printf("STG %d",min_stg_to_set);

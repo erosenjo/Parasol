@@ -12,13 +12,13 @@ symbolic size logcols;
 //const int thresh = 100;
 
 // cms structure (keeping reg width fixed for now)
-global Array.t<<32>>[rows] cms = [Array.create(cols) for i<rows];
+global Array.t<32>[rows] cms = [Array.create(cols) for i<rows];
 
 
 /* Events */
 // pkt in switch
 //entry event ip_in (int src, int dst);
-entry event ip_in (int<<9>> igr_port, int src, int dst, int<<7>> dummy_bytes);
+entry event ip_in (int<16> igr_port, int src, int dst, int dummy_bytes);
 // end of lucid program, send back to switch
 exit event ip_out ();
 
@@ -42,18 +42,18 @@ memop compute_min(int memval, int minval) {
 
 /* Handlers */
 //handle ip_in (int src, int dst) {
-handle ip_in (int<<9>> igr_port, int src, int dst, int<<7>> dummy_bytes) {
+handle ip_in (int<16> igr_port, int src, int dst, int dummy_bytes) {
 	/* actual cms */
 	// init values
 	int min = 0xffffffff;
-	//int<<1>> hh = 0;
+	//int<1> hh = 0;
 
-    int<<logcols>>[rows] idxes = [hash<<logcols>>(size_to_int(i),src,dst) for i<rows];
+    int<logcols>[rows] idxes = [hash<logcols>(size_to_int(i),src,dst) for i<rows];
 	for (i < rows) {
 		// get index
 		// log2 --> we don't know how many spaces we're hashing to, so we don't know how many bits to use for index
 		// using log2 as a placeholder for now
-		//int<<logcols>> idx = hash<<logcols>>(size_to_int(i),src,dst);
+		//int<logcols> idx = hash<logcols>(size_to_int(i),src,dst);
 		// incr value and calc min as we go
 		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
 		// if we use a conditional to compare, it breaks up the comparison and takes mult stages

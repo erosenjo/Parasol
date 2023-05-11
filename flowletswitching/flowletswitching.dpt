@@ -17,17 +17,17 @@ symbolic size log_flowlets;	// for hashing
 symbolic int IPG_thresh;	// length between flowlets (in nsec) - should this be symbolic??
 
 /* arrays */
-global Array.t<<32>> flowlet_time = Array.create(flowlets);
-global Array.t<<32>> saved_hops = Array.create(flowlets);
+global Array.t<32> flowlet_time = Array.create(flowlets);
+global Array.t<32> saved_hops = Array.create(flowlets);
 
 /* events */
-entry event ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport, int<<16>> dstport, int<<8>> protocol, int<<16>> len);
-//exit event ip_out(int<<9>> egress_port, int<<7>> dummy_bytes);
+entry event ip_in(int<time_t> arr_time, int srcaddr, int dstaddr, int<16> srcport, int<16> dstport, int<8> protocol, int<16> len);
+//exit event ip_out(int<9> egress_port, int<7> dummy_bytes);
 exit event ip_out();
 
 /* externs */
 //extern log_newflowlethop(int hop, bool thresh);	// count the number of flowlets sent across each path
-extern log_pkthop(int<<9>> hop,int<<16>> len);	// count the number of pkts sent across each path
+extern log_pkthop(int<9> hop,int<16> len);	// count the number of pkts sent across each path
 //extern log_test(int hop, int timedelta);
 //extern log_testmemops(int hop, int timedelta);
 extern write_to_file();
@@ -51,9 +51,9 @@ memop choosehop(int memval, int newval, int timedelta) {
 }
 
 /* handlers */
-handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport, int<<16>> dstport, int<<8>> protocol,int<<16>> len) {
+handle ip_in(int<time_t> arr_time, int srcaddr, int dstaddr, int<16> srcport, int<16> dstport, int<8> protocol,int<16> len) {
     // hash to flowlet_time, update the time stored there and return delta
-    int<<log_flowlets>> idx = hash<<log_flowlets>>(poly1,srcaddr,dstaddr,srcport,dstport,protocol);
+    int<log_flowlets> idx = hash<log_flowlets>(poly1,srcaddr,dstaddr,srcport,dstport,protocol);
 
     // compute difference between time of this pkt and last pkt of this flow
     // storing time as 32 bits, tofino doesn't support 48 bit registers
@@ -62,7 +62,7 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
 
     // compute hash for hop 
     // making it 32 bits for now, then casting to 9 bits for egress_port
-    int hophash = hash<<32>>(poly2,srcaddr,dstaddr,srcport,dstport,protocol,arr_time);
+    int hophash = hash<32>(poly2,srcaddr,dstaddr,srcport,dstport,protocol,arr_time);
 
 
     // gonna have to hard code mat entries for hash, bc can't do modulo unless power of 2
@@ -78,7 +78,7 @@ handle ip_in(int<<time_t>> arr_time, int srcaddr, int dstaddr, int<<16>> srcport
     // in memops, if delta is > thresh, forward on new hop (from hash)
     // else, return saved hop and forward pkt
     // newhop is default return, so if we don't hit the if case that contains return stmt, memop returns newhop
-    int<<9>> egress_port = (int<<9>>) Array.update_complex(saved_hops, idx, choosehop, newhop, timedelta, newhop);
+    int<9> egress_port = (int<9>) Array.update_complex(saved_hops, idx, choosehop, newhop, timedelta, newhop);
 
     //printf("HOP: %d", egress_port);
 

@@ -22,7 +22,7 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc caching.dpt build --symb caching.symb --silent
+	$(LUCID_DIR)/dptc caching.dpt --symb caching.symb --silent
 
 #layout
 layout:
@@ -34,8 +34,8 @@ dfg:
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd build; make test ../cmscache.json
+	cd lucid_tofino_build; make test ../cmscache.json

@@ -8,8 +8,8 @@
 /* this is the single fridge case; multi-fridge case is single table spread across stages (single hash function), see sec4 in paper */
 
 /* consts */
-const int<<8>> TCP_FLAGS_S = 2; // syn
-const int<<8>> TCP_FLAGS_A = 16; // ack
+const int<8> TCP_FLAGS_S = 2; // syn
+const int<8> TCP_FLAGS_A = 16; // ack
 const int SEED = 11;
 //size ENTRY_PROB_LOG2 = 3;  // insert w/ prob 2^-ENTRY_PROB_LOG2
 //const int fridge_size = 256;
@@ -22,30 +22,30 @@ symbolic int fridge_size;
 symbolic size log_fridge;
 
 /* Arrays */
-global Array.t<<32>> insert_counter = Array.create(1);
+global Array.t<32> insert_counter = Array.create(1);
 // 3 arrays, to store flowid, timestamp (for rtt calc), and insertion counter (to track time in fridge)
-global Array.t<<32>> fids = Array.create(fridge_size);
-global Array.t<<32>> timestamps = Array.create(fridge_size);
-global Array.t<<32>> inserts = Array.create(fridge_size);
+global Array.t<32> fids = Array.create(fridge_size);
+global Array.t<32> timestamps = Array.create(fridge_size);
+global Array.t<32> inserts = Array.create(fridge_size);
 
-const int<<26>> zero26b = 0;
-const int<<2>> zero2b = 0;
-const int<<16>> zero16b = 0;
+const int<26> zero26b = 0;
+const int<2> zero2b = 0;
+const int<16> zero16b = 0;
 // tcp flags
-const int<<8>> TCP_FLAGS_F = 1; // fin
-const int<<8>> TCP_FLAGS_S = 2; // syn
-const int<<8>> TCP_FLAGS_R = 4; // rst
-const int<<8>> TCP_FLAGS_P = 8; // psh
-const int<<8>> TCP_FLAGS_A = 16; // ack
-//const int<<8>> tcp_s_a = TCP_FLAGS_S+TCP_FLAGS_A;
-const int<<8>> tcp_s_a = 18;
-//const int<<8>> tcp_a_p = TCP_FLAGS_A + TCP_FLAGS_P;
-const int<<8>> tcp_a_p = 24;
+const int<8> TCP_FLAGS_F = 1; // fin
+const int<8> TCP_FLAGS_S = 2; // syn
+const int<8> TCP_FLAGS_R = 4; // rst
+const int<8> TCP_FLAGS_P = 8; // psh
+const int<8> TCP_FLAGS_A = 16; // ack
+//const int<8> tcp_s_a = TCP_FLAGS_S+TCP_FLAGS_A;
+const int<8> tcp_s_a = 18;
+//const int<8> tcp_a_p = TCP_FLAGS_A + TCP_FLAGS_P;
+const int<8> tcp_a_p = 24;
 
 /* Events */
-entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp);
-//entry event tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp);
-//exit event tcp_out(int rtt, int insrtdiff, int<<1>> successful, int<<7>> dummy_bytes);
+entry event tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp);
+//entry event tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int timestamp);
+//exit event tcp_out(int rtt, int insrtdiff, int<1> successful, int<7> dummy_bytes);
 exit event tcp_out();
 exit event dropped();
 
@@ -72,34 +72,34 @@ extern log_rttsample(int rtt, int insrtdiff, int eprob, int fsize);
 extern write_to_file();
 
 // compute eack for syn cases
-fun int precompute_eack(int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no) {
-    int<<32>> tmp_1=hash<<32>>(1,zero26b, ihl, zero2b);
-    int<<32>> tmp_2=hash<<32>>(1,zero26b, data_offset, zero2b);
-    //int<<32>> tmp_3=zero16b ^ len;
-    int<<32>> tmp_3 = hash<<32>>(1,zero16b, len);
+fun int precompute_eack(int<16> len, int<4> ihl, int<4> data_offset, int seq_no) {
+    int<32> tmp_1=hash<32>(1,zero26b, ihl, zero2b);
+    int<32> tmp_2=hash<32>(1,zero26b, data_offset, zero2b);
+    //int<32> tmp_3=zero16b ^ len;
+    int<32> tmp_3 = hash<32>(1,zero16b, len);
     // stage 2
-    int<<32>> tmp_4=tmp_1+tmp_2;
+    int<32> tmp_4=tmp_1+tmp_2;
     // stage 3
-    int<<32>> tmp_5=tmp_3-tmp_4;
+    int<32> tmp_5=tmp_3-tmp_4;
 
-    // int<<32>> tmp_1=hash<<32>>(1,(int<<26>>)0 ^ ihl ^ (int<<2>>)0);
-    // int<<32>> tmp_2=hash<<32>>(1,(int<<26>>)0 ^ data_offset ^ (int<<2>>)0);
-    // int<<32>> tmp_3=(int<<16>>)0 ^ len;
-    // int<<32>> tmp_4=tmp_1+tmp_2;
-    // int<<32>> tmp_5=tmp_3-tmp_4;
+    // int<32> tmp_1=hash<32>(1,(int<26>)0 ^ ihl ^ (int<2>)0);
+    // int<32> tmp_2=hash<32>(1,(int<26>)0 ^ data_offset ^ (int<2>)0);
+    // int<32> tmp_3=(int<16>)0 ^ len;
+    // int<32> tmp_4=tmp_1+tmp_2;
+    // int<32> tmp_5=tmp_3-tmp_4;
     // int expected_ack = seq_no+tmp_5;
     // stage 4
     return seq_no+tmp_5;
 }
 
-fun void drop() {
+fun void drops() {
     generate dropped();
 }
 
 
 
-handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int<<48>> timestamp) {
-//handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort, int timestamp) {
+handle tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp) {
+//handle tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int timestamp) {
 
 
     // dummy packet, write results to file
@@ -110,7 +110,7 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
     }
 
     int eack = precompute_eack(len, ihl, data_offset, seq_no);
-    int<<2>> pkt_type = 0;
+    int<2> pkt_type = 0;
 
     int short_time = timestamp[31:0];
 
@@ -131,31 +131,31 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
     | _,0b0000010********* -> {pkt_type=2; }
     | _,0b0000011000****** -> {pkt_type=2; }
     | _,0b0000011001000000 -> {pkt_type=2; }
-    | TCP_FLAGS_R, _ -> {drop();}
-    | TCP_FLAGS_F, _ -> {drop();}
+    | TCP_FLAGS_R, _ -> {drops();}
+    | TCP_FLAGS_F, _ -> {drops();}
     | _,_ -> {pkt_type=0;}
 
 
 
 
-    //int<<1>> successful = 0;
+    //int<1> successful = 0;
     int rtt = 0;
     int insrtdiff = 0;
     // prototype measures handshake delay, but maybe can use table from rtt to measure rtt for entire connection?
 
     if (pkt_type==0) {
             // compute flow id
-            //int<<128>> fid=dstAddr^srcAddr^dstPort^srcPort^ack_no;
+            //int<128> fid=dstAddr^srcAddr^dstPort^srcPort^ack_no;
             // apply fridge algo
             // entropy???? (entropy != 0?)
 
             // calc hash and sig
-            int pkt_signature = hash<<32>>(SEED, dstAddr,srcAddr,dstPort,srcPort,ack_no);
-            int<<log_fridge>> hashed_location_1 = hash<<log_fridge>>(SEED, dstAddr,srcAddr,dstPort,srcPort,ack_no);
+            int pkt_signature = hash<32>(SEED, dstAddr,srcAddr,dstPort,srcPort,ack_no);
+            int<log_fridge> hashed_location_1 = hash<log_fridge>(SEED, dstAddr,srcAddr,dstPort,srcPort,ack_no);
             // get current insertion count
             int insrtct = Array.get(insert_counter, 0);
             // check if fid matches
-            //int<<1>> matchfid = (int<<1>>)Array.update(fids, hashed_location_1, boolcompare, pkt_signature, resetcompare, pkt_signature);
+            //int<1> matchfid = (int<1>)Array.update(fids, hashed_location_1, boolcompare, pkt_signature, resetcompare, pkt_signature);
             int matchfid = Array.update(fids, hashed_location_1, boolcompare, pkt_signature, resetcompare, pkt_signature);
 
 		//printf("ACK: %d", ack_no);
@@ -175,20 +175,20 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
             eack = eack + 1;
         }
         // compute flow id - 128 bits
-        //int<<128>> fid=srcAddr^dstAddr^srcPort^dstPort^eack;
+        //int<128> fid=srcAddr^dstAddr^srcPort^dstPort^eack;
         // apply fridge algo
         // gen random value that tells us if we're letting new item into fridge
-        int<<ENTRY_PROB_LOG2>> entropy = (int<<ENTRY_PROB_LOG2>>)Sys.random();
+        int<ENTRY_PROB_LOG2> entropy = (int<ENTRY_PROB_LOG2>)Sys.random();
         //if (ENTRY_PROB_LOG2!=0) { entropy = rng.get(); } // RANDOMIZE
 
 
         // calc pkt sig and hash
-        int pkt_signature = hash<<32>>(SEED, srcAddr,dstAddr,srcPort,dstPort,eack);
+        int pkt_signature = hash<32>(SEED, srcAddr,dstAddr,srcPort,dstPort,eack);
         //printf("SIG %d", pkt_signature);
         //printf("EACK: %d", eack);
 
 
-        int<<log_fridge>> hashed_location_1 = hash<<log_fridge>>(SEED, srcAddr,dstAddr,srcPort,dstPort,eack);
+        int<log_fridge> hashed_location_1 = hash<log_fridge>(SEED, srcAddr,dstAddr,srcPort,dstPort,eack);
         //printf("ENTROPY: %d", entropy);
         if (entropy == 0) {
             int insrtct = Array.update(insert_counter, 0, incr, 1, incr, 1);
@@ -236,7 +236,7 @@ handle tcp_in(int<<8>> tcp_flags, int<<16>> len, int<<4>> ihl, int<<4>> data_off
 // fridge algo:
 // p4: if == 0, entropy is bit<1>, else bit<ENTRY_PROB_LOG2>
 /*
-int<<ENTRY_PROB_LOG2>> entropy = 0;
+int<ENTRY_PROB_LOG2> entropy = 0;
 if (ENTRY_PROB_LOG2 != 0) { // ENTRY_PROB_LOG2==0 -> p=1, special case
     entropy = rng.get();
 }

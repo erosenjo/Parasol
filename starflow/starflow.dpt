@@ -53,7 +53,7 @@ and compile-time loops to calculate the modulo. Something like this:
 */
 
 
-entry event ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos);
+entry event ip_in (int src, int dst, int<16> len_short, int<8> tos);
 exit event ip_out (int src, int dst);
 
 
@@ -64,22 +64,22 @@ event long_record(int src, int len, int[num_short] short_recs, int[num_long] lon
 
 
 // free a "long slot" by pushing it's index back onto the stack. 
-event free_block(int block_id, int<<16>> h2_align);
+event free_block(int block_id, int<16> h2_align);
 
-global Array.t<<32>> srcarr = Array.create(S_SLOTS);
-global Array.t<<32>> ctarr = Array.create(S_SLOTS);
-global Array.t<<32>> idxarr = Array.create(S_SLOTS);
+global Array.t<32> srcarr = Array.create(S_SLOTS);
+global Array.t<32> ctarr = Array.create(S_SLOTS);
+global Array.t<32> idxarr = Array.create(S_SLOTS);
 
-//global Array.t<<32>> stack_top_blk_id = Array.create(1);
-global Array.t<<32>> stack_top = Array.create(1);
-global Array.t<<32>> longblock_stack = Array.create(L_SLOTS);
-//global Array.t<<32>> longblock_stack = Array.create(131072);
-global Array.t<<32>> block_map = Array.create(L_SLOTS);
+//global Array.t<32> stack_top_blk_id = Array.create(1);
+global Array.t<32> stack_top = Array.create(1);
+global Array.t<32> longblock_stack = Array.create(L_SLOTS);
+//global Array.t<32> longblock_stack = Array.create(131072);
+global Array.t<32> block_map = Array.create(L_SLOTS);
 
-global Array.t<<32>>[num_short] arr_short = [Array.create(S_SLOTS) for i < num_short];
-global Array.t<<32>>[num_long] arr_long = [Array.create(L_SLOTS) for i < num_long];
+global Array.t<32>[num_short] arr_short = [Array.create(S_SLOTS) for i < num_short];
+global Array.t<32>[num_long] arr_long = [Array.create(L_SLOTS) for i < num_long];
 
-memop read (int stored, int nothingval) { 
+memop readval(int stored, int nothingval) { 
   return stored;
 }
 memop write (int stored, int newval) {
@@ -147,15 +147,15 @@ memop decr_sat (int stored, int decrval) {
   }
 }
 
-fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int idx, int i) {
-// fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int idx_minus_i) {
+fun int update_or_get_s(Array.t<32> rec, int<log_s_slots> h1, int len, int idx, int i) {
+// fun int update_or_get_s(Array.t<32> rec, int<log_s_slots> h1, int len, int idx_minus_i) {
   if (idx == i) {
   // if (idx_minus_i == 0) {
-    //int x = Array.update(rec, h1, read, 0, write, len);
+    //int x = Array.update(rec, h1, readval, 0, write, len);
     //int x = Array.update(rec, h1, write, len, write, len);
     //printf("==0: %d", x);
     //return x;
-    //return Array.update(rec, h1, read, 0, write, len);
+    //return Array.update(rec, h1, readval, 0, write, len);
     return Array.update(rec, h1, write, len, write, len);
   } else {
     //int x = Array.get(rec, h1);
@@ -166,11 +166,11 @@ fun int update_or_get_s(Array.t<<32>> rec, int<<log_s_slots>> h1, int len, int i
 }
 
 
-fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int idx, int i) {
-// fun int update_or_get_l(Array.t<<32>> rec, int<<log_l_slots>> h1, int len, int idx_minus_i) {
+fun int update_or_get_l(Array.t<32> rec, int<log_l_slots> h1, int len, int idx, int i) {
+// fun int update_or_get_l(Array.t<32> rec, int<log_l_slots> h1, int len, int idx_minus_i) {
   if (idx == i) {
   // if (idx_minus_i == 0) {
-    return Array.update(rec, h1, read, 0, write, len);
+    return Array.update(rec, h1, readval, 0, write, len);
   } else {
     return Array.get(rec, h1);
   }
@@ -197,8 +197,8 @@ memop idx_update(int stored, int unused1, int unused2) {
   }
 }
 
-handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {  
-  int len = (int<<32>>) len_short;
+handle ip_in (int src, int dst, int<16> len_short, int<8> tos) {  
+  int len = (int<32>) len_short;
   int ct  = 0; int idx = 0; int oldct = 0;// idx = (count % num_rec_slots);
 
   int[num_short] short_recs = [0 for i < num_short];
@@ -207,9 +207,9 @@ handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {
   int blk_id = 0;
   // update the key.
   // hardcoding polynomial for now 
-  int<<log_s_slots>> h1 = hash<<log_s_slots>>(23, src); 
-  int<<log_l_slots>> h2 = hash<<log_l_slots>>(23, src);
-  int<<16>> h2_align = (int<<16>>) h2;
+  int<log_s_slots> h1 = hash<log_s_slots>(23, src); 
+  int<log_l_slots> h2 = hash<log_l_slots>(23, src);
+  int<16> h2_align = (int<16>) h2;
 
   // Collision and bookkeeping logic.
   int is_match = Array.update(srcarr, h1, sub, src, write, src);
@@ -218,20 +218,18 @@ handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {
     // idx = Array.update(idxarr, h1, incr_idx, 1, incr_idx, 1);
     idx = Array.update_complex(idxarr, h1, idx_update, 0, 0, 0); // complex memop to workaround p4 error
   } else {  // let's reset our counter (bc we flush on eviction) and check if this is 1st pkt, or an actual collision)
-    oldct = Array.update(ctarr, h1, read, 0, write, 1); // if ct == 0, then it's a first pkt
+    oldct = Array.update(ctarr, h1, readval, 0, write, 1); // if ct == 0, then it's a first pkt
   }
 
 
   int stored_src = is_match + src; // restore stored_src from is_match. 
-
-
 
   // **** Memory allocation logic ****
   // the first time a flow runs out of memory in the short array, 
   // try to get a slot in the long array.
   if (ct == size_to_int(num_short)) { 
     //Array.set(stack_top_blk_id, 0, 0);
-    int stack_idx = Array.update(stack_top, 0, read, 0, decr_sat, 1);
+    int stack_idx = Array.update(stack_top, 0, readval, 0, decr_sat, 1);
     printf("GET LONG, REMAINING+1 (STACK_IDX): %d", stack_idx);
     //int stack_idx = Array.update(stack_top, 0, decr_sat, 1, decr_sat, 1);
     // if we got an index from the stack, then we have 
@@ -285,6 +283,11 @@ handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {
         long_recs = [Array.get(arr_long[i], h2) for i < num_long];
     }
   }
+
+/*********************
+BROKEN LOGIC --> Fatal error: exception Dpt.CoreSyntax.Error("[refine_condition_with_pat] no positive clause?") 
+*********************/
+
   // ***** event generation logic *****
   if (is_match != match_flag) {
     if (oldct != 0) {    // not first pkt
@@ -305,6 +308,11 @@ handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {
     }
   }
 
+/********************
+END BROKEN LOGIC
+*********************/
+
+
 } 
 
 // NOTE: if we don't have free_block events to start, we won't have any long stacks available (bc array vals default to 0)
@@ -312,10 +320,10 @@ handle ip_in (int src, int dst, int<<16>> len_short, int<<8>> tos) {
 // block_ids range from 1-L_SLOTS
 // we leave slot at index 0 empty bc 0 tells us we have no more blocks left
 // (aka, the number of blocks we have is L_SLOTS - 1)
-handle free_block(int block_id, int<<16>> h2_align) {
+handle free_block(int block_id, int<16> h2_align) {
   printf("FREE BLOCK BLK_ID: %d", block_id);
   // byte-alignment
-  int<<log_l_slots>> h2 = (int<<log_l_slots>>) h2_align;
+  int<log_l_slots> h2 = (int<log_l_slots>) h2_align;
   // get a pointer to an unused slot in the free stack.
   // NOTE: updated memop, to try to get around race condition (mult free block triggers before recirc)
   // this DOES NOT totally solve it (could give out block in between dup free block events)
@@ -323,7 +331,7 @@ handle free_block(int block_id, int<<16>> h2_align) {
   //int stack_idx = Array.update(stack_top, 0, incr_stack_idx, incrval, incr_stack_idx, incrval);
   //int stack_idx = Array.update(stack_top, 0, incr, 1, incr, 1);
   int stack_idx = Array.update(stack_top, 0, incr_stack_idx, 1, incr_stack_idx, 1);
-  //int stack_idx = Array.update(stack_top, 0, read, 0, incr, 1);
+  //int stack_idx = Array.update(stack_top, 0, readval, 0, incr, 1);
   // write the block id to the unused slot. 
   //printf("PRE LONGBLOCK STACK");
   printf("NEW RELEASE LONG, REMAINING (STACK IDX): %d", stack_idx);

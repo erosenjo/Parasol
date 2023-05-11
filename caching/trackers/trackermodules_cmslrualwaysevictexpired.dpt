@@ -19,7 +19,7 @@
 // if inserting, updated value stored at array in min_stage
 // prob insertion uses table w/ predetermined entries
 
-// hard coding this to be 32 bit width registers, bc externs won't let us do int<<'a>>
+// hard coding this to be 32 bit width registers, bc externs won't let us do int<'a>
 
 
 /* SYMBOLIC V2, sizes AND num of tables symbolic */
@@ -116,22 +116,22 @@ extern write_to_file();
 
 
 module Cmscache : {
-    global type t<<'logent, 'tab, 'logcols, 'rows>>;
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
+    global type t<'logent, 'tab, 'logcols, 'rows>;
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols);
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) [start <= ca; end ca];
+    fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) [start <= ca; end ca];
 
 
 } {
     /* record for symbolic arrays that are interleaved in loop */
     type regs = {
-        Array.t<<32>> keys;
-        Array.t<<32>> times;
-        Array.t<<32>> counter;
-        Array.t<<32>> values;
-        Array.t<<32>> dummy_reg;
+        Array.t<32> keys;
+        Array.t<32> times;
+        Array.t<32> counter;
+        Array.t<32> values;
+        Array.t<32> dummy_reg;
         int pos;
     }
 
@@ -144,14 +144,14 @@ module Cmscache : {
         pos = pos;
     };
 
-    type t<<'logent, 'tab, 'logcols, 'rows>> = {
+    type t<'logent, 'tab, 'logcols, 'rows> = {
         regs['tab] arrs;
-        int<<'logent>> dummy_var;
-        Array.t<<32>>['rows] cms;
-        int<<'logcols>> dummy_var2;
+        int<'logent> dummy_var;
+        Array.t<32>['rows] cms;
+        int<'logcols> dummy_var2;
     }
 
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols) = {
         arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
         dummy_var = 0;
         cms = [Array.create(cols) for i<'rows];
@@ -160,12 +160,12 @@ module Cmscache : {
 
 
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+    handle add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
         int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
@@ -180,7 +180,7 @@ module Cmscache : {
 
 
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+    fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
 
         int matched = 0;
         int min_val = 0xffffffff;
@@ -199,7 +199,7 @@ module Cmscache : {
         }
 
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
 
         for (i < 'tab) {
             // init match vars, for each fid entry
@@ -241,7 +241,7 @@ module Cmscache : {
             if (notinserted) {
                     // cache miss, log it
                     log_miss(key);
-                    int<<'logcols>>['rows] cms_idxes = [hash<<'logcols>>(size_to_int(i+2),key) for i<'rows];
+                    int<'logcols>['rows] cms_idxes = [hash<'logcols>(size_to_int(i+2),key) for i<'rows];
 
                     for (i < 'rows) {
                         min_count = Array.update(ca#cms[i], cms_idxes[i], compute_min, min_count, incr, 1);
@@ -269,21 +269,21 @@ module Cmscache : {
 // PRECISION
 
 module Precisioncache : {
-    global type t<<'logent, 'tab, 'logcols, 'rows>>;
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
+    global type t<'logent, 'tab, 'logcols, 'rows>;
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols);
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) [start <= ca; end ca];
+    fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) [start <= ca; end ca];
 
 } {
     /* record for symbolic arrays that are interleaved in loop */
     type regs = {
-        Array.t<<32>> keys;
-        Array.t<<32>> times;
-        Array.t<<32>> counter;
-        Array.t<<32>> values;
-        Array.t<<32>> dummy_reg;
+        Array.t<32> keys;
+        Array.t<32> times;
+        Array.t<32> counter;
+        Array.t<32> values;
+        Array.t<32> dummy_reg;
         int pos;
     }
 
@@ -296,26 +296,26 @@ module Precisioncache : {
         pos = pos;
     };
 
-    type t<<'logent, 'tab, 'logcols, 'rows>> = {
+    type t<'logent, 'tab, 'logcols, 'rows> = {
         regs['tab] arrs;
-        int<<'logent>> dummy_var;
-        Array.t<<32>>['rows] cms;
-        int<<'logcols>> dummy_var2;
+        int<'logent> dummy_var;
+        Array.t<32>['rows] cms;
+        int<'logcols> dummy_var2;
     }
 
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols) = {
         arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
         dummy_var = 0;
         cms = [Array.create(cols) for i<'rows];
         dummy_var2 = 0;
     };
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+    handle add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
         int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
@@ -327,9 +327,9 @@ module Precisioncache : {
     }
 
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+    fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
 
-        int<<1>> matched = 0;
+        int<1> matched = 0;
         int min_val = 0xffffffff;
         int min_stg_to_set = 0;
         int c_or_maxint = 0;
@@ -345,7 +345,7 @@ module Precisioncache : {
         }
 
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
 
 
         for (i < 'tab) {
@@ -382,7 +382,7 @@ module Precisioncache : {
             // if they're w/in some range, then we decide to recirc
             // entries are predetermined, takes into account min count
             int entropy_long = Sys.random();
-            int<<12>> entropy_short = (int<<12>>)Sys.random();
+            int<12> entropy_short = (int<12>)Sys.random();
 
             // either no action or recirc // gen ip_out, or gen new ip_in
             // if recirc, gen new ip_in event w/ resubmit = 1
@@ -1562,22 +1562,22 @@ module Precisioncache : {
 // if collision, evict least recently used item
 
 module Hashcache : {
-    global type t<<'logent, 'tab, 'logcols, 'rows>>;
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols);
+    global type t<'logent, 'tab, 'logcols, 'rows>;
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols);
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) [start <= ca; end ca];
+    fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) [start <= ca; end ca];
 
 
 } {
     /* record for symbolic arrays that are interleaved in loop */
     type regs = {
-        Array.t<<32>> keys;
-        Array.t<<32>> times;
-        Array.t<<32>> counter;
-        Array.t<<32>> values;
-        Array.t<<32>> dummy_reg;
+        Array.t<32> keys;
+        Array.t<32> times;
+        Array.t<32> counter;
+        Array.t<32> values;
+        Array.t<32> dummy_reg;
         int pos;
     }
 
@@ -1590,14 +1590,14 @@ module Hashcache : {
         pos = pos;
     };
 
-    type t<<'logent, 'tab, 'logcols, 'rows>> = {
+    type t<'logent, 'tab, 'logcols, 'rows> = {
         regs['tab] arrs;
-        int<<'logent>> dummy_var;
-        Array.t<<32>>['rows] cms;
-        int<<'logcols>> dummy_var2;
+        int<'logent> dummy_var;
+        Array.t<32>['rows] cms;
+        int<'logcols> dummy_var2;
     }
 
-    constr t<<'logent, 'tab, 'logcols, 'rows>> create(int ent, int cols) = {
+    constr t<'logent, 'tab, 'logcols, 'rows> create(int ent, int cols) = {
         arrs = [create_regs(ent, size_to_int(i+1)) for i<'tab];
         dummy_var = 0;
         cms = [Array.create(cols) for i<'rows];
@@ -1605,12 +1605,12 @@ module Hashcache : {
     };
 
 
-    event add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp);
+    event add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp);
 
-    handle add_val(t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+    handle add_val(t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
         int short_time = timestamp[31:0];
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
         for (i < 'tab) {
             if (min_stg==ca#arrs[i]#pos) {
                 Array.set(ca#arrs[i]#keys,mht_idxes[i],key);
@@ -1622,7 +1622,7 @@ module Hashcache : {
         }
     }
 
-   fun void cache (t<<'logent, 'tab, 'logcols, 'rows>> ca, int key, int insert, int min_stg, int cacheval, int<<48>> timestamp) {
+   fun void cache (t<'logent, 'tab, 'logcols, 'rows> ca, int key, int insert, int min_stg, int cacheval, int<48> timestamp) {
 
         int matched = 0;
         int min_val = 0xffffffff;
@@ -1641,7 +1641,7 @@ module Hashcache : {
         }
 
         // NOTE: precompute mht_idxes helps in some scenarios.
-        int<<'logent>>['tab] mht_idxes = [hash<<'logent>>(size_to_int(i + 3),key) for i<'tab];
+        int<'logent>['tab] mht_idxes = [hash<'logent>(size_to_int(i + 3),key) for i<'tab];
 
         for (i < 'tab) {
             // init match vars, for each fid entry

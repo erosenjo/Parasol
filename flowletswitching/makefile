@@ -29,12 +29,12 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc flowletswitching.dpt build --symb flowletswitching.symb --silent
+	$(LUCID_DIR)/dptc flowletswitching.dpt --symb flowletswitching.symb --silent
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd flowletswitching_build; make test ../flowletswitching_test.json
+	cd flowletswitching_lucid_tofino_build; make test ../flowletswitching_test.json

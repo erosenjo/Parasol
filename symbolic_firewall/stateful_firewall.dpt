@@ -7,7 +7,7 @@
 extern count_data_packet();
 extern count_recirc_packet();
 extern insert_attempt(int src, int dst, bool success);
-extern decide(int src, int dst, int time, bool permitted, int<<16>> len);
+extern decide(int src, int dst, int time, bool permitted, int<16> len);
 extern write_logs();
 extern log_insert(int src, int dst, int time);
 extern log_access(int src, int dst, int time);
@@ -62,17 +62,17 @@ measurement function:
 const int NULL = 0;
 const int TRUE = 1; 
 const int FALSE = 0;
-const int<<8>> TOS_TRUSTED = 1;
+const int<8> TOS_TRUSTED = 1;
 
-entry event ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos);
-event cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int fst_dst);
+entry event ip_in (int<8> igr_port, int src, int dst, int<16> len, int<8> tos);
+event cuckoo_insert(int<8> port, int src, int dst, int ts, int fst_src, int fst_dst);
 exit event port_out ();
 
 
 type stage = {
-    Array.t<<32>> src_arr;
-    Array.t<<32>> dst_arr;
-    Array.t<<32>> tses;
+    Array.t<32> src_arr;
+    Array.t<32> dst_arr;
+    Array.t<32> tses;
 }
 
 constr stage create_fwstage(int entries) = {
@@ -82,7 +82,7 @@ constr stage create_fwstage(int entries) = {
 };
 
 global stage[stages] fw_stages = [create_fwstage(entries) for i < stages];
-global Array.t<<32>> cuckoo_insert_semaphore = Array.create(1);
+global Array.t<32> cuckoo_insert_semaphore = Array.create(1);
 
 
 
@@ -126,22 +126,22 @@ memop null_if_eq(int memval, int searchval){
 // hash copying breaks phv dependencies
 // (this program creates a lot of phv pressure)
 fun int hash_copy(int x) {
-    return hash<<32>>(1, x);
+    return hash<32>(1, x);
 }
 */
 
-handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) { 
+handle ip_in (int<8> igr_port, int src, int dst, int<16> len, int<8> tos) { 
     count_data_packet();   
     int ts = Sys.time();
-    //int<<8>> out_port = igr_port;
-    //int<<8>> tos_cpy = tos;
+    //int<8> out_port = igr_port;
+    //int<8> tos_cpy = tos;
     // case: ip pkt from trusted host. 
-    // int<<8>> idx = hash<<8>>(size_to_int(7), src); // first index..
-    //int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
+    // int<8> idx = hash<8>(size_to_int(7), src); // first index..
+    //int<logentries>[stages] idxes = [hash<logentries>(size_to_int(7+i), src, dst) for i<stages];
     //if (tos_cpy == TOS_TRUSTED) {
     if (tos == TOS_TRUSTED) {
         //printf ("[LUCID] insert attempt (%d, %d)", src, dst);    
-        int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+i), src, dst) for i<stages];
+        int<logentries>[stages] idxes = [hash<logentries>(size_to_int(7+i), src, dst) for i<stages];
         int src_output = 1;
         int dst_output = 1;
         //int src_cpy = hash_copy(src);
@@ -190,21 +190,21 @@ handle ip_in (int<<8>> igr_port, int src, int dst, int<<16>> len, int<<8>> tos) 
         int dst_match = FALSE;
         //int src_cpy2 = hash_copy(src);
         //int dst_cpy2 = hash_copy(dst);
-        int<<logentries>> idx = hash<<logentries>>(7, dst, src);
-        //int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+stage), dst, src) for stage<stages];
+        int<logentries> idx = hash<logentries>(7, dst, src);
+        //int<logentries>[stages] idxes = [hash<logentries>(size_to_int(7+stage), dst, src) for stage<stages];
         // having a separate copy for this branch relieves PHV pressure.
         for (stage < stages) {
-            // int<<8>> idx = hash<<8>>(size_to_int(stage + 7), src);
+            // int<8> idx = hash<8>(size_to_int(stage + 7), src);
             // look for ip if it has not been found yet. 
             if ((src_match == FALSE) && (dst_match == FALSE)) {
                 // note that we check src array for dst and dst array for src -- 
                 // because this is the return direction of the flow.
                 //src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst_cpy2);
                 //dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src_cpy2);
-                //idx = hash<<logentries>>(size_to_int(7+1+stage), dst, src); // next index..
+                //idx = hash<logentries>(size_to_int(7+1+stage), dst, src); // next index..
                 src_match = Array.getm(fw_stages[stage]#src_arr, idx, mem_eq_search, dst);
                 dst_match = Array.getm(fw_stages[stage]#dst_arr, idx, mem_eq_search, src);
-                idx = hash<<logentries>>(size_to_int(7+1+stage), dst, src); // next index..
+                idx = hash<logentries>(size_to_int(7+1+stage), dst, src); // next index..
                 
             }
         }
@@ -273,16 +273,16 @@ memop set_and_get_if_not_null(int memval, int inp, int unused) {
 
 
 
-handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int fst_dst) {
+handle cuckoo_insert(int<8> port, int src, int dst, int ts, int fst_src, int fst_dst) {
     count_recirc_packet();
     // a cuckoo insert is guaranteed to install (src, dst) into the first stage 
     // of the table. However, it might boot someone else out in the process, who then 
     // has to be re-inserted.
     // int evicted_src = hash_copy(src); 
     // int evicted_dst = hash_copy(dst);
-    int<<logentries>>[stages] idxes = [hash<<logentries>>(size_to_int(7+stage), src, dst) for stage<stages];
+    int<logentries>[stages] idxes = [hash<logentries>(size_to_int(7+stage), src, dst) for stage<stages];
     for (stage < stages) {
-        //int<<logentries>> idx = hash<<logentries>>(size_to_int(7+stage), src, dst);
+        //int<logentries> idx = hash<logentries>(size_to_int(7+stage), src, dst);
         //printf ("[cuckoo_insert]@fw_stages[%d][%d]", size_to_int(stage), idx);
         //printf ("[cuckoo_insert] input: (%d, %d)", src, dst);
         // do nothing if input is null.
@@ -323,9 +323,9 @@ handle cuckoo_insert(int<<8>> port, int src, int dst, int ts, int fst_src, int f
 }
 
 
-//event delete(int stage, int<<16>> idx_inp, int elapsed_time) {
-event delete(int stage, int<<16>> idx_inp) {
-    //int<<logentries>> idx = (int<<logentries>>) idx_inp;
+//event delete(int stage, int<16> idx_inp, int elapsed_time) {
+event delete(int stage, int<16> idx_inp) {
+    //int<logentries> idx = (int<logentries>) idx_inp;
     //printf ("deleting fw[%d][%d] -- not accessed in %dns", stage, idx, elapsed_time);
     //int cur_time = Sys.time();
     count_recirc_packet();
@@ -350,13 +350,13 @@ memop is_expired(int last_accessed, int cur_time) {
     }
 }
 
-event check_timeout(int<<16>> idx_inp) {
-    int<<logentries>> idx = (int<<logentries>>) idx_inp;
+event check_timeout(int<16> idx_inp) {
+    int<logentries> idx = (int<logentries>) idx_inp;
     count_recirc_packet();
     int cur_time = Sys.time();
-    //int<<logentries>> idx_cpy = hash<<logentries>>(1, idx);
-    //int<<logentries>> next_idx = idx + 1;
-    int<<16>> next_idx = idx_inp + 1;
+    //int<logentries> idx_cpy = hash<logentries>(1, idx);
+    //int<logentries> next_idx = idx + 1;
+    int<16> next_idx = idx_inp + 1;
 
     // Event.delay is bugged in backend, so only use with interp.
     generate(Event.delay(check_timeout(next_idx), interscan_delay));
@@ -372,7 +372,7 @@ event check_timeout(int<<16>> idx_inp) {
         int elapsed_time = cur_time - last_accessed; 
         // int timeout_flag = FALSE;
         if ((elapsed_time > timeout) && (last_accessed != 0)) {
-            //generate delete(size_to_int(stage), (int<<16>>)idx, elapsed_time);
+            //generate delete(size_to_int(stage), (int<16>)idx, elapsed_time);
             //generate delete(size_to_int(stage), idx_inp, elapsed_time);
             generate delete(size_to_int(stage), idx_inp);
             // timeout_flag = TRUE;

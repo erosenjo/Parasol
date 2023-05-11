@@ -30,7 +30,7 @@ interactive:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb 
+	$(LUCID_DIR)/dptc cms_sym.dpt --symb cms_sym.symb 
 
 #layout
 layout:
@@ -42,8 +42,8 @@ dfg:
 
 # compile P4 to tofino
 assemble:
-	cd build; make build	 
+	cd lucid_tofino_build; make lucid_tofino_build	 
 
 # test P4 on the asic model
 test:
-	cd build; make test ../cms_sym.json
+	cd lucid_tofino_build; make test ../cms_sym.json
