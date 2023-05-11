@@ -68,7 +68,7 @@ handle ip_in (int src, int dst, int dummy_bytes) {
 	// init values
 	int min = 0xffffffff;
 
-    int<logcols>[rows] idxes = [hash<logcols>(size_to_int(i)+interval,src,dst) for i<rows];
+    int<logcols>[rows] idxes = [hash<logcols>(size_to_int(i),interval, src,dst) for i<rows];
 
 	for (i < rows) {
 		// incr value and calc min as we go
