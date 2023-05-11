@@ -33,7 +33,7 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc hash.dpt build --symb hash.symb --silent 
+	$(LUCID_DIR)/dptc hash.dpt --symb hash.symb --silent 
 
 # compile P4 to tofino
 assemble:

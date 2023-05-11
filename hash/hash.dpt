@@ -5,7 +5,7 @@ symbolic size log_size;
 symbolic size tables;
 
 
-global PairArray.t<<32>>[tables] hashtabs = [PairArray.create(table_size) for i < tables];
+global PairArray.t<32>[tables] hashtabs = [PairArray.create(table_size) for i < tables];
 
 /* Memops */
 memop key_match(int keyval, int used, int newkey, int unused) {
@@ -25,15 +25,15 @@ extern log_collision();
 extern write_to_file();
 
 /* events */
-entry event ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort);
+entry event ip_in(int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort);
 exit event ip_out();
 
 
 /* handler */
-handle ip_in(int srcAddr, int dstAddr, int<<16>> srcPort, int<<16>> dstPort) {
+handle ip_in(int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort) {
     // precompute hashes
-    int<<log_size>>[tables] idxes = [hash<<log_size>>(size_to_int(i+2),srcAddr,dstAddr,srcPort,dstPort) for i < tables];
-    int keyval = hash<<32>>(1,srcAddr,dstAddr,srcPort,dstPort);
+    int<log_size>[tables] idxes = [hash<log_size>(size_to_int(i+2),srcAddr,dstAddr,srcPort,dstPort) for i < tables];
+    int keyval = hash<32>(1,srcAddr,dstAddr,srcPort,dstPort);
 
     // for each table, check if it's a match (user counter to identify empty vs collision)
     int match_val = 0;
