@@ -22,7 +22,7 @@ trace_optimize:
 
 # run interpreter
 interp: 
-	$(LUCID_DIR)/dpt --suppress-final-state cms_sym.dpt
+	$(LUCID_DIR)/dpt --suppress-final-state trace_cms.dpt
 
 # run interpreter in interactive mode
 interactive:
@@ -30,14 +30,14 @@ interactive:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc cms_sym.dpt build --symb cms_sym.symb 
+	$(LUCID_DIR)/dptc trace_cms.dpt --symb trace_cms.symb 
 
 #layout
 layout:
-	$(LUCID_DIR)/bin/layout.py cms_sym.dpt --symb cms_sym.symb
+	$(LUCID_DIR)/bin/layout.py trace_cms.dpt --symb trace_cms.symb
 #dfg compile
 dfg:
-	$(LUCID_DIR)/bin/layout.py cms_sym.dpt --symb cms_sym.symb --dfg
+	$(LUCID_DIR)/bin/layout.py trace_cms.dpt --symb trace_cms.symb --dfg
 
 
 # compile P4 to tofino
@@ -46,4 +46,4 @@ assemble:
 
 # test P4 on the asic model
 test:
-	cd build; make test ../cms_sym.json
+	cd build; make test ../trace_cms.json
