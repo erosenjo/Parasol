@@ -13,11 +13,11 @@ symbolic size rows;
 symbolic size logcols;
 
 // register that keeps track of what sketch we're writing to
-global Array.t<<32>> interval_tracker = Array.create(1);
+global Array.t<32> interval_tracker = Array.create(1);
 
 // cms structure (keeping reg width fixed for now)
-global Array.t<<32>>[rows] cms0 = [Array.create(cols) for i<rows];
-global Array.t<<32>>[rows] cms1 = [Array.create(cols) for i<rows];
+global Array.t<32>[rows] cms0 = [Array.create(cols) for i<rows];
+global Array.t<32>[rows] cms1 = [Array.create(cols) for i<rows];
 
 
 /* Events */
@@ -30,7 +30,7 @@ exit event ip_out ();
 
 /* Externs */
 extern update_count(int x, int y, int z);
-extern update_bits_set(int cms_num, int row_num, int<<logcols>> idx);
+extern update_bits_set(int cms_num, int row_num, int<logcols> idx);
 extern write_to_file();
 
 /* Memops */
@@ -68,7 +68,8 @@ handle ip_in (int src, int dst, int dummy_bytes) {
 	// init values
 	int min = 0xffffffff;
 
-    int<<logcols>>[rows] idxes = [hash<<logcols>>(size_to_int(i)+interval,src,dst) for i<rows];
+    int<logcols>[rows] idxes = [hash<logcols>(size_to_int(i)+interval,src,dst) for i<rows];
+
 	for (i < rows) {
 		// incr value and calc min as we go
 		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
@@ -91,7 +92,6 @@ handle ip_in (int src, int dst, int dummy_bytes) {
             }
         }
     }
-
 
 	/* measurement stuff */
 	// we're keeping track of (min) counts from the sketch in python code
