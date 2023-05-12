@@ -22,7 +22,7 @@ interp:
 
 # compile Lucid to P4
 compile: 
-	$(LUCID_DIR)/dptc starflow.dpt --symb starflow.symb --silent
+	$(LUCID_DIR)/dptc starflow.dpt --symb starflow.symb --silent --oldifelim
 
 #layout
 layout:
