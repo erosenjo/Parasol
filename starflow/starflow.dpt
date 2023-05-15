@@ -284,10 +284,6 @@ handle ip_in (int src, int dst, int<16> len_short, int<8> tos) {
     }
   }
 
-/*********************
-BROKEN LOGIC --> Fatal error: exception Dpt.CoreSyntax.Error("[refine_condition_with_pat] no positive clause?") 
-*********************/
-
   // ***** event generation logic *****
   if (is_match != match_flag) {
     if (oldct != 0) {    // not first pkt
@@ -307,10 +303,6 @@ BROKEN LOGIC --> Fatal error: exception Dpt.CoreSyntax.Error("[refine_condition_
       }
     }
   }
-
-/********************
-END BROKEN LOGIC
-*********************/
 
 
 } 
