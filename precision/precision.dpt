@@ -51,11 +51,11 @@ global precisionregs<32>[tables] arrs = [create_precisionregs(entries,size_to_in
 
 /* Events */
 // input: ipv4 src/dst addr, ipv4.protocol, vlan.vlan_id, tcp/udp src/dst ports, resubmit
-entry event ip_in (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes);
+packet event ip_in (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes);
 // ip_out input: resubmit, routing info?
 // event add_val (int srcaddr, int dstaddr, int<16> sport, int<16> dport, int<1> resubmit, int resubmitted_min_stage, int<7> dummy_bytes);
 
-exit event ip_out ();
+event ip_out () { skip; }
 
 /* Memops */
 memop fid_match(int memval, int newval) {

@@ -25,8 +25,8 @@ extern log_collision();
 extern write_to_file();
 
 /* events */
-entry event ip_in(int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort);
-exit event ip_out();
+packet event ip_in(int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort);
+event ip_out() { skip; }
 
 
 /* handler */

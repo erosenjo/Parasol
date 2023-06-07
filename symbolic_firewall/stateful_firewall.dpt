@@ -64,9 +64,9 @@ const int TRUE = 1;
 const int FALSE = 0;
 const int<8> TOS_TRUSTED = 1;
 
-entry event ip_in (int<8> igr_port, int src, int dst, int<16> len, int<8> tos);
+packet event ip_in (int<8> igr_port, int src, int dst, int<16> len, int<8> tos);
 event cuckoo_insert(int<8> port, int src, int dst, int ts, int fst_src, int fst_dst);
-exit event port_out ();
+event port_out () { skip; }
 
 
 type stage = {

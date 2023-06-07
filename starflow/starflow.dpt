@@ -53,8 +53,8 @@ and compile-time loops to calculate the modulo. Something like this:
 */
 
 
-entry event ip_in (int src, int dst, int<16> len_short, int<8> tos);
-exit event ip_out (int src, int dst);
+packet event ip_in (int src, int dst, int<16> len_short, int<8> tos);
+event ip_out (int src, int dst) { skip; }
 
 
 // records that the cache emits when something gets evicted. 

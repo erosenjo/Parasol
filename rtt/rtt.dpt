@@ -30,9 +30,9 @@ const int TS_LEGITIMATE_THRESHOLD = 2000000000; // 2000*1000*1000
 /* Arrays */
 global PairArray.t<32>[tables] pkt_tables = [PairArray.create(table_size) for i<tables];
 /* Events */
-entry event tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp);
-exit event tcp_out(int<1> pkt_type, int<7> dummy_bytes, int rtt);
-exit event dropped();
+packet event tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int seq_no, int ack_no, int srcAddr, int dstAddr, int<16> srcPort, int<16> dstPort, int<48> timestamp);
+event tcp_out(int<1> pkt_type, int<7> dummy_bytes, int rtt) { skip; }
+event dropped() { skip; }
 /* Externs */
 extern log_collision();
 extern log_timeout(bool timeout);

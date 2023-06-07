@@ -21,8 +21,8 @@ global Cache.t<logentries,tables,logcols,rows> c = Cache.create(entries,cols);
 
 
 /* events */
-entry event ip_in(int key, int insert, int min_stg, int cacheval, int<48> timestamp);
-exit event ip_out();
+packet event ip_in(int key, int insert, int min_stg, int cacheval, int<48> timestamp);
+event ip_out() { skip; }
 
 /* handler */
 handle ip_in(int key, int insert, int min_stg, int cacheval, int<48> timestamp) {

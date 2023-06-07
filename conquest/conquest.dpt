@@ -51,9 +51,9 @@ global Array.t<32> snap_3_row_1 = Array.create(C);
 
 /* Events */
 // pkt in
-entry event ip_in (int<16> src_port, int<16> dst_port, int src, int dst, int qdelay, int<48> global_time, int total_len);
+packet event ip_in (int<16> src_port, int<16> dst_port, int src, int dst, int qdelay, int<48> global_time, int total_len);
 // send back to switch
-exit event ip_out();
+event ip_out() { skip; }
 
 /* Memops */
 memop incrpkt(int<7> memval, int<7> incrval) {

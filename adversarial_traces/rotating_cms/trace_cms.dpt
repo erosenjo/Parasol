@@ -22,10 +22,10 @@ global Array.t<32>[rows] cms1 = [Array.create(cols) for i<rows];
 
 /* Events */
 // pkt in switch
-//entry event ip_in (int src, int dst);
-entry event ip_in (int src, int dst, int dummy_bytes);
+//packet event ip_in (int src, int dst);
+packet event ip_in (int src, int dst, int dummy_bytes);
 // end of lucid program, send back to switch
-exit event ip_out ();
+event ip_out () { skip; }
 
 
 /* Externs */
