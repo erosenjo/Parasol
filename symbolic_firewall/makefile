@@ -1,6 +1,6 @@
 .PHONY: opttest interp compile layout assemble test optimize_timetest dfg preprocess_dfg
 LUCID_DIR = ../../../lucid
-OPT_DIR = ../optimizer
+OPT_DIR = ../optimization_new
 
 SOURCE := stateful_firewall
 # SOURCE := $(shell basename "*.dpt" .dpt)

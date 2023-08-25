@@ -1,6 +1,6 @@
 .PHONY: opttest optimize_timetest trace_optimize interp compile interactive layout assemble test dfg preprocess_dfg
 LUCID_DIR = ../../../lucid
-OPT_DIR = ../optimizer
+OPT_DIR = ../optimization_new
 
 # run optimization process (using layout, no traffic gen)
 opttest:
