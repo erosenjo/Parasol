@@ -410,9 +410,15 @@ def exhaustive(symbolics_opt, opt_info, o, timetest, solutions, bounds_tree):
     best_cost = float("inf")
     for sol in all_solutions_symbolics:
         if "interp_traces" not in opt_info:
-            cost = gen_cost(sol, sol, opt_info, o, False, "exhaustive")
+            if not solutions:
+                cost = gen_cost(sol, sol, opt_info, o, False, "exhaustive")
+            else:
+                cost = gen_cost(sol, sol, opt_info, o, False, "preprocessed")
         else:
-            cost = gen_cost_multitrace(sol, sol, opt_info, o, False, "exhaustive")
+            if not solutions:
+                cost = gen_cost_multitrace(sol, sol, opt_info, o, False, "exhaustive")
+            else:
+                cost = gen_cost_multitrace(sol, sol, opt_info, o, False, "preprocessed")
         testing_sols.append(sol)
         testing_eval.append(cost)
         if cost < best_cost:
