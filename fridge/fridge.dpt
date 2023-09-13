@@ -205,30 +205,6 @@ handle tcp_in(int<8> tcp_flags, int<16> len, int<4> ihl, int<4> data_offset, int
 
     // in egress, p4 prototype maintains tally histogram
 
-    // we only want to write extern results to file at the end, otherwise it makes interpreter VERY slow
-    // univ1_pt1 training 345002842034
-    // univ1_pt1-5 training 1403245679140
-    // univ1_pt6-10 training 1264375463008
-    // univ1_pt10-15 testing: 1329813086986
-    // univ1_pt11-15: 974915127992
-    // univ1_pt1-6: 1635149760961
-    // univ1_pt16-20: 272084649085
-    // univ1_pt1-10: 2667621536970 
-    // univ1_pt11-20: 1246999826908 
-    // univ1_pt1-2: 682377427101 (training, updated parsing)
-    //if (timestamp==345002842034) {
-    //if (timestamp== 1403245679140) {
-    //if (timestamp==1329813086986) {
-    //if (timestamp==1264375463008) {
-    //if (timestamp==974915127992) {
-    //if (timestamp==1635149760961) {
-    //if (timestamp==272084649085) {
-    //if (timestamp==2667621536970) {
-    //if (timestamp==1246999826908) {
-    //if (timestamp==682377427101) {
-    //    write_to_file();
-    //}
-
 }
 
 
