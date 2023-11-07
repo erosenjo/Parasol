@@ -167,7 +167,10 @@ def send_pkts(numpkts, opt_info, o, sim_process):
     measurement = send_next_events(sim_process, events, opt_info["outputfiles"])
 
     # calc cost
-    cost = o.calc_cost(measurement)
+    # params is a list that contains any extra parameters needed to get cost
+    # for the rotating cms, you can have either "avg" or "max"
+    # e.g., ["avg"]
+    cost = o.calc_cost(measurement, params)
 
     # return bits set for each sketch and avg error for all flows in the iteration
     # NOTE: this returns avg error, but we can also return gt and estimated counts for each flow instead

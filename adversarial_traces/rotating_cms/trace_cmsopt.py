@@ -124,7 +124,10 @@ class Opt:
     # called after every interp run
     # measurement is list of measurements (one measurement for each output file)
     # order in list is same ordered specified in opt json
-    def calc_cost(self,measure):  # compute avg error for our cms (mean abs error)
+    # avg_or_max is a list containing either "avg" or "max"
+    #   if ["avg"], then cost will be average error over all flows in a time window
+    #   if ["max"], cost will be max cost across all flows in a time window
+    def calc_cost(self,measure,avg_or_max=[]):  # compute avg error for our cms (mean abs error)
         m = measure[0]  # first file is estimated counts, second file is bits set
         s = []
         for k in self.interval_ground_truth:
@@ -141,7 +144,11 @@ class Opt:
         #print(sum(s)/len(s))
         if len(s) == 0:
             return 0
-        return sum(s)/len(s)
+        if "max" in avg_or_max:
+            return max(s)
+        # return avg by default
+        else:
+            return sum(s)/len(s)
 
     # called before every interp run
     # create a blank json file with no events
