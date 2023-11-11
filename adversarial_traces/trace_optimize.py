@@ -170,6 +170,7 @@ def send_pkts(numpkts, opt_info, o, sim_process):
     # params is a list that contains any extra parameters needed to get cost
     # for the rotating cms, you can have either "avg" or "max"
     # e.g., ["avg"]
+    params = ["avg"]
     cost = o.calc_cost(measurement, params)
 
     # return bits set for each sketch and avg error for all flows in the iteration
