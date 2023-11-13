@@ -2,7 +2,6 @@
 #   gen traffic (as json), init function called each time we run interp iteration
 
 import json
-from scapy.all import *
 import pickle
 import time
 import random
