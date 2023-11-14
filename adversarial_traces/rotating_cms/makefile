@@ -22,11 +22,11 @@ trace_optimize:
 
 # run interpreter
 interp: 
-	$(LUCID_DIR)/dpt --suppress-final-state trace_cms.dpt
+	$(LUCID_DIR)/dpt --suppress-final-state --suppress-event-reports trace_cms.dpt
 
 # run interpreter in interactive mode
 interactive:
-	$(LUCID_DIR)/dpt -i --suppress-final-state trace_cms.dpt
+	$(LUCID_DIR)/dpt -i --suppress-final-state --suppress-event-reports trace_cms.dpt
 
 # compile Lucid to P4
 compile: 
