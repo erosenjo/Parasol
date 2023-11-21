@@ -39,7 +39,13 @@ class Opt:
         # reset ground truth for each interval
         self.interval_ground_truth.clear()
         # NOTE: we only use numpkts for random distribution, but could probably remove it altogether
-        numpkts = traceparams["numpkts"]
+        #### BACKGROUND TRAFFIC
+        # number of background_pkts +/- 25%
+        # sending same distribution as attack traffic for now, just smaller amount
+        num_backgroundpkts = random.randint(int(.75*traceparams["background_pkts"]), int(1.25*traceparams["background_pkts"])) 
+        ####
+        num_attackpkts = traceparams["numpkts"]
+        numpkts = num_attackpkts + num_backgroundpkts
         numflows = traceparams["numflows"]
         distribution = traceparams["distribution"]
         rate = traceparams["rate"]

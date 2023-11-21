@@ -192,8 +192,8 @@ def main():
     
     counter = 0
     while True:
-        # generate a trace w/ 260 pkts
-        bits_set, avg_err = send_pkts(260, opt_info, o, sim_process)
+        # generate a trace w/ 500 attack pkts
+        bits_set, avg_err = send_pkts(500, opt_info, o, sim_process)
         print(bits_set, avg_err)
         counter += 1
         if counter >= 5:

@@ -9,10 +9,12 @@
         }
     },
     "traceparams" : {
-        "numpkts" : 260,
+        "numpkts" : 500,
         "numflows" : 300,
         "distribution" : "skew",
-        "rate" : 1000
+        "rate" : 1000,
+        "send_background" : true,
+        "background_pkts" : 50
     },
     "tracebounds" : {
         "numpkts" : [100000, 200000],
