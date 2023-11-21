@@ -42,7 +42,10 @@ class Opt:
         #### BACKGROUND TRAFFIC
         # number of background_pkts +/- 25%
         # sending same distribution as attack traffic for now, just smaller amount
-        num_backgroundpkts = random.randint(int(.75*traceparams["background_pkts"]), int(1.25*traceparams["background_pkts"])) 
+        if traceparams["send_background"]:
+            num_backgroundpkts = random.randint(int(.75*traceparams["background_pkts"]), int(1.25*traceparams["background_pkts"])) 
+        else:
+            num_backgroundpkts = 0
         ####
         num_attackpkts = traceparams["numpkts"]
         numpkts = num_attackpkts + num_backgroundpkts
