@@ -211,15 +211,26 @@ if __name__ == "__main__":
 TODO: update this
 
 json fields:
-    symbolicvals: (anything info related to symbolics)
+    symbolicvals: (any info related to symbolics)
         sizes: symbolic sizes and starting vals
         symbolics: symbolic vals (ints, bools) and starting vals
         logs: which (if any) symbolics are log2(another symbolic)
-    symfile: file to write symbolics to
+    traceparams: application-specific parameters
+        for the rotating CMS:
+            - numpkts: number of attack packets to send each round
+            - numflows: if we're using randomly distributed attack packets, this is the number of flows we're generating packets from
+            - distribution: either skewed zipfian or random (for now)
+            - rate: used to set timestamp for lucid interpreter (timestamps are only used for ordering events)
+            - send_background: whether we should include background traffic with the attack traffice (background traffic has same distribution as attack for now)
+            - background_pkts: number of background packets to send each round (we do +/- 25% of this number)
+    tracebounds: application-specific parameter bounds
+        - NOTE THAT THIS IS NOT CURRENTLY USED
+        - but can be used to set bounds on various parameters
+    symfile: file to write symbolics to (must have same name as dpt file with .symb extension)
     lucidfile: dpt file
     outputfiles: list of files that output is stored in (written to by externs)
-    optmodule: name of module that has class w/ necessary funcs
-    trafficpcap: name of pcap file to use
+    optmodule: name of module that has class w/ necessary funcs (from python file)
+    trafficpcap: name of pcap file to use (optional)
 
 sys reqs:
     python3
