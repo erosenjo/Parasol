@@ -28,8 +28,6 @@ global Array.t<32>[rows] cms1 = [Array.create(cols) for i<rows];
 // pkt in switch
 //packet event ip_in (int src, int dst);
 packet event ip_in (int src, int dst, int dummy_bytes);
-// end of lucid program, send back to switch
-event ip_out () { skip; }
 
 
 /* Externs */
@@ -133,5 +131,7 @@ handle ip_in (int src, int dst, int dummy_bytes) {
     if (dummy_bytes==1) {
         write_to_file();
     }
-	generate ip_out();
+
+    // send packet out of port 0 (0 is default for interpreter)
+	generate_port(0, ip_in(src, dst, dummy_bytes));
 }
