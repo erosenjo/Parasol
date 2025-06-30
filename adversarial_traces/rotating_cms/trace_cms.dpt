@@ -1,19 +1,23 @@
 /* 2 rotating sketches */
-/* every x interval, we rotate the sketch that we're writing or cleaning
+/* every interval, we rotate the sketch that we're writing or cleaning
     -we have a single register that lets us know which cms we're writing to
     -when the dummy_bytes field = 1, we flip the bit in the register to rotate
-    -cleaning is handled by the control plane, but mimics data plane cleaning (see Conquest)
     -for every packet we see, we clean 1 register in a sketch
 */
 
-
+/* Symbolics */
 // symbolics - these can be held constant during trace optimization
 symbolic int cols;
 symbolic size rows; 
 symbolic size logcols;
 
+/* Arrays */
 // register that keeps track of what sketch we're writing to
+// note that we can do this with ingress timestamp too (see conquest)
 global Array.t<32> interval_tracker = Array.create(1);
+
+// register to keep index to use for cleaning
+global Array.t<logcols> reg_cleaning_index = Array.create(1);
 
 // cms structure (keeping reg width fixed for now)
 global Array.t<32>[rows] cms0 = [Array.create(cols) for i<rows];
@@ -29,12 +33,16 @@ event ip_out () { skip; }
 
 
 /* Externs */
-extern update_count(int x, int y, int z);
+extern update_count(int src_addr, int dst_addr, int count);
 extern update_bits_set(int cms_num, int row_num, int<logcols> idx);
 extern write_to_file();
 
 /* Memops */
 memop incr(int memval, int incrval) {
+	return memval + incrval;
+}
+
+memop incr_cleaning(int<logcols> memval, int<logcols> incrval) {
 	return memval + incrval;
 }
 
@@ -64,28 +72,50 @@ handle ip_in (int src, int dst, int dummy_bytes) {
     // if dummy_bytes==0, flip the bit in the interval tracker
     int interval = Array.update(interval_tracker, 0, getval, 0, flip, dummy_bytes);
 
+    // get index to clean
+    // note that numbers will wrap around - once we reach max, incrementing will take this to 0
+    int<logcols> clean_index = Array.update(reg_cleaning_index, 0, incr_cleaning, 1, incr_cleaning, 1);
+
 	/* cms */
 	// init values
 	int min = 0xffffffff;
 
     int<logcols>[rows] idxes = [hash<logcols>(size_to_int(i),interval, src,dst) for i<rows];
 
-	for (i < rows) {
-		// incr value and calc min as we go
-		// NOTE: use memop for min calc bc it only needs 1 stage (uses stateful alu)
-		// if we use a conditional to compare, it breaks up the comparison and takes mult stages
-        if (interval==0) {  // writing to cms0, cleaning cms1
+    /* NOTES ON MIN CALCULATION:
+     - we compute minimum as we go
+     - we increment the stored value and return the original value in memory
+     - use memop for min calc bc it only needs 1 stage (uses stateful alu)
+     - if we use a conditional to compare, it breaks up the comparison and takes mult stages
+     */
+
+    if (interval==0) {  // writing to cms0, cleaning cms1
+        // use this loop to update the sketch we're writing to
+        for (i < rows) {
             if (src >= 1) { // skip dummy pkt
+                // update returns the original value and stores the incremented value
         		min = Array.update(cms0[i], idxes[i], compute_min, min, incr, 1);
                 update_bits_set(0, size_to_int(i), idxes[i]);
             }
         }
-	}
-
-    // silly hack for getting around lucid compiler errors
-    // if we try an if/else contained in a single for loop, compiler complains about out of order arrays
-    for (i < rows) {
-        if (interval==1) {  // writing to cms1, cleaning cms0
+        // silly hack for getting around lucid compiler errors
+        // we cannot have calls to 2 register arrays within a loop because of ordering constraint
+        // use this loop to clean second sketch
+        for (i < rows) {
+            if (src >= 1) { // skip dummy pkt
+                Array.set(cms1[i], clean_index, 0);
+            }
+        }
+    }
+    else {   // writing to cms1, cleaning cms0
+        // use this loop to clean first sketch
+        for (i < rows) {
+            if (src >= 1) { // skip dummy pkt
+                Array.set(cms0[i], clean_index, 0);
+            }
+        }
+        // use this loop to update the sketch we're writing to
+        for (i < rows) {
             if (src >= 1) { // skip dummy pkt
                 min = Array.update(cms1[i], idxes[i], compute_min, min, incr, 1);
                 update_bits_set(1, size_to_int(i), idxes[i]);

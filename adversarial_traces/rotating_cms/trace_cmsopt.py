@@ -7,7 +7,7 @@ import time
 import random
 import numpy as np
 
-# helpers
+# helpers (useful if we're using real pcaps/traffic traces)
 def i2Hex (n):
     hstr = str(hex(int(n)))
     if "0x" in hstr:
@@ -96,6 +96,9 @@ class Opt:
         # (we call different extern on last pkt to write counts to file)
         events[-1]["args"][-1] = 1
 
+        '''
+        ##### CONTROL EVENTS TO CLEAN SKETCH
+        ##### NOTE: we don't need this anymore, because we're doing it all in the data plane
         # add control events that cleans entire sketch
         #   for a single sketch, this could look something like:
         #       {"type": "command", "name":"Array.setrange", "args":{"array":"myarr", "start":0, "end":8,"value":[0]}}
@@ -120,6 +123,7 @@ class Opt:
 
         # rotate sketches
         self.clean_sketch = 1 - self.clean_sketch
+        '''
 
         #events_bytes = [(json.dumps(p)+'\n').encode('utf-8') for p in events]
         events_bytes = (json.dumps(events)+'\n').encode('utf-8')
@@ -168,6 +172,8 @@ class Opt:
         info["default input gap"] = 1000
         info["random seed"] = 0
         info["python file"] = "trace_cms.py"
+        # REQUIRED FOR APPLE SILICON:
+        # info["python path"] = "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib"
         info["events"] = []
         with open('trace_cms.json', 'w') as f:
             json.dump(info, f, indent=4)
