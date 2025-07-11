@@ -179,17 +179,17 @@ def send_pkts(numpkts, opt_info, o, sim_process):
 
 # usage: python3 optimize.py <json opt info file>
 def main():
-    parser = argparse.ArgumentParser(description="optimization of lucid symbolics in python, default uses layout script instead of compiler")
-    parser.add_argument("optfile", metavar="optfile", help="name of json file with optimization info")
+    parser = argparse.ArgumentParser(description="simulation for sketchprobe")
+    parser.add_argument("optfile", metavar="optfile", help="name of json file with sketchprobe initialization parameters")
     args = parser.parse_args()
-
-    #opt_info = json.load(open(sys.argv[1]))
-    #print(opt_info)
-
 
     # start the interpreter
     opt_info, o, sim_process = init_simulation(args.optfile)
     
+    '''
+    ### This is an example of how to use this script
+    ###     this executes 5 rounds, where each round sends 500 packets through the interpreter
+    ###     send_pkts generates the next set of packets to send, runs them through the interpreter, and measures the output
     counter = 0
     while True:
         # generate a trace w/ 500 attack pkts
@@ -198,7 +198,9 @@ def main():
         counter += 1
         if counter >= 5:
             break
+    '''
 
+    # stop the interpreter
     end_simulation(sim_process)
 
 
