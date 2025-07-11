@@ -130,7 +130,7 @@ class Opt:
         #print(self.interval_ground_truth)
 
 
-        return events_bytes
+        return events_bytes, num_backgroundpkts
 
 
     # called after every interp run
