@@ -158,10 +158,11 @@ def init_simulation(optfile):
 #   opt_info (json file content)
 #   o (same object returned from init_simulation)
 #   sim_process (same object returned from init_simulation
+# returns the measurement we took, the cost (as defined in opt python file), number of background packets sent alongside attack
 def send_pkts(numpkts, opt_info, o, sim_process):
     # generate lucid events
     opt_info["traceparams"]["numpkts"] = numpkts 
-    events = o.gen_traffic(opt_info["traceparams"])
+    events, num_backgroundpkts = o.gen_traffic(opt_info["traceparams"])
 
     # interpret trace, get measurements
     measurement = send_next_events(sim_process, events, opt_info["outputfiles"])
@@ -175,7 +176,7 @@ def send_pkts(numpkts, opt_info, o, sim_process):
 
     # return bits set for each sketch and avg error for all flows in the iteration
     # NOTE: this returns avg error, but we can also return gt and estimated counts for each flow instead
-    return measurement[1], cost
+    return measurement[1], cost, num_backgroundpkts
 
 # usage: python3 optimize.py <json opt info file>
 def main():
@@ -193,8 +194,8 @@ def main():
     counter = 0
     while True:
         # generate a trace w/ 500 attack pkts
-        bits_set, avg_err = send_pkts(500, opt_info, o, sim_process)
-        print(bits_set, avg_err)
+        bits_set, avg_err, num_backgroundpkts = send_pkts(500, opt_info, o, sim_process)
+        print(bits_set, avg_err, num_backgroundpkts)
         counter += 1
         if counter >= 5:
             break
