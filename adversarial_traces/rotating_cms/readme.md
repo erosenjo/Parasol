@@ -7,6 +7,12 @@ The RL code requires the torch and gym packages, which can be installed with:
 pip3 install torch gym
 ```
 
+## Notes on running the simulator
+- The simulator code (to start the interpreter, send packets, end interpreter), is contained in ``simulator.py``
+- The code for the RL agent is contained in ``rlagent.py``
+- The RL agent calls functions in ``simulator.py`` to start a simulation, send packets, read measurements, etc.
+- Both ``simulator.py`` and ``rlagent.py`` **must** be in the same directory as the lucid ``dpt`` program (to run for the rotating sketches, you need to move them both to the ``rotating_cms`` folder)
+
 ## Required Files
 Parasol requires 5 files.
 - Lucid file (``rotating_cms.dpt``): This contains the program logic 
