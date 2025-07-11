@@ -171,11 +171,11 @@ class Opt:
         info["max time"] = maxpkts*1000
         info["default input gap"] = 1000
         info["random seed"] = 0
-        info["python file"] = "trace_cms.py"
+        info["python file"] = "rotating_cms.py"
         # REQUIRED FOR APPLE SILICON:
         # info["python path"] = "/opt/homebrew/Cellar/python@3.13/3.13.5/Frameworks/Python.framework/Versions/3.13/lib/libpython3.13.dylib"
         info["events"] = []
-        with open('trace_cms.json', 'w') as f:
+        with open('rotating_cms.json', 'w') as f:
             json.dump(info, f, indent=4)
         pass
 

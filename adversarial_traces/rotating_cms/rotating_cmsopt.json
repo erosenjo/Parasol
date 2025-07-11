@@ -25,9 +25,9 @@
     "optparams": {
         "maxpkts": 100
     },
-    "symfile" : "trace_cms.symb",
-    "lucidfile" : "trace_cms.dpt",
+    "symfile" : "rotating_cms.symb",
+    "lucidfile" : "rotating_cms.dpt",
     "outputfiles" : ["estimated_counts.pkl", "bits_set.pkl"],
-    "optmodule" : "trace_cmsopt"
+    "optmodule" : "rotating_cmsopt"
 
 }

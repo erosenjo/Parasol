@@ -6,7 +6,7 @@
 */
 
 /* Symbolics */
-// symbolics - these can be held constant during trace optimization
+// symbolics - these can be held constant during sketchprobe
 symbolic int cols;
 symbolic size rows; 
 symbolic size logcols;

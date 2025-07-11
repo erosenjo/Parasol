@@ -3,6 +3,6 @@
     "max time": 100000,
     "default input gap": 1000,
     "random seed": 0,
-    "python file": "trace_cms.py",
+    "python file": "rotating_cms.py",
     "events": []
 }
