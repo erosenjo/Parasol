@@ -1,6 +1,12 @@
 # Rotating CMS
 The rotating CMS application consists of 2 sketches (with the same number of columns and rows) that record counts for flows (a flow is defined by its src and dst ips). For a single time interval, we write to one sketch and clean the other sketch. In the next interval, we rotate the sketches - we write to the one we've just cleaned and clean the other one. We clean a single register per packet.
 
+## Required packages for RL
+The RL code requires the torch and gym packages, which can be installed with:
+```
+pip3 install torch gym
+```
+
 ## Required Files
 Parasol requires 5 files.
 - Lucid file (``trace_cms.dpt``): This contains the program logic 
