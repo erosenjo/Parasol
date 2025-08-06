@@ -6,6 +6,7 @@ import numpy as np
 import gym
 import random
 from collections import deque
+from data_reporter import DataReporter
 from simulator import *
 
 # Distribution of the packet: header information
@@ -37,6 +38,8 @@ class NetworkingEnv(gym.Env):
         self.round_counter = 0
         self.sequence_errors = []
 
+        self.reporter = DataReporter()
+
     def reset(self):
         self.state = np.zeros(self.state_dim)  # Reset state for three rounds
         return self.state
@@ -61,14 +64,12 @@ class NetworkingEnv(gym.Env):
         if self.budget <= 0:
             action = 0
 
-        print(self.avg_err)
         # Shift the state to include the new values and remove the oldest values
         new_state = np.roll(self.state, -3)
         new_state[-3:] = [self.budget, action, self.avg_err]
         self.state = new_state
         
-        print("background", num_backgroundpkts)
-        print("state", self.state)
+        self.reporter.add_frame(self.reward, num_backgroundpkts, self.state)
         
         if done:
             # Reset for a new episode
@@ -497,9 +498,9 @@ def main():
     # agent = QLearningAgent(env)
 
     # Initialize and train with Different RL Agent
-    agent = DQNAgent(env)
+    # agent = DQNAgent(env)
     # agent = ActorCriticAgent(env)
-    # agent = PPOAgent(env)
+    agent = PPOAgent(env)
 
     # Train the Q-learning agent
     num_episodes = 50 # change episodes
@@ -512,6 +513,7 @@ def main():
     # Test the trained Agent
     print("\nTesting the trained DQN agent...")
     agent.test()
+    env.reporter.report()
 
     end_simulation(sim_process)
 
