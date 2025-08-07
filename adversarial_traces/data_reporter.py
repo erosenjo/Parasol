@@ -17,5 +17,7 @@ class DataReporter:
         # print("Data from steps:")
         # print(self.frames)
         errs = [x["state"][-1] for x in self.frames]
+        actions = [int(x["state"][-2]) for x in self.frames]
         avg_err = sum(errs) / len(errs)
         print("Overall average error: {}".format(avg_err))
+        print("Actions that led to this error:\n{}".format(actions))
