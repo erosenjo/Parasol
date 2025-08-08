@@ -69,7 +69,9 @@ class NetworkingEnv(gym.Env):
         new_state[-3:] = [self.budget, action, self.avg_err]
         self.state = new_state
         
-        self.reporter.add_frame(self.reward, num_backgroundpkts, self.state)
+        self.reporter.add_frame(
+            self.reward, num_backgroundpkts, self.state[-3:]
+        )
         
         if done:
             # Reset for a new episode
@@ -423,6 +425,7 @@ class PPOAgent:
 
     def train(self, episodes=100):
         for e in range(episodes):
+            self.env.reporter.start_or_advance_step(episodes)
             state = self.env.reset()
             done = False
             while not done:
