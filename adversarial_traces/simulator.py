@@ -114,12 +114,14 @@ def send_next_events(process, events, outfiles):
     process.stdin.flush()
     # wait until file is in directory
     # delete the file after we grab the measurement
-    while not os.path.isfile(outfiles[0]):
-        time.sleep(1)
-    measurement = []
-    for out in outfiles:
-        measurement.append(pickle.load(open(out,"rb")))
-        os.remove(out)
+    try:
+        while not os.path.isfile(outfiles[0]):
+            time.sleep(1)
+    finally:
+        measurement = []
+        for out in outfiles:
+            measurement.append(pickle.load(open(out, "rb")))
+            os.remove(out)
 
     return measurement
 
