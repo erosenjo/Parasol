@@ -231,7 +231,7 @@ class DQNAgent:
             total_rewards += episode_rewards
             print(f"Episode {episode + 1}: Total Reward = {episode_rewards}")
         avg_reward = total_rewards / episodes
-        print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
+        # print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
         print(f"Average Reward over {episodes} episodes: {avg_reward}")
 
 # Define the A2C Neural Network Model
@@ -362,7 +362,7 @@ class ActorCriticAgent:
             total_rewards += episode_rewards
             print(f"Episode {episode + 1}: Total Reward = {episode_rewards}")
         avg_reward = total_rewards / episodes
-        print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
+        # print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
         print(f"A2C Average Reward over {episodes} episodes: {avg_reward}")
 
 # Define the PPO Neural Network Model
@@ -480,7 +480,7 @@ class PPOAgent:
             total_rewards += episode_rewards
             print(f"Episode {episode + 1}: Total Reward = {episode_rewards}")
         avg_reward = total_rewards / episodes
-        print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
+        # print(f"Background Traffic and State Seq over {episodes} episodes: {state_seq}")
         print(f"PPO Average Reward over {episodes} episodes: {avg_reward}")
 
 
@@ -508,10 +508,10 @@ def main():
     agent.train(episodes=num_episodes)
     end = time.time() # Record Time for Training
     training_time = end - start
-    print(f"Training Time for {num_episodes} is {training_time} seconds!!")
+    print(f"Training Time for {num_episodes} episodes is {training_time} seconds!!")
     
     # Test the trained Agent
-    print("\nTesting the trained DQN agent...")
+    print("\nTesting the trained agent...")
     agent.test()
     env.reporter.report()
 
