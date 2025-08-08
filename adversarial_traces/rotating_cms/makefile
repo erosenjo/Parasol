@@ -1,5 +1,5 @@
 .PHONY: simulate interp compile interactive layout assemble test dfg preprocess_dfg
-LUCID_DIR = ../../../lucid
+LUCID_DIR = $(shell echo -n "$${LUCID_DIR:-../../../lucid}")
 OPT_DIR = ..
 
 # trace optimize w/ constant symbolics
