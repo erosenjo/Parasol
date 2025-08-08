@@ -9,6 +9,10 @@ from collections import deque
 from data_reporter import DataReporter
 from simulator import *
 
+# constants
+NUM_TRAINING_EPISODES = 100
+REPORT_FILE = "results.csv"
+
 # Distribution of the packet: header information
 
 class NetworkingEnv(gym.Env):
@@ -70,7 +74,7 @@ class NetworkingEnv(gym.Env):
         self.state = new_state
         
         self.reporter.add_frame(
-            self.reward, num_backgroundpkts, self.state[-3:]
+            self.reward, num_backgroundpkts, self.budget, action
         )
         
         if done:
@@ -506,17 +510,16 @@ def main():
     agent = PPOAgent(env)
 
     # Train the Q-learning agent
-    num_episodes = 50 # change episodes
     start = time.time() # Record Time for Training
-    agent.train(episodes=num_episodes)
+    agent.train(episodes=NUM_TRAINING_EPISODES)
     end = time.time() # Record Time for Training
     training_time = end - start
-    print(f"Training Time for {num_episodes} episodes is {training_time} seconds!!")
+    print(f"Training Time for {NUM_TRAINING_EPISODES} episodes is {training_time} seconds!!")
     
     # Test the trained Agent
     print("\nTesting the trained agent...")
     agent.test()
-    env.reporter.report()
+    env.reporter.report(REPORT_FILE)
 
     end_simulation(sim_process)
 
