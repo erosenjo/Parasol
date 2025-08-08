@@ -142,14 +142,15 @@ class Opt:
     def calc_cost(self,measure,avg_or_max=[]):  # compute avg error for our cms (mean abs error)
         m = measure[0]  # first file is estimated counts, second file is bits set
         s = []
-        for k in self.interval_ground_truth:
+        assert m.keys() == self.interval_ground_truth.keys()
+        for k, v in self.interval_ground_truth.items():
             #if abs(m[k]-self.ground_truth[k])/self.ground_truth[k] > 1:
                 #print("ERR!! ERROR > 1")
                 #print("est: "+str(m[k]))
                 #print("gt: "+str(self.ground_truth[k]))
                 #print("key: "+str(k))
                 #quit()
-            s.append(abs(m[k]-self.interval_ground_truth[k])/self.interval_ground_truth[k])
+            s.append(abs(m[k] - v) / v)
         #if sum(s)/len(s) > 1:
             #print("ERR!!!")
             #quit()
